@@ -1,26 +1,31 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F1 — Auditoría arquitectónica (7 de 8 dominios cerrados).
-**Rama:** `cage-legacy-rework` · **Tag de partida:** `baseline-original` (b9480fe)
+**Fase actual:** F2 — Consolidación y corrección (2 de 14 bugs corregidos).
+**Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
-1. **Cerrar F1**: falta el dominio **E — entrenamiento y progresión**
-   (`dev/audit/E-entrenamiento.md`). Su subagente se cortó por límite de sesión.
-   La pregunta central, que debe responderse con pruebas: **qué del entrenamiento
-   afecta de verdad al combate y qué es decorativo.** Método: rastrear cada stat de
-   `player.st` hasta `eff()` (~1673) y `fightAct`; una stat que nadie lee en combate es
-   decorativa. Producir tabla stat → dónde se lee → ¿afecta? con la prueba de cada una.
-   Después poner el tag `fase-1-ok`.
-2. **Abrir F2 — consolidación.** La lista priorizada de 14 correcciones está en
-   `dev/AUDIT.md`, sección "Lista priorizada de correcciones para F2". Orden del encargo:
-   startCareer → loadGame → advanceWeek → combate → entrenamiento → navegación/render →
-   minijuegos → save/load → eventos → progresión de rivales.
-   **Protocolo por cada bug**: primero un test en `dev/tests/` que lo reproduce y falla,
-   después el fix en un commit `[F2] fix:` aparte, entrada en `CHANGES.md`, y golden
-   master verde (`node dev/run-tests.js`).
-   Los dos primeros por daño al jugador: **F-001** (borra partidas al arrancar) e
-   **I-001** (el jugador no puede ser campeón).
+Seguir con **F2**, por la lista priorizada de `dev/AUDIT.md` → "Lista priorizada de
+correcciones para F2". Hechos los dos primeros (F-001 e I-001). **El siguiente es el #3,
+D-003** (re-roll infinito del resultado de la pelea).
+
+**Protocolo por cada bug, ya rodado dos veces:**
+1. Escribir el test en `dev/tests/06-f2-fixes.js` **incluyendo las pruebas que vigilan que
+   el arreglo no desactive lo que la función debía hacer**.
+2. Correrlo contra el archivo sin corregir y **guardar la salida en rojo** (va a CHANGES.md).
+3. Aplicar la corrección de raíz.
+4. Suite completa. Si cambia el golden master, **aislar qué arreglo lo causó** revirtiendo
+   uno solo, y medir el efecto con `dev/sim.js` antes/después.
+5. Entrada en `CHANGES.md` con la evidencia. Commit `[F2] fix:`.
+
+**Importante sobre las fixtures**: `dev/fixtures/` son saves de la versión **original** y
+son la evidencia de I3. **No se regeneran nunca.** Las golden traces sí, cuando un fix
+cambia el juego a propósito.
+
+Tras los bugs vienen las consolidaciones estructurales (mismo orden del encargo:
+startCareer → loadGame → advanceWeek → combate → entrenamiento → navegación/render →
+minijuegos → save/load → eventos → progresión de rivales), que **no** deben cambiar
+comportamiento y se demuestran con golden master idéntico.
 
 ## Comandos
 ```
@@ -67,6 +72,12 @@ node dev/make-baseline.js        regenera TODA la línea base
       título · retirado), `sim.json` (40 carreras × 150 semanas, 0 fallos de
       invariante).
 - [x] `dev/AUDIT.md` con 9 hallazgos medidos en F0 (H-001…H-009).
+
+## Hecho en F2 hasta ahora
+- **F-001** · `migrateLegacyBlob` ya no borra partidas que no pudo migrar. Impacto jugable
+  nulo, verificado aislando el arreglo.
+- **I-001** · el jugador puede volver a ser campeón. Carreras con título 12,5% → **67,5%**;
+  defensas por carrera 0 → 0,38. Golden master regenerado; fixtures intactas.
 
 ## Bloqueos
 - Los subagentes de auditoría corren en modo sólo lectura y **no pueden escribir**
