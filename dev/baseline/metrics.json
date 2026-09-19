@@ -1,0 +1,1381 @@
+{
+  "generado": "2026-09-19T13:05:17.845Z",
+  "archivo": "index-4-blindado.html",
+  "bytes": 1540252,
+  "lineasHTML": 28157,
+  "lineasJS": 27589,
+  "md5": "3f7ff37b70cf2d24c9aba90720874309",
+  "sha256": "fdcdd311b940f7ad30d751bfe5414c75a83a2428f38d6a6b1b46c045fff4321d",
+  "bloquesScript": 1,
+  "funciones": {
+    "declaraciones": 512,
+    "declaracionesAnidadas": 91,
+    "asignaciones": 61,
+    "totalNombres": 532,
+    "definidosMasDeUnaVez": 43,
+    "detalleMultiples": [
+      {
+        "nombre": "rollEvent",
+        "veces": 4,
+        "lineas": [
+          4700,
+          21475,
+          25311,
+          25852
+        ]
+      },
+      {
+        "nombre": "cardioStart",
+        "veces": 3,
+        "lineas": [
+          1878,
+          6075,
+          10161
+        ]
+      },
+      {
+        "nombre": "drillStart",
+        "veces": 3,
+        "lineas": [
+          1931,
+          6010,
+          10163
+        ]
+      },
+      {
+        "nombre": "fxLoop",
+        "veces": 3,
+        "lineas": [
+          6615,
+          10394,
+          15274
+        ]
+      },
+      {
+        "nombre": "strStart",
+        "veces": 3,
+        "lineas": [
+          1906,
+          6081,
+          10162
+        ]
+      },
+      {
+        "nombre": "cardioPick",
+        "veces": 2,
+        "lineas": [
+          1882,
+          6002
+        ]
+      },
+      {
+        "nombre": "careerEnding",
+        "veces": 2,
+        "lineas": [
+          2854,
+          17520
+        ]
+      },
+      {
+        "nombre": "drain",
+        "veces": 2,
+        "lineas": [
+          1137,
+          20539
+        ]
+      },
+      {
+        "nombre": "fameResolve",
+        "veces": 2,
+        "lineas": [
+          13836,
+          14379
+        ]
+      },
+      {
+        "nombre": "fameStart",
+        "veces": 2,
+        "lineas": [
+          13825,
+          21374
+        ]
+      },
+      {
+        "nombre": "fightFinishResolve",
+        "veces": 2,
+        "lineas": [
+          5823,
+          7813
+        ]
+      },
+      {
+        "nombre": "fightPayout",
+        "veces": 2,
+        "lineas": [
+          11946,
+          13139
+        ]
+      },
+      {
+        "nombre": "fname",
+        "veces": 2,
+        "lineas": [
+          392,
+          12558
+        ]
+      },
+      {
+        "nombre": "fxBurst",
+        "veces": 2,
+        "lineas": [
+          6278,
+          15328
+        ]
+      },
+      {
+        "nombre": "fxFinish",
+        "veces": 2,
+        "lineas": [
+          6605,
+          14426
+        ]
+      },
+      {
+        "nombre": "fxFloat",
+        "veces": 2,
+        "lineas": [
+          6277,
+          15336
+        ]
+      },
+      {
+        "nombre": "fxOpen",
+        "veces": 2,
+        "lineas": [
+          6492,
+          15314
+        ]
+      },
+      {
+        "nombre": "fxPickGame",
+        "veces": 2,
+        "lineas": [
+          7735,
+          11800
+        ]
+      },
+      {
+        "nombre": "fxResize",
+        "veces": 2,
+        "lineas": [
+          6419,
+          15299
+        ]
+      },
+      {
+        "nombre": "fxResolveMini",
+        "veces": 2,
+        "lineas": [
+          7747,
+          8034
+        ]
+      },
+      {
+        "nombre": "fxShake",
+        "veces": 2,
+        "lineas": [
+          6285,
+          15341
+        ]
+      },
+      {
+        "nombre": "historicAdvicePending",
+        "veces": 2,
+        "lineas": [
+          4637,
+          24842
+        ]
+      },
+      {
+        "nombre": "legacyRegisterRun",
+        "veces": 2,
+        "lineas": [
+          7975,
+          23590
+        ]
+      },
+      {
+        "nombre": "negoAsk",
+        "veces": 2,
+        "lineas": [
+          2206,
+          11910
+        ]
+      },
+      {
+        "nombre": "pressPick",
+        "veces": 2,
+        "lineas": [
+          2128,
+          11356
+        ]
+      },
+      {
+        "nombre": "pruneWorld",
+        "veces": 2,
+        "lineas": [
+          849,
+          17428
+        ]
+      },
+      {
+        "nombre": "recPick",
+        "veces": 2,
+        "lineas": [
+          2177,
+          5868
+        ]
+      },
+      {
+        "nombre": "render",
+        "veces": 2,
+        "lineas": [
+          3488,
+          17047
+        ]
+      },
+      {
+        "nombre": "renderNav",
+        "veces": 2,
+        "lineas": [
+          3476,
+          8174
+        ]
+      },
+      {
+        "nombre": "sagaAfterFight",
+        "veces": 2,
+        "lineas": [
+          11512,
+          14980
+        ]
+      },
+      {
+        "nombre": "savePrune",
+        "veces": 2,
+        "lineas": [
+          12046,
+          13356
+        ]
+      },
+      {
+        "nombre": "scrContracts",
+        "veces": 2,
+        "lineas": [
+          4483,
+          21312
+        ]
+      },
+      {
+        "nombre": "scrEnding",
+        "veces": 2,
+        "lineas": [
+          4662,
+          24302
+        ]
+      },
+      {
+        "nombre": "scrGym",
+        "veces": 2,
+        "lineas": [
+          4426,
+          10188
+        ]
+      },
+      {
+        "nombre": "scrHub",
+        "veces": 2,
+        "lineas": [
+          3830,
+          17072
+        ]
+      },
+      {
+        "nombre": "scrMG",
+        "veces": 2,
+        "lineas": [
+          3992,
+          17159
+        ]
+      },
+      {
+        "nombre": "sparFinishResolve",
+        "veces": 2,
+        "lineas": [
+          1863,
+          7833
+        ]
+      },
+      {
+        "nombre": "startCamp",
+        "veces": 2,
+        "lineas": [
+          1680,
+          25476
+        ]
+      },
+      {
+        "nombre": "strPick",
+        "veces": 2,
+        "lineas": [
+          1910,
+          6006
+        ]
+      },
+      {
+        "nombre": "tgPick",
+        "veces": 2,
+        "lineas": [
+          10069,
+          11763
+        ]
+      },
+      {
+        "nombre": "tgStart",
+        "veces": 2,
+        "lineas": [
+          10081,
+          21369
+        ]
+      },
+      {
+        "nombre": "trainQuality",
+        "veces": 2,
+        "lineas": [
+          1625,
+          4737
+        ]
+      },
+      {
+        "nombre": "weighEnd",
+        "veces": 2,
+        "lineas": [
+          2053,
+          15169
+        ]
+      }
+    ],
+    "wrappers": 42,
+    "detalleWrappers": [
+      {
+        "alias": "_trainQuality",
+        "objetivo": "trainQuality",
+        "linea": 4736
+      },
+      {
+        "alias": "_recPickStable",
+        "objetivo": "recPick",
+        "linea": 5867
+      },
+      {
+        "alias": "_cardioPickStable",
+        "objetivo": "cardioPick",
+        "linea": 6001
+      },
+      {
+        "alias": "_strPickStable",
+        "objetivo": "strPick",
+        "linea": 6005
+      },
+      {
+        "alias": "_drillStartStable",
+        "objetivo": "drillStart",
+        "linea": 6009
+      },
+      {
+        "alias": "_cardioStartArcade",
+        "objetivo": "cardioStart",
+        "linea": 6074
+      },
+      {
+        "alias": "_strStartArcade",
+        "objetivo": "strStart",
+        "linea": 6080
+      },
+      {
+        "alias": "_fxFightFinishResolvePrev",
+        "objetivo": "fightFinishResolve",
+        "linea": 7812
+      },
+      {
+        "alias": "_fxSparFinishResolvePrev",
+        "objetivo": "sparFinishResolve",
+        "linea": 7832
+      },
+      {
+        "alias": "_legFxResolvePrev",
+        "objetivo": "fxResolveMini",
+        "linea": 8033
+      },
+      {
+        "alias": "_legRenderNavPrev",
+        "objetivo": "renderNav",
+        "linea": 8173
+      },
+      {
+        "alias": "_tgScrGymPrev",
+        "objetivo": "scrGym",
+        "linea": 10187
+      },
+      {
+        "alias": "_errFxLoopPrev",
+        "objetivo": "fxLoop",
+        "linea": 10393
+      },
+      {
+        "alias": "_socPressPickPrev",
+        "objetivo": "pressPick",
+        "linea": 11355
+      },
+      {
+        "alias": "_styTgPickPrev",
+        "objetivo": "tgPick",
+        "linea": 11762
+      },
+      {
+        "alias": "_styFxPickPrev",
+        "objetivo": "fxPickGame",
+        "linea": 11799
+      },
+      {
+        "alias": "_ecoNegoAskPrev",
+        "objetivo": "negoAsk",
+        "linea": 11909
+      },
+      {
+        "alias": "_nickFnamePrev",
+        "objetivo": "fname",
+        "linea": 12557
+      },
+      {
+        "alias": "_shPayoutPrev",
+        "objetivo": "fightPayout",
+        "linea": 13138
+      },
+      {
+        "alias": "_qSavePrunePrev",
+        "objetivo": "savePrune",
+        "linea": 13355
+      },
+      {
+        "alias": "_shopFameResolvePrev",
+        "objetivo": "fameResolve",
+        "linea": 14378
+      },
+      {
+        "alias": "_shopFxFinishPrev",
+        "objetivo": "fxFinish",
+        "linea": 14425
+      },
+      {
+        "alias": "_drSagaAfterPrev",
+        "objetivo": "sagaAfterFight",
+        "linea": 14979
+      },
+      {
+        "alias": "_wfWeighEndPrev",
+        "objetivo": "weighEnd",
+        "linea": 15168
+      },
+      {
+        "alias": "_perfFxLoopPrev",
+        "objetivo": "fxLoop",
+        "linea": 15273
+      },
+      {
+        "alias": "_perfResizePrev",
+        "objetivo": "fxResize",
+        "linea": 15298
+      },
+      {
+        "alias": "_perfFxOpenPrev",
+        "objetivo": "fxOpen",
+        "linea": 15313
+      },
+      {
+        "alias": "_perfBurstPrev",
+        "objetivo": "fxBurst",
+        "linea": 15327
+      },
+      {
+        "alias": "_perfFloatPrev",
+        "objetivo": "fxFloat",
+        "linea": 15335
+      },
+      {
+        "alias": "_perfShakePrev",
+        "objetivo": "fxShake",
+        "linea": 15340
+      },
+      {
+        "alias": "_clPrune",
+        "objetivo": "pruneWorld",
+        "linea": 17427
+      },
+      {
+        "alias": "_clEnding",
+        "objetivo": "careerEnding",
+        "linea": 17519
+      },
+      {
+        "alias": "_tqDrain",
+        "objetivo": "drain",
+        "linea": 20538
+      },
+      {
+        "alias": "prev",
+        "objetivo": "scrContracts",
+        "linea": 21311
+      },
+      {
+        "alias": "prevTg",
+        "objetivo": "tgStart",
+        "linea": 21368
+      },
+      {
+        "alias": "prevFame",
+        "objetivo": "fameStart",
+        "linea": 21373
+      },
+      {
+        "alias": "prev",
+        "objetivo": "rollEvent",
+        "linea": 21474
+      },
+      {
+        "alias": "_mReg",
+        "objetivo": "legacyRegisterRun",
+        "linea": 23589
+      },
+      {
+        "alias": "_mFinal",
+        "objetivo": "scrEnding",
+        "linea": 24300
+      },
+      {
+        "alias": "_hist",
+        "objetivo": "historicAdvicePending",
+        "linea": 24841
+      },
+      {
+        "alias": "_rollEventFinal",
+        "objetivo": "rollEvent",
+        "linea": 25310
+      },
+      {
+        "alias": "_startCampFinal",
+        "objetivo": "startCamp",
+        "linea": 25475
+      }
+    ],
+    "colisionesConAnidadas": 1,
+    "detalleColisionesAnidadas": [
+      {
+        "nombre": "bar",
+        "lineasAnidadas": [
+          13648
+        ],
+        "lineasGlobales": [
+          3465
+        ]
+      }
+    ]
+  },
+  "listeners": {
+    "addEventListener": 19,
+    "removeEventListener": 12
+  },
+  "timers": {
+    "setTimeout": 9,
+    "clearTimeout": 3,
+    "setInterval": 0,
+    "clearInterval": 0,
+    "requestAnimationFrame": 3,
+    "cancelAnimationFrame": 1
+  },
+  "render": {
+    "llamadas": 161,
+    "uiScreenEscrituras": 37,
+    "uiScreenLecturas": 10,
+    "detalleEscriturasUIScreen": [
+      {
+        "linea": 1084,
+        "texto": "UI.screen= ; if(typeof render=== ) render();"
+      },
+      {
+        "linea": 1106,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1592,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1753,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1827,
+        "texto": "G.mg=mg; UI.screen= ; render();"
+      },
+      {
+        "linea": 1880,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1908,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1938,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 1978,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 2028,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 2126,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 2175,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 2204,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 3460,
+        "texto": "UI.screen=ctx.to; UI.sub=ctx.sub;"
+      },
+      {
+        "linea": 4218,
+        "texto": "UI.screen= ; if(typeof render=== ) render();"
+      },
+      {
+        "linea": 7762,
+        "texto": "G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)? : ; render();"
+      },
+      {
+        "linea": 7824,
+        "texto": "if(UI.screen=== ){ UI.screen= ; }"
+      },
+      {
+        "linea": 7836,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 10087,
+        "texto": "G.mg=mg; UI.screen= ;"
+      },
+      {
+        "linea": 10120,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 10402,
+        "texto": "if(mg && mg.type=== ){ G.mg=null; UI.screen= ; }"
+      },
+      {
+        "linea": 10405,
+        "texto": "else { G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)? : ; }"
+      },
+      {
+        "linea": 11192,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 12445,
+        "texto": "}, function(){ errNote( ); UI.screen= ; render(); return false; }, true);"
+      },
+      {
+        "linea": 12844,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 13830,
+        "texto": "G.mg=mg; UI.screen= ;"
+      },
+      {
+        "linea": 13832,
+        "texto": "if(!ok){ G.mg=null; UI.screen= ; errNote( ); }"
+      },
+      {
+        "linea": 13876,
+        "texto": "UI.screen= ; saveGame(true); render();"
+      },
+      {
+        "linea": 13877,
+        "texto": "}, function(){ if(G&&G.mg){ G.mg=null; UI.screen= ; render(); } }, true);"
+      },
+      {
+        "linea": 14421,
+        "texto": "UI.screen= ; saveGame(true); render();"
+      },
+      {
+        "linea": 14422,
+        "texto": "}, function(){ if(G&&G.mg){ G.mg=null; UI.screen= ; render(); } }, true);"
+      },
+      {
+        "linea": 17024,
+        "texto": "if(!sc.any && (!G || !G.player)) UI.screen= ;"
+      },
+      {
+        "linea": 17033,
+        "texto": "UI.screen = (G&&G.player)?  : ;"
+      },
+      {
+        "linea": 17054,
+        "texto": "UI.screen=(G && G.player)? : ; UI.sub=null;"
+      },
+      {
+        "linea": 21757,
+        "texto": "UI.screen= ; render();"
+      },
+      {
+        "linea": 25548,
+        "texto": "UI.screen= ;UI.sub=null;saveGame(true);render();return true;"
+      },
+      {
+        "linea": 27442,
+        "texto": "try{ UI.screen=s; var h=(CL.screens[s]||window[ +s.charAt(0).toUpperCase()+s.slice(1)]); if(!h) abiertas.push(s); }"
+      }
+    ]
+  },
+  "scroll": {
+    "sitios": 3,
+    "detalle": [
+      {
+        "linea": 3461,
+        "texto": "if(window.scrollTo) window.scrollTo(0,0);"
+      },
+      {
+        "linea": 3722,
+        "texto": "t.step=n; window.scrollTo(0,0); render();"
+      },
+      {
+        "linea": 17030,
+        "texto": "if(CL_LAST_DRAWN !== UI.screen){ CL_LAST_DRAWN = UI.screen; window.scrollTo(0,0); }"
+      }
+    ]
+  },
+  "onclickInline": 317,
+  "evalFuncional": 0,
+  "dependenciasExternas": {
+    "script_src": 0,
+    "link_href": 0,
+    "fetch": 0,
+    "XMLHttpRequest": 0,
+    "urlsHttp": 0
+  },
+  "inventarioPorDominio": {
+    "navegacion": {
+      "n": 36,
+      "fns": [
+        "go",
+        "goFight",
+        "render",
+        "renderNav",
+        "scrAch",
+        "scrBio",
+        "scrChallenges",
+        "scrChat",
+        "scrContracts",
+        "scrCreate",
+        "scrEnding",
+        "scrFame",
+        "scrFight",
+        "scrFightResult",
+        "scrFighter",
+        "scrGym",
+        "scrGyms",
+        "scrHallOfFame",
+        "scrHistory",
+        "scrHub",
+        "scrLoad",
+        "scrMG",
+        "scrMGArcade",
+        "scrMenu",
+        "scrOffers",
+        "scrPeople",
+        "scrRace",
+        "scrRank",
+        "scrRecords",
+        "scrRetire",
+        "scrShop",
+        "scrSocial",
+        "scrStats",
+        "scrTitle",
+        "scrTitleBase",
+        "scrTrain"
+      ]
+    },
+    "tiempo": {
+      "n": 7,
+      "fns": [
+        "advancePeriod",
+        "advanceWeek",
+        "advanceWeekCore",
+        "autoAdvanceToImportant",
+        "doWeek",
+        "finishWeek",
+        "weekDate"
+      ]
+    },
+    "combate": {
+      "n": 17,
+      "fns": [
+        "eff",
+        "fightAct",
+        "fightFinishResolve",
+        "fightOptions",
+        "fightOptionsBase",
+        "fightPayout",
+        "fightPower",
+        "fightStart",
+        "fightXP",
+        "fighterFocus",
+        "fighterLeverage",
+        "finishFight",
+        "finishFightCore",
+        "flog",
+        "hpCol",
+        "oppAction",
+        "oppActionBase"
+      ]
+    },
+    "saveload": {
+      "n": 14,
+      "fns": [
+        "listSaves",
+        "loadGame",
+        "loadMult",
+        "migrateLegacyBlob",
+        "saveExpand",
+        "saveGame",
+        "saveIndex",
+        "saveIndexWrite",
+        "saveMigrate",
+        "savePrune",
+        "saveReplacer",
+        "saveSerialize",
+        "saveShape",
+        "saveValidateV4"
+      ]
+    },
+    "minijuegos": {
+      "n": 91,
+      "fns": [
+        "arcadeFinishTap",
+        "cardioEnd",
+        "cardioPick",
+        "cardioPulse",
+        "cardioStart",
+        "drillGo",
+        "drillStart",
+        "drillTap",
+        "fameResolve",
+        "fameRetry",
+        "fameStart",
+        "fxAudio",
+        "fxBail",
+        "fxBurst",
+        "fxBuzz",
+        "fxClose",
+        "fxEnd",
+        "fxFighter",
+        "fxFinish",
+        "fxFlash",
+        "fxFloat",
+        "fxGlowCircle",
+        "fxHitFX",
+        "fxHud",
+        "fxLabel",
+        "fxLabelCol",
+        "fxLoop",
+        "fxMiniScreen",
+        "fxMods",
+        "fxOnDown",
+        "fxOnKey",
+        "fxOnKeyUp",
+        "fxOnRelease",
+        "fxOnUp",
+        "fxOpen",
+        "fxPadDraw",
+        "fxPadHit",
+        "fxPadLayout",
+        "fxPadPing",
+        "fxPickGame",
+        "fxPointer",
+        "fxRR",
+        "fxResize",
+        "fxResolveMini",
+        "fxRetryMini",
+        "fxSay",
+        "fxShake",
+        "fxSnd",
+        "fxSndGood",
+        "fxSndLose",
+        "fxSndMiss",
+        "fxSndPerfect",
+        "fxSndTick",
+        "fxSndWin",
+        "fxStat",
+        "fxT",
+        "fxTimeBar",
+        "mgAvg",
+        "mgBusy",
+        "mgClose",
+        "mgLog",
+        "mgSlotBusy",
+        "mgStats",
+        "mgrById",
+        "sparEnd",
+        "sparFinishResolve",
+        "sparFinishStart",
+        "sparPick",
+        "sparStart",
+        "strEnd",
+        "strPick",
+        "strStart",
+        "strengthLift",
+        "strikeR",
+        "tgBtnDraw",
+        "tgBtnHit",
+        "tgBtnLayout",
+        "tgBtns",
+        "tgBump",
+        "tgEnd",
+        "tgMult",
+        "tgPick",
+        "tgPing",
+        "tgProg",
+        "tgRecords",
+        "tgRecordsCard",
+        "tgResolve",
+        "tgRetry",
+        "tgSaveRecord",
+        "tgScreen",
+        "tgStart"
+      ]
+    },
+    "eventos": {
+      "n": 4,
+      "fns": [
+        "eventAdmissible",
+        "eventContextAllows",
+        "eventContextOK",
+        "fireEvent"
+      ]
+    },
+    "economia": {
+      "n": 6,
+      "fns": [
+        "buyItem",
+        "debtBarEnsure",
+        "debtBarUpdate",
+        "money",
+        "shopCan",
+        "shopOwned"
+      ]
+    },
+    "rankings": {
+      "n": 8,
+      "fns": [
+        "divFit",
+        "divHeightRange",
+        "divisionAdaptation",
+        "rankLabel",
+        "rankOf",
+        "rankScore",
+        "rankScoreSafe",
+        "setRank"
+      ]
+    },
+    "social": {
+      "n": 29,
+      "fns": [
+        "pressArcadePick",
+        "pressContextQs",
+        "pressEnd",
+        "pressPick",
+        "pressStart",
+        "pushNews",
+        "socActorBlocked",
+        "socAdvice",
+        "socBudget",
+        "socCD",
+        "socCandidates",
+        "socCap",
+        "socCatBlocked",
+        "socCheckRivalry",
+        "socCircle",
+        "socClash",
+        "socDone",
+        "socFeedRoom",
+        "socInvite",
+        "socLeft",
+        "socMeterHTML",
+        "socPartners",
+        "socPostClosed",
+        "socSpend",
+        "socStamp",
+        "socTagHTML",
+        "socWeakness",
+        "socWhyBlocked",
+        "toast"
+      ]
+    },
+    "relaciones": {
+      "n": 17,
+      "fns": [
+        "coachById",
+        "coachEdge",
+        "coachEdgeCard",
+        "coachLine",
+        "coachRecs",
+        "gymById",
+        "gymCoaches",
+        "gymIdentity",
+        "gymJoin",
+        "gymMembers",
+        "gymVisit",
+        "relScore",
+        "relSummary",
+        "relTags",
+        "relV",
+        "team",
+        "teamCost"
+      ]
+    },
+    "progresion": {
+      "n": 24,
+      "fns": [
+        "focusGet",
+        "focusSet",
+        "focusWeights",
+        "stCanon",
+        "stHash",
+        "stStable",
+        "startCamp",
+        "startCareer",
+        "statPotentials",
+        "statRow",
+        "stateHash",
+        "storageUsedKB",
+        "style2Hint",
+        "styleBias",
+        "styleBodyFit",
+        "styleBodyLabel",
+        "styleComboName",
+        "styleCoreList",
+        "styleTrainingBonus",
+        "tqEnd",
+        "tqInfo",
+        "tqSkin",
+        "tqWin",
+        "trainQuality"
+      ]
+    }
+  },
+  "sinClasificar": {
+    "n": 279,
+    "fns": [
+      "CL_JUDGES",
+      "CL_JUDGE_LEAN",
+      "F",
+      "G_gymsPreview",
+      "acceptFight",
+      "addMem",
+      "addMemF",
+      "age",
+      "ageCurve",
+      "ageOf",
+      "allSaves",
+      "allyForm",
+      "allyList",
+      "allySide",
+      "anyRival",
+      "applyDrawNPC",
+      "applyDrawResult",
+      "applyPlayerFight",
+      "applyRealMeta",
+      "applyResult",
+      "applyResultCore",
+      "applyTrain",
+      "applyWinLossResult",
+      "askFight",
+      "askManagerRaise",
+      "autosaveNow",
+      "backfill",
+      "bar",
+      "baseStats",
+      "betterOrgForPlayer",
+      "bodyCard",
+      "bondNote",
+      "bondOf",
+      "btn",
+      "byName",
+      "campWeek",
+      "campWeekCore",
+      "canOfferRematch",
+      "cap",
+      "careerEnding",
+      "chance",
+      "changeCoach",
+      "changeGym",
+      "changeMgr",
+      "changePopularity",
+      "changeWeightClass",
+      "chatPick",
+      "chatStart",
+      "clAge",
+      "clBar",
+      "clEvoAccept",
+      "clEvoReject",
+      "clN",
+      "clSetFocus",
+      "clSetSpend",
+      "clTag",
+      "clTakeInvite",
+      "clTogglePillar",
+      "clamp",
+      "cmToFt",
+      "col",
+      "commitCreateField",
+      "confirmFight",
+      "confirmRetire",
+      "contentBoost",
+      "contentDrop",
+      "coreRating",
+      "coreStats",
+      "coreStatsCard",
+      "cornerAdvice",
+      "createBodyProbe",
+      "createDefaults",
+      "createDraft",
+      "createPlayer",
+      "createStep",
+      "cutGap",
+      "cutHardness",
+      "dedupeDOM",
+      "defR",
+      "defRel",
+      "deleteSave",
+      "determinismCheck",
+      "devYear",
+      "diagRunner",
+      "dispHash",
+      "doRetire",
+      "drain",
+      "endRound",
+      "ensureFightTotals",
+      "ensureNick",
+      "ensureRel",
+      "errLog",
+      "errNote",
+      "errRecord",
+      "esc",
+      "ev",
+      "evolvePlayerDivisionWorld",
+      "finBias",
+      "finishByDecision",
+      "finishDifficulty",
+      "finishMiniContinue",
+      "finishMiniEnd",
+      "finishMiniStart",
+      "finishTap",
+      "fireCoach",
+      "fname",
+      "forceDivUp",
+      "freshCareer",
+      "gainText",
+      "gameplayLevel",
+      "gauss",
+      "gpBlock",
+      "gpConfirm",
+      "gpCouncil",
+      "gpMod",
+      "gpRecNames",
+      "gpSet",
+      "gpStart",
+      "grapR",
+      "handler",
+      "headToHeadCount",
+      "heightForDiv",
+      "hireCoach",
+      "histEligible",
+      "histFighter",
+      "historicAdvicePending",
+      "historicalUfcTick",
+      "hitDamage",
+      "hookCmp",
+      "hookEmit",
+      "hookFilter",
+      "hookHas",
+      "hookOff",
+      "hookOn",
+      "hookRun",
+      "insertAfterTopbar",
+      "inv",
+      "inviteChance",
+      "isNum",
+      "isPlainObject",
+      "isRetired",
+      "legMedal",
+      "legacyApplyRewards",
+      "legacyBlank",
+      "legacyData",
+      "legacyHas",
+      "legacyNextReward",
+      "legacyRegisterRun",
+      "legacyReset",
+      "legacyScore",
+      "legacyStore",
+      "legacyTier",
+      "makeFighter",
+      "makeOffers",
+      "memRef",
+      "mentR",
+      "metaBar",
+      "metaDif",
+      "metaFmt",
+      "metaRaceAdd",
+      "metaRaceCreate",
+      "metaRaceDrop",
+      "metaRaceJoin",
+      "miniHud",
+      "miniTile",
+      "natFightLb",
+      "naturalDiv",
+      "negoAsk",
+      "negoCeiling",
+      "negoClose",
+      "negoLeverage",
+      "negoStart",
+      "newWorld",
+      "normalizeFighterState",
+      "normalizeFull",
+      "normalizeGlobals",
+      "normalizeRuntime",
+      "onerror",
+      "orgPopFactor",
+      "overall",
+      "ovr",
+      "perfApply",
+      "perfDetectHW",
+      "perfTuneCtx",
+      "periodLabel",
+      "periodPanel",
+      "persCompatibleList",
+      "persConflict",
+      "persConflictText",
+      "persFix",
+      "persMul",
+      "persPair",
+      "persW",
+      "pick",
+      "pickSafe",
+      "pickStable",
+      "podPick",
+      "podcastStart",
+      "postFightQuote",
+      "pruneWorld",
+      "queueEvent",
+      "randName",
+      "randNamedFighter",
+      "randNat",
+      "reachCm",
+      "rebuildRosters",
+      "recPick",
+      "recStart",
+      "recStr",
+      "recalcRank",
+      "recordar",
+      "recsHTML",
+      "repairCritical",
+      "requestGameplayUpgrade",
+      "requestPromoterChange",
+      "rerollRec",
+      "resolveEvent",
+      "resolveEventCore",
+      "resolveExchange",
+      "resolveExchangeCore",
+      "rest",
+      "retire",
+      "rf",
+      "ri",
+      "rnd",
+      "rollEvent",
+      "runInvariants",
+      "safeInt",
+      "safeNum",
+      "safePercent",
+      "safeRun",
+      "saga",
+      "sagaAfterFight",
+      "sagaAlive",
+      "sagaCard",
+      "sagaEnd",
+      "sagaFighter",
+      "sagaSet",
+      "sagas",
+      "scn",
+      "scoutReport",
+      "seedChampions",
+      "seedHistoricalUfcPast",
+      "seen",
+      "setC",
+      "setHeight",
+      "setMetaMode",
+      "setMetaSeed",
+      "setPerf",
+      "setStartW",
+      "shapeCareer",
+      "shortName",
+      "shuffle",
+      "simFight",
+      "simWeeks",
+      "skipWeek",
+      "spawnLocals",
+      "sym",
+      "syncCreateInputs",
+      "tkoCheck",
+      "tkoRisk",
+      "toggleC",
+      "toggleCoachCreate",
+      "toggleMetaMod",
+      "travelCost",
+      "travelWith",
+      "typeBtn",
+      "uid",
+      "walkLb",
+      "watchFight",
+      "weighAct",
+      "weighEnd",
+      "weighPulse",
+      "weighStart",
+      "withOwnRng",
+      "worldTick",
+      "wpick",
+      "wrapper",
+      "yearTick"
+    ]
+  }
+}

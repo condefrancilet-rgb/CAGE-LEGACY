@@ -1,0 +1,121 @@
+{
+  "generado": "2026-09-19T07:54:47.234Z",
+  "trazas": [
+    {
+      "seed": 101,
+      "fp": "ba7d3bba",
+      "peleas": 13,
+      "rec": {
+        "w": 11,
+        "l": 2,
+        "d": 0,
+        "ko": 5,
+        "sub": 0,
+        "dec": 6,
+        "kol": 0,
+        "subl": 0,
+        "decl": 2
+      }
+    },
+    {
+      "seed": 202,
+      "fp": "d258d3bd",
+      "peleas": 13,
+      "rec": {
+        "w": 10,
+        "l": 3,
+        "d": 0,
+        "ko": 4,
+        "sub": 0,
+        "dec": 6,
+        "kol": 1,
+        "subl": 0,
+        "decl": 2
+      }
+    },
+    {
+      "seed": 303,
+      "fp": "bf315ca3",
+      "peleas": 15,
+      "rec": {
+        "w": 7,
+        "l": 7,
+        "d": 1,
+        "ko": 0,
+        "sub": 0,
+        "dec": 7,
+        "kol": 1,
+        "subl": 0,
+        "decl": 6
+      }
+    },
+    {
+      "seed": 404,
+      "fp": "ae17b9b7",
+      "peleas": 13,
+      "rec": {
+        "w": 9,
+        "l": 3,
+        "d": 1,
+        "ko": 4,
+        "sub": 0,
+        "dec": 5,
+        "kol": 1,
+        "subl": 0,
+        "decl": 2
+      }
+    },
+    {
+      "seed": 505,
+      "fp": "22ecdfa0",
+      "peleas": 12,
+      "rec": {
+        "w": 7,
+        "l": 3,
+        "d": 2,
+        "ko": 2,
+        "sub": 0,
+        "dec": 5,
+        "kol": 1,
+        "subl": 0,
+        "decl": 2
+      }
+    }
+  ],
+  "fixtures": {
+    "01-recien-creada": {
+      "bytes": 627895,
+      "saveVersion": 4,
+      "semana": 1,
+      "año": 2016
+    },
+    "02-antes-primera-pelea": {
+      "bytes": 635011,
+      "saveVersion": 4,
+      "semana": 2,
+      "campamento": true,
+      "peleas": 0
+    },
+    "03-mitad-carrera": {
+      "bytes": 764727,
+      "saveVersion": 4,
+      "semana": 27,
+      "año": 2018,
+      "rec": {
+        "w": 9,
+        "l": 1,
+        "d": 0,
+        "ko": 1,
+        "sub": 0,
+        "dec": 8,
+        "kol": 0,
+        "subl": 0,
+        "decl": 1
+      }
+    }
+  },
+  "sim": {
+    "n": 40,
+    "weeks": 150
+  }
+}
