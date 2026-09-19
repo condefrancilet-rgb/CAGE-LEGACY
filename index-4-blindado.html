@@ -2120,7 +2120,12 @@ function cornerAdvice(){
   if(f.p.score<f.o.score) tips.push('Vas perdiendo en las tarjetas. Necesitás arriesgar.');
   if(!tips.length) tips.push('Vas bien. Mantené la estructura y no te enamores del intercambio.');
   var pre = c.pers==='agresivo'? '¡Escuchame! ' : (c.pers==='tranquilo'? 'Respirá. ' : (c.pers==='estricto'?'Hacé lo que entrenamos. ':''));
-  return pre + pick(tips);
+  /* Eleccion ESTABLE por rival y round: dibujar el panel de esquina no puede
+     consumir el flujo aleatorio del mundo. Con pick() cada redibujado avanzaba
+     G.rs, asi que abrir "Entre rounds" alteraba todo el desarrollo posterior de
+     la carrera y los codigos de semilla no reproducian la partida. Es el mismo
+     molde que memRef() ya usaba (ver dispHash). */
+  return pre + pickStable(tips, (f.opp||'?')+':r'+f.round+':'+tips.length);
 }
 
 /* ==========================================================================
@@ -4897,10 +4902,13 @@ function confirmFight(){
 }
 function postFightQuote(won,res){
   var c=coachById(G.player.coach), m=memRef(c);
-  if(won && res.method!=='dec') return '"'+pick(['Eso es exactamente lo que entrenamos.','Lo rompiste. Ahora vienen los grandes.','Nadie va a poder decir nada esta vez.'])+'" — '+c.name;
-  if(won) return '"'+pick(['Ganaste, pero hubo veinte minutos que no me gustaron.','Sumamos. Ahora a corregir.','Salió por poco. Hay trabajo.'])+'" — '+c.name;
-  if(res.method==='ko') return '"'+pick(['Vas a estar bien. Descansá y después hablamos.','Te vi apagarte. Eso no fue técnica, fue desgaste.','Se termina hoy, no mañana.'])+'" — '+c.name;
-  return '"'+pick(['Perdiste una pelea, no la carrera.','Nos faltó plan B.','Vuelvo a verte el lunes en el gimnasio.'])+'" — '+c.name;
+  /* Misma regla que cornerAdvice: la pantalla de resultado se redibuja cada vez
+     que se vuelve a ella, y con pick() cada redibujado movia G.rs. */
+  var k=((G.fight&&G.fight.opp)||'?')+':'+G.year+'-'+G.week+':'+(res&&res.method)+':'+(won?'W':'L');
+  if(won && res.method!=='dec') return '"'+pickStable(['Eso es exactamente lo que entrenamos.','Lo rompiste. Ahora vienen los grandes.','Nadie va a poder decir nada esta vez.'], k)+'" — '+c.name;
+  if(won) return '"'+pickStable(['Ganaste, pero hubo veinte minutos que no me gustaron.','Sumamos. Ahora a corregir.','Salió por poco. Hay trabajo.'], k)+'" — '+c.name;
+  if(res.method==='ko') return '"'+pickStable(['Vas a estar bien. Descansá y después hablamos.','Te vi apagarte. Eso no fue técnica, fue desgaste.','Se termina hoy, no mañana.'], k)+'" — '+c.name;
+  return '"'+pickStable(['Perdiste una pelea, no la carrera.','Nos faltó plan B.','Vuelvo a verte el lunes en el gimnasio.'], k)+'" — '+c.name;
 }
 
 /* ================= RANKINGS ================= */

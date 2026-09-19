@@ -473,3 +473,78 @@ suite('F2 · C-001 el avance en bloque aplica el campamento', () => {
   });
 
 });
+
+suite('F2 · B-001 dibujar no consume el RNG del mundo', () => {
+
+  function enPelea(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 9630, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 5000, event: 'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks;
+    c.goFight();
+    return { h, c, p };
+  }
+
+  test('el consejo de esquina no mueve G.rs', () => {
+    const { c } = enPelea(71);
+    c.UI.sub = 'corner';
+    const rs0 = c.G.rs;
+    c.render(); c.render(); c.render();
+    eq(c.G.rs, rs0, 'dibujar el panel de esquina consumio el flujo aleatorio del mundo');
+  });
+
+  test('la frase del entrenador tras la pelea no mueve G.rs', () => {
+    const { c } = enPelea(72);
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 600){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    eq(c.UI.screen, 'fightresult', 'la pelea no dejo la pantalla de resultado');
+    const rs0 = c.G.rs;
+    c.render(); c.render(); c.render();
+    eq(c.G.rs, rs0, 'dibujar el resultado consumio el flujo aleatorio del mundo');
+  });
+
+  test('el texto sigue siendo estable dentro del mismo contexto', () => {
+    const { c } = enPelea(73);
+    c.UI.sub = 'corner';
+    const a = c.cornerAdvice(), b = c.cornerAdvice();
+    eq(a, b, 'el mismo contexto da dos consejos distintos');
+    ok(a && a.length > 10, 'el consejo salio vacio: ' + JSON.stringify(a));
+  });
+
+  test('el texto sigue variando entre contextos distintos', () => {
+    /* La correccion no puede convertir el texto en una constante. */
+    const vistos = new Set();
+    for(const seed of [74, 75, 76, 77, 78, 79]){
+      const { c } = enPelea(seed);
+      /* se fuerzan estados de pelea distintos para que el abanico se abra */
+      c.G.fight.p.stam = 20 + (seed % 3) * 30;
+      c.G.fight.p.hp   = 40 + (seed % 2) * 40;
+      c.G.fight.round  = 1 + (seed % 4);
+      vistos.add(c.cornerAdvice());
+    }
+    ok(vistos.size >= 2, 'el consejo quedo constante en 6 contextos distintos');
+  });
+
+  test('sin render, la simulacion da el mismo resultado que con render', () => {
+    /* Es la prueba de fondo: si dibujar no toca el mundo, stubear render no
+       puede cambiar la partida. Antes cambiaba la huella, el record y el
+       numero de peleas. */
+    const A = require('../autopilot.js');
+    const corre = (stub) => {
+      const h = H.boot({ seed: 80 });
+      H.startCareer(h, { metaSeed: 9631, style: 'mma', div: 'LW', age: 22 });
+      if(stub) h.ctx.render = function(){};
+      A.correrCarrera(h, { maxWeeks: 60, politica: 'basica', seedPolitica: 80 });
+      return h.call('STATE.fingerprint', true);
+    };
+    eq(corre(true), corre(false), 'dibujar sigue cambiando el resultado de la partida');
+  });
+
+});

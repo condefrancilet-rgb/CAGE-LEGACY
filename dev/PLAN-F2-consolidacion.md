@@ -1,0 +1,91 @@
+# F2 — Parte estructural: plan de consolidación
+
+> Los 14 bugs de `dev/AUDIT.md` son correcciones puntuales. Esto es la otra mitad de F2:
+> fundir las cadenas de redefinición **sin cambiar el comportamiento**, demostrado con
+> golden master idéntico. Orden fijado por el encargo.
+
+## Métricas de control (trinquete en `dev/tests/05-metricas.js`)
+
+| métrica | línea base | objetivo F2 |
+|---|---|---|
+| nombres definidos >1 vez | 43 | bajar, no subir |
+| wrappers que capturan la previa | 42 | bajar, no subir |
+| escrituras directas de `UI.screen` | 37 | bajar (prepara F3) |
+| escrituras de scroll | 3 | **no tocar** (I1) |
+
+El mapa vivo, verificado en runtime, está en `dev/baseline/redef-map.json`
+(`node dev/redef-map.js`). Dice qué definición **gana de verdad**, que es lo que importa al
+consolidar, no cuál es más prolija.
+
+## Orden y candidatos
+
+### 1. `startCareer`
+Comentario del archivo: *"14 implementaciones encadenadas"*, ya fundidas. **Verificar** que
+no queda ninguna y cerrar. Riesgo bajo.
+
+### 2. `loadGame` / save
+`savePrune` tiene 2 capas (base 12603 + `_qSavePrunePrev` 13891, "saveCompact").
+Candidato claro a una función con dos pasos explícitos.
+**Ojo**: aquí vive la deuda gorda, no la cosmética — `saveGame` está acoplado a
+`normalizeWorldState` (F-005/A-006). Guardar **muta el mundo**: poda `lastFights` a 6,
+`mem` a 8, `career` a 12 de todos los NPC, `news` a 40 y `retiredList` a 60, sobre el `G`
+vivo. Desacoplarlo **sí** cambia comportamiento observable, así que no es consolidación:
+es un cambio que necesita su propia evidencia y probablemente su turno en F4.
+
+### 3. `advanceWeek`
+Ya es una sola definición (1249 → `TX.run` → `advanceWeekCore`). **Nada que consolidar.**
+Lo que queda es de F3/F4: 30 hooks de `week` con empates de orden resueltos por orden de
+carga del archivo (C-014) y `audit_final_week` registrado sin `order`, que corre en la
+posición 16 de 30 creyéndose final (C-007).
+
+### 4. Combate
+`eff`, `oppAction` y `fightAct` ya se consolidaron en una sesión anterior (3 capas → 1
+función + suscripciones). **Pendiente**: `fightFinishResolve` y `sparFinishResolve` tienen
+2 capas cada una; `TQ.apply` duplica a mano las reglas de reloj de `fightAct` con
+constantes distintas y sin emitir `exchange:pre/post` (D-009) — eso es duplicación real de
+lógica, no un wrapper.
+
+### 5. Entrenamiento
+`campWeek` ya es 1 función + 2 puntos de extensión. Poco que hacer.
+
+### 6. Navegación / render
+`render` 2 capas (base 4053 + canónica 17583, con `CL_BASE_RENDER` como router de
+emergencia): **la estructura es sana**, el base es alcanzable sólo para `UI.screen`
+desconocido. `renderNav` 2 capas (`_legRenderNavPrev`). `scrHub`, `scrMG`, `scrGym`,
+`scrContracts`, `scrEnding`, `scrTrain`: 2 capas cada una, todas con el mismo molde
+`_prevX`. **Es el bloque con más wrappers y el más mecánico de fundir.**
+
+### 7. Minijuegos
+`cardioStart`, `strStart`, `drillStart` tienen **3 capas** cada una y las tres están
+envueltas por GATE en runtime (`redef-map` las marca "no coincide con ninguna definición
+del archivo"). Requiere cuidado: hay que fundir sin romper la envoltura de GATE.
+
+### 8. Eventos
+**El candidato más claro de todo F2.** `rollEvent` tiene **4 capas** (5265, 22011, 25847,
+26388) y **tres constructores duplicados del mismo objeto** — lo destapó el arreglo de
+G-001, que hubo que aplicar tres veces. Además:
+- la veda `EV_COOL` de la capa 2 y la puerta `CL.dramaOk` son **código muerto** en el
+  camino normal, porque la capa 4 sólo cae a las anteriores si su pool queda vacío (G-002);
+- el hook `event:pre`/`simulacion` era inalcanzable hasta el arreglo de G-001.
+
+Fundirlas en una función con la política declarada haría visible qué reglas están vivas.
+
+### 9. Progresión de rivales
+`pruneWorld` 2 capas (`_clPrune`). `rollEvent` cubre buena parte del resto.
+
+## Cómo se demuestra "mismo juego"
+
+1. **Igualdad exacta de golden traces** cuando el refactor preserva el orden de llamadas al
+   RNG. Es el caso normal de una consolidación bien hecha.
+2. Si el orden cambia **legítimamente**, equivalencia estadística con `dev/sim.js --file`
+   entre una copia congelada de antes y el archivo actual: medias dentro de 2 errores
+   estándar, proporciones dentro de 2 pp. Documentar **por qué** se rompió la igualdad.
+
+`boot({file})` y `sim.js --file` existen precisamente para esto: comparan dos versiones en
+el mismo proceso, con las mismas semillas, sin revertir el árbol de trabajo.
+
+## Lo que NO es consolidación, aunque lo parezca
+- Desacoplar `saveGame` de `normalizeWorldState` → cambia comportamiento (F4).
+- Arreglar el orden de los hooks de `week` → cambia comportamiento (F3/F4).
+- Unificar el bloque (`advancePeriod`) con la semana a semana (`doWeek`) → es balance
+  (C-013), va a F14.

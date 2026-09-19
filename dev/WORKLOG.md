@@ -1,40 +1,31 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F2 — Consolidación y corrección (6 de 14 bugs corregidos).
+**Fase actual:** F2 — Consolidación y corrección (9 de 14 bugs; B-001 a la espera de su evidencia).
 **Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
-Seguir con **F2**, por la lista priorizada de `dev/AUDIT.md` → "Lista priorizada de
-correcciones para F2". Hechos los seis primeros. **El siguiente es el #8, C-001**: `advancePeriod` usa
-`applyTrain` sin comprobar `G.camp`, así que quema semanas de campamento sin aplicarlo
-(`camp.i` no avanza, ni `sharp`, ni el corte de peso). Arreglo: usar `campWeek` cuando
-`G.camp` existe. Ojo al medirlo: `advancePeriod` reparte la intensidad en 3 disciplinas
-(Σ 1,0625) mientras `doWeek` usa 1 a 0,85 — no son equivalentes, y el test debe fijar
-cuál es la intención.
+**En curso: la validación de B-001.** El arreglo está aplicado y sus 5 pruebas verdes,
+pero cambia el orden de consumo del RNG, así que las 5 trazas del golden master cambian.
+Eso exige **equivalencia estadística**, no igualdad (regla de F2). Hay un A/B corriendo en
+segundo plano: `dev/sim.js --file` contra copias congeladas de antes y después, 600
+carreras × 150 semanas por lado, salidas en
+`…/scratchpad/eq-antes.json` y `…/scratchpad/eq-despues.json`, con `eq.done` como testigo.
+Criterio: medias dentro de 2 errores estándar, proporciones dentro de 2 pp.
+Si pasa → regenerar trazas, documentar en `CHANGES.md` y commitear. Si no pasa →
+investigar qué más cambió antes de dar el arreglo por bueno.
 
-Después, en la lista: **#6 H-005** (patrocinios, CRÍTICA — ojo, roza balance: la parte
-defendible como bug es el reescalado compuesto sobre el valor ya reescalado, no el
-apilado), **#9 B-001** (`render()` consume el RNG; el archivo ya tiene `pickStable`),
-**#10 D-002**, **#11 G-002**, **#12 C-002/3/4**, **#13 I-002**, **#14 F-002**.
+Después, los bugs que quedan de la lista de `dev/AUDIT.md`:
+**#10 D-002** (`applyPlayerFight` sin envolver: excepción a mitad deja estado parcial),
+**#11 G-002** (la puerta de drama está puenteada),
+**#12 C-002/3/4** (rutas que consumen semana sin publicar noticias; `advancePeriod` no
+guarda nunca y destruye las ofertas cada semana),
+**#13 I-002** (campeón fantasma al ascender de organización),
+**#14 F-002** (la copia de respaldo pre-migración nunca se escribe).
 
-**Protocolo por cada bug, ya rodado dos veces:**
-1. Escribir el test en `dev/tests/06-f2-fixes.js` **incluyendo las pruebas que vigilan que
-   el arreglo no desactive lo que la función debía hacer**.
-2. Correrlo contra el archivo sin corregir y **guardar la salida en rojo** (va a CHANGES.md).
-3. Aplicar la corrección de raíz.
-4. Suite completa. Si cambia el golden master, **aislar qué arreglo lo causó** revirtiendo
-   uno solo, y medir el efecto con `dev/sim.js` antes/después.
-5. Entrada en `CHANGES.md` con la evidencia. Commit `[F2] fix:`.
-
-**Importante sobre las fixtures**: `dev/fixtures/` son saves de la versión **original** y
-son la evidencia de I3. **No se regeneran nunca.** Las golden traces sí, cuando un fix
-cambia el juego a propósito.
-
-Tras los bugs vienen las consolidaciones estructurales (mismo orden del encargo:
-startCareer → loadGame → advanceWeek → combate → entrenamiento → navegación/render →
-minijuegos → save/load → eventos → progresión de rivales), que **no** deben cambiar
-comportamiento y se demuestran con golden master idéntico.
+Y después la **parte estructural de F2**, ya planificada en `dev/PLAN-F2-consolidacion.md`.
+El candidato más claro es `rollEvent`: 4 capas y 3 constructores duplicados del mismo
+objeto — lo destapó G-001, que hubo que arreglar tres veces.
 
 ## Comandos
 ```
@@ -95,6 +86,16 @@ node dev/make-baseline.js        regenera TODA la línea base
   pelea) y `confirmFight` abre con condición explícita. Golden master sin cambios.
 - **A-001** · un solo escritor de `contract.left`. El duplicado además no comprobaba la
   organización —lo destapó el test—. Cambian 2 de 5 trazas.
+- **H-005** · el reescalado de patrocinios deja de componer (sólo el bug; el apilado queda
+  intacto por decisión tuya, D-008). Ingreso de patrocinios a 7 años: mediana −61%.
+  **Corrigió una atribución errónea de la auditoría**: H-005 NO causaba la cola pesada de
+  la economía; esa causa sigue sin identificar y queda para F5.
+- **C-001** · el avance en bloque aplica el campamento. Antes consumía semanas con
+  `camp.i`, `sharp` y el corte de peso clavados. A/B: `camp.i` 0→2, `sharp` 35→45,
+  peso −2,7 lb en un bloque de 8 semanas.
+- **B-001** (pendiente de evidencia) · `cornerAdvice` y `postFightQuote` pasan a
+  `pickStable`, el molde que el archivo ya usaba en `memRef`. **`render()` deja de alterar
+  la partida**: stubearlo ya da la misma huella. Era H-001 desde F0.
 - **G-001** · la marca `important` viaja con el evento, en los **tres** constructores
   (`rollEvent` tiene 4 capas). Mecanismo corregido; **efecto extremo a extremo NO MEDIDO
   como significativo**: los bloques se detienen por `cl_dyn`, que se adelantan al banco.

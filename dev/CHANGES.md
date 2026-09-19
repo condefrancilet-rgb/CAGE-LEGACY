@@ -395,3 +395,62 @@ disciplinas con tres tiradas de lesión; `doWeek` aplica 0,85 a una sola con una
 bloque además regala −6 de fatiga (26036). Es C-013 en `dev/audit/C-tiempo.md`, una
 diferencia de balance entre dos formas de jugar la misma semana. Decidir cuál es la
 intención es trabajo de F14, no de una corrección.
+
+---
+
+## F2-09 · Dibujar deja de consumir el RNG del mundo (B-001) — **con cambio de comportamiento medido**
+**Tipo** fix · **Severidad** ALTA · **NO es equivalente**: las 600 carreras del A/B divergen.
+Se documenta como corrección con efecto medido, no como consolidación.
+
+**Qué pasaba.** `cornerAdvice()` (2124) y `postFightQuote()` (4874-4877) elegían su texto con
+`pick()`, que avanza `G.rs`, el flujo aleatorio **del mundo**. Como ambas se llaman desde la
+ruta de dibujo, **redibujar alteraba la partida**: abrir el panel "Entre rounds" o volver a
+la pantalla de resultado cambiaba todo el desarrollo posterior de la carrera, y los códigos
+de semilla que el juego ofrece no reproducían la partida.
+
+Era **H-001**, el hallazgo de F0 que obligó al harness a no poder stubear `render()` nunca.
+
+**Qué se cambió.** `pickStable(array, clave)` en lugar de `pick(array)`, que es el molde que
+el archivo **ya usaba** en `memRef()` (2836) para exactamente este problema. La clave
+codifica el contexto: rival + round para el consejo de esquina, rival + fecha + método +
+resultado para la frase del entrenador. El texto sigue siendo estable dentro del mismo
+contexto y sigue variando entre contextos distintos (ambas cosas con prueba).
+Detalle que confirma la intención original: `postFightQuote` ya llamaba a `memRef(c)` y
+**descartaba el resultado en una variable sin usar**.
+
+**La prueba de fondo, ahora verde:** stubear `render()` da la **misma huella** que dejarlo
+correr. `render()` es puro respecto de la simulación.
+
+**Efecto medido — A/B, 600 carreras × 150 semanas por lado, mismas semillas**
+(`dev/sim.js --file` contra copias congeladas):
+
+| métrica | antes | después | delta | tolerancia | |
+|---|---|---|---|---|---|
+| peleas por carrera | 11,9 | 11,9 | −0,1 | ±0,1 | equivalente |
+| win rate | 72,46% | 71,53% | −0,93 pp | ±2 pp | equivalente |
+| % KO | 36,05% | 34,84% | −1,20 pp | ±2 pp | equivalente |
+| % sumisión | 0,19% | 0,16% | −0,03 pp | ±2 pp | equivalente |
+| % decisión | 63,77% | 65,00% | +1,23 pp | ±2 pp | equivalente |
+| `cash` | 132.818 | 122.385 | −10.433 | ±29.668 | equivalente |
+| `careerEarn` | 175.193 | 162.845 | −12.348 | ±30.398 | equivalente |
+| **popularidad** | 52,7 | 50,4 | **−2,2** | ±2,1 | **fuera** |
+| **% campeones** | 57,50% | 52,83% | **−4,67 pp** | ±2 pp | **fuera** |
+| fallos de invariante | 0 | 0 | — | — | |
+
+**Lectura honesta de las dos que se salen:**
+- **Las 600 carreras divergen** (0 huellas idénticas). Era inevitable: `endRound` pone
+  `UI.sub='corner'` en cada fin de round, así que el consejo consumía un sorteo por round
+  en **todas** las peleas. Quitarlo desplaza la trayectoria entera del RNG.
+- **% campeones es inestable**: partiendo la muestra en tres tercios de 200, el delta es
+  −8,5 / −4,0 / −1,5. Además, su propio ruido de muestreo a n=600 es ±4,1 pp a 2 EE, o sea
+  que **la tolerancia plana de 2 pp es más estrecha que la medición**: ese criterio no puede
+  discriminar aquí. **NO CONCLUYENTE** con esta muestra.
+- **Popularidad sí es consistente**: −1,92 / −2,45 / −2,27 en los tres tercios. Parece un
+  efecto real pequeño, coherente con el ligero descenso de KO y de campeones.
+
+**Por qué se mantiene el arreglo pese a no ser equivalente.** No es un refactor cosmético:
+es un bug confirmado —el juego ofrece códigos de semilla que no reproducen la partida— y la
+solución es la que el propio archivo ya había escrito para este caso. Preservar el
+comportamiento aquí significaría preservar que dibujar cambie el mundo.
+
+Golden master regenerado (las 5 trazas). Suite: **68 pruebas verdes**.
