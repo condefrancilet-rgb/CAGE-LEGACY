@@ -1,16 +1,22 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F2 — Consolidación y corrección (3 de 14 bugs corregidos).
+**Fase actual:** F2 — Consolidación y corrección (6 de 14 bugs corregidos).
 **Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
 Seguir con **F2**, por la lista priorizada de `dev/AUDIT.md` → "Lista priorizada de
-correcciones para F2". Hechos los tres primeros (F-001, I-001, D-003). **El siguiente es el #4, D-001**:
-`confirmFight()` no tiene guarda de idempotencia — tres llamadas dan récord 0-3, tres
-entradas de `career` y tres bolsas para una sola pelea. Arreglo indicado en
-`dev/audit/D-combate.md`: guarda al principio de `confirmFight`. Ojo: el test debe
-comprobar también que la llamada legítima **sí** sigue cobrando.
+correcciones para F2". Hechos los seis primeros. **El siguiente es el #8, C-001**: `advancePeriod` usa
+`applyTrain` sin comprobar `G.camp`, así que quema semanas de campamento sin aplicarlo
+(`camp.i` no avanza, ni `sharp`, ni el corte de peso). Arreglo: usar `campWeek` cuando
+`G.camp` existe. Ojo al medirlo: `advancePeriod` reparte la intensidad en 3 disciplinas
+(Σ 1,0625) mientras `doWeek` usa 1 a 0,85 — no son equivalentes, y el test debe fijar
+cuál es la intención.
+
+Después, en la lista: **#6 H-005** (patrocinios, CRÍTICA — ojo, roza balance: la parte
+defendible como bug es el reescalado compuesto sobre el valor ya reescalado, no el
+apilado), **#9 B-001** (`render()` consume el RNG; el archivo ya tiene `pickStable`),
+**#10 D-002**, **#11 G-002**, **#12 C-002/3/4**, **#13 I-002**, **#14 F-002**.
 
 **Protocolo por cada bug, ya rodado dos veces:**
 1. Escribir el test en `dev/tests/06-f2-fixes.js` **incluyendo las pruebas que vigilan que
@@ -84,6 +90,28 @@ node dev/make-baseline.js        regenera TODA la línea base
 - **D-003** · la pantalla de resultado ya no se abandona sin resolver: `fightresult` se
   añadió a la lista de pantallas sin barra de navegación. Cerraba el re-roll infinito del
   resultado. Verificado en Chromium real. Golden master sin cambios.
+- **D-001 + D-006** · cobrar una pelea es idempotente. `G.paid` pasa de ser decoración de
+  interfaz a cerrojo real: el reset se mudó a `fightStart` (atómico con la creación de la
+  pelea) y `confirmFight` abre con condición explícita. Golden master sin cambios.
+- **A-001** · un solo escritor de `contract.left`. El duplicado además no comprobaba la
+  organización —lo destapó el test—. Cambian 2 de 5 trazas.
+- **G-001** · la marca `important` viaja con el evento, en los **tres** constructores
+  (`rollEvent` tiene 4 capas). Mecanismo corregido; **efecto extremo a extremo NO MEDIDO
+  como significativo**: los bloques se detienen por `cl_dyn`, que se adelantan al banco.
+  Cambian 3 de 5 trazas, pero el estado observable y la traza semana a semana son
+  idénticos: sólo cambió la forma del estado.
+
+## Aprendizajes de método (valen para los que quedan)
+- **La media miente en la economía.** En A-001 la media de dinero cayó un 24% y la
+  mediana no se movió, con el máximo idéntico: era la cola pesada de H-005
+  redistribuyéndose. Mirar siempre mediana y máximo antes de atribuir un efecto.
+- **Un test que falla puede ser el test.** Pasó dos veces: el de punto fijo en save/load
+  (F0) y el de `important` (G-001, exigía un evento que no es elegible en una carrera
+  nueva). Preguntarse primero si la prueba está bien planteada.
+- **Aislar qué arreglo cambió el golden master** revirtiendo uno solo. Así se supo que
+  F-001 no tiene impacto jugable y que G-001 sólo cambia la forma del estado.
+- **Cada arreglo lleva pruebas que vigilan que no desactive lo que la función debía
+  hacer** (p. ej. `repairCritical` sigue vacando cinturones realmente inválidos).
 
 ## Bloqueos
 - Los subagentes de auditoría corren en modo sólo lectura y **no pueden escribir**
