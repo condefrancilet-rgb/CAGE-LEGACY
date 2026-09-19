@@ -66,13 +66,17 @@ function correrCarrera(h, opts){
       continue;
     }
 
-    /* 3. pelea terminada: cobrar y cerrar */
+    /* 3. pelea terminada: cobrar y salir de la pantalla de resultado.
+       Se sale NAVEGANDO, como el jugador: go() es quien descarta G.fight una
+       vez cobrado. Anular G.fight a mano dejaba UI.screen en 'fightresult'
+       sin resultado —un estado que el juego real nunca produce— y ademas
+       saltaba la unica via por la que la pelea muere.                       */
     if(c.G.fight && c.G.fight.over){
-      const f = c.G.fight;
-      if(quiereTraza) traza.push(trazaPelea(c, f));
+      if(quiereTraza) traza.push(trazaPelea(c, c.G.fight));
       peleas++;
       if(!c.G.paid) c.confirmFight();
-      c.G.fight = null;
+      c.go('hub');
+      if(c.G.fight){ throw new Error('autopilot: go() no descarto la pelea terminada'); }
       continue;
     }
 
