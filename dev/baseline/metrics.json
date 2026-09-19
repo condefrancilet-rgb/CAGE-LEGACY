@@ -1,11 +1,11 @@
 {
-  "generado": "2026-09-19T08:09:05.865Z",
+  "generado": "2026-09-19T13:05:17.845Z",
   "archivo": "index-4-blindado.html",
-  "bytes": 1538459,
-  "lineasHTML": 28128,
-  "lineasJS": 27560,
-  "md5": "f167031eaa9513043cf11f3b051992ba",
-  "sha256": "1dbee778409b69f1296193178e833889181ba35ec0a44b7d398a6c6c5321a14b",
+  "bytes": 1540252,
+  "lineasHTML": 28157,
+  "lineasJS": 27589,
+  "md5": "3f7ff37b70cf2d24c9aba90720874309",
+  "sha256": "fdcdd311b940f7ad30d751bfe5414c75a83a2428f38d6a6b1b46c045fff4321d",
   "bloquesScript": 1,
   "funciones": {
     "declaraciones": 512,
@@ -19,9 +19,9 @@
         "veces": 4,
         "lineas": [
           4700,
-          21446,
-          25282,
-          25823
+          21475,
+          25311,
+          25852
         ]
       },
       {
@@ -29,8 +29,8 @@
         "veces": 3,
         "lineas": [
           1878,
-          6067,
-          10153
+          6075,
+          10161
         ]
       },
       {
@@ -38,17 +38,17 @@
         "veces": 3,
         "lineas": [
           1931,
-          6002,
-          10155
+          6010,
+          10163
         ]
       },
       {
         "nombre": "fxLoop",
         "veces": 3,
         "lineas": [
-          6607,
-          10386,
-          15245
+          6615,
+          10394,
+          15274
         ]
       },
       {
@@ -56,8 +56,8 @@
         "veces": 3,
         "lineas": [
           1906,
-          6073,
-          10154
+          6081,
+          10162
         ]
       },
       {
@@ -65,7 +65,7 @@
         "veces": 2,
         "lineas": [
           1882,
-          5994
+          6002
         ]
       },
       {
@@ -73,7 +73,7 @@
         "veces": 2,
         "lineas": [
           2854,
-          17491
+          17520
         ]
       },
       {
@@ -81,39 +81,39 @@
         "veces": 2,
         "lineas": [
           1137,
-          20510
+          20539
         ]
       },
       {
         "nombre": "fameResolve",
         "veces": 2,
         "lineas": [
-          13807,
-          14350
+          13836,
+          14379
         ]
       },
       {
         "nombre": "fameStart",
         "veces": 2,
         "lineas": [
-          13796,
-          21345
+          13825,
+          21374
         ]
       },
       {
         "nombre": "fightFinishResolve",
         "veces": 2,
         "lineas": [
-          5815,
-          7805
+          5823,
+          7813
         ]
       },
       {
         "nombre": "fightPayout",
         "veces": 2,
         "lineas": [
-          11938,
-          13131
+          11946,
+          13139
         ]
       },
       {
@@ -121,71 +121,71 @@
         "veces": 2,
         "lineas": [
           392,
-          12550
+          12558
         ]
       },
       {
         "nombre": "fxBurst",
         "veces": 2,
         "lineas": [
-          6270,
-          15299
+          6278,
+          15328
         ]
       },
       {
         "nombre": "fxFinish",
         "veces": 2,
         "lineas": [
-          6597,
-          14397
+          6605,
+          14426
         ]
       },
       {
         "nombre": "fxFloat",
         "veces": 2,
         "lineas": [
-          6269,
-          15307
+          6277,
+          15336
         ]
       },
       {
         "nombre": "fxOpen",
         "veces": 2,
         "lineas": [
-          6484,
-          15285
+          6492,
+          15314
         ]
       },
       {
         "nombre": "fxPickGame",
         "veces": 2,
         "lineas": [
-          7727,
-          11792
+          7735,
+          11800
         ]
       },
       {
         "nombre": "fxResize",
         "veces": 2,
         "lineas": [
-          6411,
-          15270
+          6419,
+          15299
         ]
       },
       {
         "nombre": "fxResolveMini",
         "veces": 2,
         "lineas": [
-          7739,
-          8026
+          7747,
+          8034
         ]
       },
       {
         "nombre": "fxShake",
         "veces": 2,
         "lineas": [
-          6277,
-          15312
+          6285,
+          15341
         ]
       },
       {
@@ -193,15 +193,15 @@
         "veces": 2,
         "lineas": [
           4637,
-          24813
+          24842
         ]
       },
       {
         "nombre": "legacyRegisterRun",
         "veces": 2,
         "lineas": [
-          7967,
-          23561
+          7975,
+          23590
         ]
       },
       {
@@ -209,7 +209,7 @@
         "veces": 2,
         "lineas": [
           2206,
-          11902
+          11910
         ]
       },
       {
@@ -217,7 +217,7 @@
         "veces": 2,
         "lineas": [
           2128,
-          11348
+          11356
         ]
       },
       {
@@ -225,7 +225,7 @@
         "veces": 2,
         "lineas": [
           849,
-          17399
+          17428
         ]
       },
       {
@@ -233,7 +233,7 @@
         "veces": 2,
         "lineas": [
           2177,
-          5860
+          5868
         ]
       },
       {
@@ -241,7 +241,7 @@
         "veces": 2,
         "lineas": [
           3488,
-          17018
+          17047
         ]
       },
       {
@@ -249,23 +249,23 @@
         "veces": 2,
         "lineas": [
           3476,
-          8166
+          8174
         ]
       },
       {
         "nombre": "sagaAfterFight",
         "veces": 2,
         "lineas": [
-          11504,
-          14951
+          11512,
+          14980
         ]
       },
       {
         "nombre": "savePrune",
         "veces": 2,
         "lineas": [
-          12038,
-          13327
+          12046,
+          13356
         ]
       },
       {
@@ -273,7 +273,7 @@
         "veces": 2,
         "lineas": [
           4483,
-          21283
+          21312
         ]
       },
       {
@@ -281,7 +281,7 @@
         "veces": 2,
         "lineas": [
           4662,
-          24273
+          24302
         ]
       },
       {
@@ -289,7 +289,7 @@
         "veces": 2,
         "lineas": [
           4426,
-          10180
+          10188
         ]
       },
       {
@@ -297,7 +297,7 @@
         "veces": 2,
         "lineas": [
           3830,
-          17043
+          17072
         ]
       },
       {
@@ -305,7 +305,7 @@
         "veces": 2,
         "lineas": [
           3992,
-          17130
+          17159
         ]
       },
       {
@@ -313,7 +313,7 @@
         "veces": 2,
         "lineas": [
           1863,
-          7825
+          7833
         ]
       },
       {
@@ -321,7 +321,7 @@
         "veces": 2,
         "lineas": [
           1680,
-          25447
+          25476
         ]
       },
       {
@@ -329,23 +329,23 @@
         "veces": 2,
         "lineas": [
           1910,
-          5998
+          6006
         ]
       },
       {
         "nombre": "tgPick",
         "veces": 2,
         "lineas": [
-          10061,
-          11755
+          10069,
+          11763
         ]
       },
       {
         "nombre": "tgStart",
         "veces": 2,
         "lineas": [
-          10073,
-          21340
+          10081,
+          21369
         ]
       },
       {
@@ -361,7 +361,7 @@
         "veces": 2,
         "lineas": [
           2053,
-          15140
+          15169
         ]
       }
     ],
@@ -375,207 +375,207 @@
       {
         "alias": "_recPickStable",
         "objetivo": "recPick",
-        "linea": 5859
+        "linea": 5867
       },
       {
         "alias": "_cardioPickStable",
         "objetivo": "cardioPick",
-        "linea": 5993
+        "linea": 6001
       },
       {
         "alias": "_strPickStable",
         "objetivo": "strPick",
-        "linea": 5997
+        "linea": 6005
       },
       {
         "alias": "_drillStartStable",
         "objetivo": "drillStart",
-        "linea": 6001
+        "linea": 6009
       },
       {
         "alias": "_cardioStartArcade",
         "objetivo": "cardioStart",
-        "linea": 6066
+        "linea": 6074
       },
       {
         "alias": "_strStartArcade",
         "objetivo": "strStart",
-        "linea": 6072
+        "linea": 6080
       },
       {
         "alias": "_fxFightFinishResolvePrev",
         "objetivo": "fightFinishResolve",
-        "linea": 7804
+        "linea": 7812
       },
       {
         "alias": "_fxSparFinishResolvePrev",
         "objetivo": "sparFinishResolve",
-        "linea": 7824
+        "linea": 7832
       },
       {
         "alias": "_legFxResolvePrev",
         "objetivo": "fxResolveMini",
-        "linea": 8025
+        "linea": 8033
       },
       {
         "alias": "_legRenderNavPrev",
         "objetivo": "renderNav",
-        "linea": 8165
+        "linea": 8173
       },
       {
         "alias": "_tgScrGymPrev",
         "objetivo": "scrGym",
-        "linea": 10179
+        "linea": 10187
       },
       {
         "alias": "_errFxLoopPrev",
         "objetivo": "fxLoop",
-        "linea": 10385
+        "linea": 10393
       },
       {
         "alias": "_socPressPickPrev",
         "objetivo": "pressPick",
-        "linea": 11347
+        "linea": 11355
       },
       {
         "alias": "_styTgPickPrev",
         "objetivo": "tgPick",
-        "linea": 11754
+        "linea": 11762
       },
       {
         "alias": "_styFxPickPrev",
         "objetivo": "fxPickGame",
-        "linea": 11791
+        "linea": 11799
       },
       {
         "alias": "_ecoNegoAskPrev",
         "objetivo": "negoAsk",
-        "linea": 11901
+        "linea": 11909
       },
       {
         "alias": "_nickFnamePrev",
         "objetivo": "fname",
-        "linea": 12549
+        "linea": 12557
       },
       {
         "alias": "_shPayoutPrev",
         "objetivo": "fightPayout",
-        "linea": 13130
+        "linea": 13138
       },
       {
         "alias": "_qSavePrunePrev",
         "objetivo": "savePrune",
-        "linea": 13326
+        "linea": 13355
       },
       {
         "alias": "_shopFameResolvePrev",
         "objetivo": "fameResolve",
-        "linea": 14349
+        "linea": 14378
       },
       {
         "alias": "_shopFxFinishPrev",
         "objetivo": "fxFinish",
-        "linea": 14396
+        "linea": 14425
       },
       {
         "alias": "_drSagaAfterPrev",
         "objetivo": "sagaAfterFight",
-        "linea": 14950
+        "linea": 14979
       },
       {
         "alias": "_wfWeighEndPrev",
         "objetivo": "weighEnd",
-        "linea": 15139
+        "linea": 15168
       },
       {
         "alias": "_perfFxLoopPrev",
         "objetivo": "fxLoop",
-        "linea": 15244
+        "linea": 15273
       },
       {
         "alias": "_perfResizePrev",
         "objetivo": "fxResize",
-        "linea": 15269
+        "linea": 15298
       },
       {
         "alias": "_perfFxOpenPrev",
         "objetivo": "fxOpen",
-        "linea": 15284
+        "linea": 15313
       },
       {
         "alias": "_perfBurstPrev",
         "objetivo": "fxBurst",
-        "linea": 15298
+        "linea": 15327
       },
       {
         "alias": "_perfFloatPrev",
         "objetivo": "fxFloat",
-        "linea": 15306
+        "linea": 15335
       },
       {
         "alias": "_perfShakePrev",
         "objetivo": "fxShake",
-        "linea": 15311
+        "linea": 15340
       },
       {
         "alias": "_clPrune",
         "objetivo": "pruneWorld",
-        "linea": 17398
+        "linea": 17427
       },
       {
         "alias": "_clEnding",
         "objetivo": "careerEnding",
-        "linea": 17490
+        "linea": 17519
       },
       {
         "alias": "_tqDrain",
         "objetivo": "drain",
-        "linea": 20509
+        "linea": 20538
       },
       {
         "alias": "prev",
         "objetivo": "scrContracts",
-        "linea": 21282
+        "linea": 21311
       },
       {
         "alias": "prevTg",
         "objetivo": "tgStart",
-        "linea": 21339
+        "linea": 21368
       },
       {
         "alias": "prevFame",
         "objetivo": "fameStart",
-        "linea": 21344
+        "linea": 21373
       },
       {
         "alias": "prev",
         "objetivo": "rollEvent",
-        "linea": 21445
+        "linea": 21474
       },
       {
         "alias": "_mReg",
         "objetivo": "legacyRegisterRun",
-        "linea": 23560
+        "linea": 23589
       },
       {
         "alias": "_mFinal",
         "objetivo": "scrEnding",
-        "linea": 24271
+        "linea": 24300
       },
       {
         "alias": "_hist",
         "objetivo": "historicAdvicePending",
-        "linea": 24812
+        "linea": 24841
       },
       {
         "alias": "_rollEventFinal",
         "objetivo": "rollEvent",
-        "linea": 25281
+        "linea": 25310
       },
       {
         "alias": "_startCampFinal",
         "objetivo": "startCamp",
-        "linea": 25446
+        "linea": 25475
       }
     ],
     "colisionesConAnidadas": 1,
@@ -583,7 +583,7 @@
       {
         "nombre": "bar",
         "lineasAnidadas": [
-          13619
+          13648
         ],
         "lineasGlobales": [
           3465
@@ -669,91 +669,91 @@
         "texto": "UI.screen= ; if(typeof render=== ) render();"
       },
       {
-        "linea": 7754,
+        "linea": 7762,
         "texto": "G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)? : ; render();"
       },
       {
-        "linea": 7816,
+        "linea": 7824,
         "texto": "if(UI.screen=== ){ UI.screen= ; }"
       },
       {
-        "linea": 7828,
+        "linea": 7836,
         "texto": "UI.screen= ; render();"
       },
       {
-        "linea": 10079,
+        "linea": 10087,
         "texto": "G.mg=mg; UI.screen= ;"
       },
       {
-        "linea": 10112,
+        "linea": 10120,
         "texto": "UI.screen= ; render();"
       },
       {
-        "linea": 10394,
+        "linea": 10402,
         "texto": "if(mg && mg.type=== ){ G.mg=null; UI.screen= ; }"
       },
       {
-        "linea": 10397,
+        "linea": 10405,
         "texto": "else { G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)? : ; }"
       },
       {
-        "linea": 11184,
+        "linea": 11192,
         "texto": "UI.screen= ; render();"
       },
       {
-        "linea": 12437,
+        "linea": 12445,
         "texto": "}, function(){ errNote( ); UI.screen= ; render(); return false; }, true);"
       },
       {
-        "linea": 12836,
+        "linea": 12844,
         "texto": "UI.screen= ; render();"
       },
       {
-        "linea": 13801,
+        "linea": 13830,
         "texto": "G.mg=mg; UI.screen= ;"
       },
       {
-        "linea": 13803,
+        "linea": 13832,
         "texto": "if(!ok){ G.mg=null; UI.screen= ; errNote( ); }"
       },
       {
-        "linea": 13847,
+        "linea": 13876,
         "texto": "UI.screen= ; saveGame(true); render();"
       },
       {
-        "linea": 13848,
+        "linea": 13877,
         "texto": "}, function(){ if(G&&G.mg){ G.mg=null; UI.screen= ; render(); } }, true);"
       },
       {
-        "linea": 14392,
+        "linea": 14421,
         "texto": "UI.screen= ; saveGame(true); render();"
       },
       {
-        "linea": 14393,
+        "linea": 14422,
         "texto": "}, function(){ if(G&&G.mg){ G.mg=null; UI.screen= ; render(); } }, true);"
       },
       {
-        "linea": 16995,
+        "linea": 17024,
         "texto": "if(!sc.any && (!G || !G.player)) UI.screen= ;"
       },
       {
-        "linea": 17004,
+        "linea": 17033,
         "texto": "UI.screen = (G&&G.player)?  : ;"
       },
       {
-        "linea": 17025,
+        "linea": 17054,
         "texto": "UI.screen=(G && G.player)? : ; UI.sub=null;"
       },
       {
-        "linea": 21728,
+        "linea": 21757,
         "texto": "UI.screen= ; render();"
       },
       {
-        "linea": 25519,
+        "linea": 25548,
         "texto": "UI.screen= ;UI.sub=null;saveGame(true);render();return true;"
       },
       {
-        "linea": 27413,
+        "linea": 27442,
         "texto": "try{ UI.screen=s; var h=(CL.screens[s]||window[ +s.charAt(0).toUpperCase()+s.slice(1)]); if(!h) abiertas.push(s); }"
       }
     ]
@@ -770,7 +770,7 @@
         "texto": "t.step=n; window.scrollTo(0,0); render();"
       },
       {
-        "linea": 17001,
+        "linea": 17030,
         "texto": "if(CL_LAST_DRAWN !== UI.screen){ CL_LAST_DRAWN = UI.screen; window.scrollTo(0,0); }"
       }
     ]

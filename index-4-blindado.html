@@ -6140,10 +6140,18 @@ function repairCritical(){
   var out={reparados:0, revisados:0};
   var vistos={};
   function revisar(id){
-    if(!id || vistos[id]) return null;
-    vistos[id]=1;
+    if(!id) return null;
     var f=G.fighters[id];
     if(!f) return null;
+    /* Ya saneado en esta pasada: se devuelve el peleador, no null.
+       Devolver null aqui hacia que el bloque de campeones de mas abajo leyera
+       "el campeon no existe" para cualquiera que ya estuviera en
+       NORM.activeRefs() -- y el jugador SIEMPRE lo esta. El cinturon se
+       declaraba vacante cada semana, asi que el jugador no podia ser campeon
+       mas de una semana y defenses se quedaba en 0 para siempre. La memoizacion
+       esta para no repetir el saneo, no para ocultar al peleador. */
+    if(vistos[id]) return f;
+    vistos[id]=1;
     out.revisados++;
     /* un peleador que compite no puede tener valores no numéricos: su score
        entra en el orden del ranking y en el emparejamiento */
@@ -13784,7 +13792,7 @@ function migrateLegacyBlob(){
     if(!raw) return 0;
     var old=null;
     try{ old=JSON.parse(raw); }catch(e){ old=null; }
-    var idx=saveIndex(), moved=0;
+    var idx=saveIndex(), moved=0, perdidas=0;
     if(old && typeof old==='object'){
       Object.keys(old).forEach(function(id){
         var rec=old[id];
@@ -13795,7 +13803,16 @@ function migrateLegacyBlob(){
           if(!g || !g.player) return;
           saveExpand(g); savePrune(g); g.saveVersion=SAVE_VERSION;
           var body=saveSerialize(g);
-          localStorage.setItem(SAVE_ONE+id, body);
+          /* La escritura se aisla del resto: un fallo aqui NO es una partida
+             irrecuperable, es una partida buena que no cupo. Confundir los dos
+             casos es lo que hacia que se borrara el blob entero. */
+          try{
+            localStorage.setItem(SAVE_ONE+id, body);
+          }catch(eW){
+            perdidas++;
+            errRecord('migracion:sinEspacio', {message:'no hay espacio para migrar la partida '+id+' ('+Math.round(body.length/1024)+' KB)'}, ERR.SEV.CRITICAL);
+            return;
+          }
           idx[id]={ name:(rec.name||(g.player&&g.player.name)||'Partida'),
                     rec:(g.player&&g.player.rec)? (safeInt(g.player.rec.w,0)+'-'+safeInt(g.player.rec.l,0)) : '',
                     div:'', org:'', when:(rec.meta||'importada'),
@@ -13806,8 +13823,20 @@ function migrateLegacyBlob(){
       });
     }
     if(moved) saveIndexWrite(idx);
-    /* el blob se elimina SIEMPRE: o ya se migró, o no contenía nada usable */
-    try{ localStorage.removeItem(SAVEKEY); }catch(e3){ errLog('L12367', e3); }
+    /* ======================================================================
+       EL BLOB SOLO SE RETIRA SI NO QUEDO NADA DEL JUGADOR DENTRO
+       ----------------------------------------------------------------------
+       Antes se borraba SIEMPRE, con el argumento de que "o ya se migro, o no
+       contenia nada usable". Faltaba el tercer caso: se migraron CERO porque
+       localStorage estaba lleno. Reproducido con dos partidas de 747 KB y la
+       cuota justa: migradas 0, blob borrado, cero partidas visibles. La funcion
+       corre sola al arrancar, antes de que el jugador toque nada.
+       Es la misma politica que ya aplica saveGame ante la cuota agotada:
+       fallar de forma visible y no destruir nada del jugador.
+       ====================================================================== */
+    if(!perdidas){
+      try{ localStorage.removeItem(SAVEKEY); }catch(e3){ errLog('L12367', e3); }
+    }
     return moved;
   }, function(){ return 0; }, true);
 }
