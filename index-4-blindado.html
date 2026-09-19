@@ -5306,7 +5306,9 @@ rollEvent = function(){
   });
   var r=rnd()*tot, acc=0, sel=pool[0];
   for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
-  return {id:sel.id, txt:sel.x(), opts:sel.o};
+  /* `important` viaja con el evento: si esta capa lo deja caer, el evento
+     encolado por esta via pierde la marca igual que en la de arriba. */
+  return {id:sel.id, txt:sel.x(), opts:sel.o, important:sel.important};
 };
 
 /* ---------- equipo técnico (hasta 3 entrenadores) ---------- */
@@ -22108,7 +22110,7 @@ CL.dramaOk = function(){
       var r=rnd()*tot, acc=0, sel=pool[0];
       for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
       CL.evSeen()[sel.id] = CL.evStamp();
-      return {id:sel.id, txt:sel.x(), opts:sel.o};
+      return {id:sel.id, txt:sel.x(), opts:sel.o, important:sel.important};
     }, function(){ return prev(); }, true);
   };
 })();
@@ -26460,7 +26462,13 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     s.eventHistory.unshift({id:sel.id,category:eventCategory(sel),at:stamp(),y:G.year,w:G.week});
     if(s.eventHistory.length>100)s.eventHistory.pop();
     s.recentCats.unshift(eventCategory(sel));if(s.recentCats.length>5)s.recentCats.pop();
-    var out={id:sel.id,txt:sel.x(),opts:sel.o};
+    /* `important` viaja con el evento. Al construir el objeto encolado se
+       dejaba caer, asi que TODOS los eventos del banco llegaban a G.pending con
+       important===undefined. Consecuencias: advancePeriod descartaba en
+       silencio hasta los 10 marcados como decisivos, el boton de avanzar hasta
+       el proximo evento importante solo paraba ante CL.ask, y el hook
+       event:pre/simulacion, que compara con === false, nunca se cumplia. */
+    var out={id:sel.id,txt:sel.x(),opts:sel.o,important:sel.important};
     if(sel.id==='story_rival_escalation'&&G.tmpOpp)remember('event_target',{event:sel.id,person:G.tmpOpp});
     return out;
   };

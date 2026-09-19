@@ -314,3 +314,60 @@ suite('F2 · A-001 el contrato se descuenta una vez por pelea', () => {
   });
 
 });
+
+suite('F2 · G-001 los eventos importantes frenan la simulacion', () => {
+
+  function mundo(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 3210, style: 'mma', div: 'LW', age: 23 });
+    return { h, c: h.ctx };
+  }
+
+  /* Nota de metodo: una primera version de esta prueba exigia que apareciera un
+     evento marcado `important` entre 300 sorteos. Fallaba, pero por culpa de la
+     prueba: en una carrera recien creada los 10 eventos important no son
+     elegibles (piden campeon, pelea firmada, edad, racha negativa...). Lo que
+     hay que medir es el mecanismo, no la suerte del sorteo: para CADA evento
+     sorteado, la marca del objeto encolado tiene que coincidir con la de su
+     definicion. Si rollEvent la deja caer, la discrepancia sale igual. */
+  test('el objeto encolado conserva la marca important de su definicion', () => {
+    const { c } = mundo(61);
+    let total = 0, discrepan = 0;
+    const ejemplos = [];
+    for(let i = 0; i < 300; i++){
+      const e = c.rollEvent();
+      if(!e) continue;
+      const def = c.EVENTS.filter(function(x){ return x.id === e.id; })[0];
+      if(!def || !('important' in def)) continue;
+      total++;
+      if(e.important !== def.important){
+        discrepan++;
+        if(ejemplos.length < 3) ejemplos.push(e.id + ': definicion ' + def.important + ' -> encolado ' + e.important);
+      }
+    }
+    ok(total > 50, 'no se sortearon suficientes eventos con marca declarada: ' + total);
+    eq(discrepan, 0, discrepan + ' de ' + total + ' eventos perdieron la marca al encolarse. ' + JSON.stringify(ejemplos));
+  });
+
+  test('un evento importante frena el avance en bloque', () => {
+    const { c } = mundo(62);
+    /* se encola a mano un evento del banco marcado important y se avanza */
+    const def = c.EVENTS.filter(function(x){ return x.important === true && x.o && x.o.length; })[0];
+    ok(def, 'el banco no tiene ningun evento marcado important');
+    c.G.pending = [{ id: def.id, txt: 'prueba', opts: def.o, important: true }];
+    c.advancePeriod(20);
+    eq(c.G.period.stop, 'event', 'el bloque no paro ante un evento importante');
+    ok(c.G.pending.length === 1, 'el evento importante se descarto en vez de frenar');
+  });
+
+  test('un evento rutinario NO frena el bloque', () => {
+    /* La asimetria es deliberada: el bloque existe para saltarse la rutina. */
+    const { c } = mundo(63);
+    const def = c.EVENTS.filter(function(x){ return x.important !== true && x.o && x.o.length; })[0];
+    ok(def, 'el banco no tiene eventos rutinarios');
+    c.G.pending = [{ id: def.id, txt: 'prueba', opts: def.o }];
+    c.advancePeriod(6);
+    ok(c.G.period.weeks >= 1, 'el bloque no avanzo ni una semana');
+  });
+
+});

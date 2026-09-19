@@ -257,3 +257,54 @@ arreglo no podía tener un efecto económico sistemático, y no lo tiene.
 
 **Golden master**: cambian 2 de 5 trazas (101 y 404), las que agotan un contrato; 202, 303
 y 505 se reproducen **idénticas**. Suite: **54 pruebas verdes**.
+
+---
+
+## F2-06 · La marca `important` viaja con el evento (G-001)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable: mecanismo corregido, efecto
+extremo a extremo NO MEDIDO como significativo.** Ver la sección de honestidad abajo.
+
+**Qué pasaba.** `rollEvent` construía el objeto encolado como
+`{id, txt, opts}` y **dejaba caer `important`**. Los 66 eventos del banco llegaban a
+`G.pending` con `important === undefined`. Consecuencias declaradas en el código pero
+inalcanzables: `advancePeriod` (26030) descartaba en silencio incluso los 10 marcados como
+decisivos; `autoAdvanceToImportant` sólo paraba ante `CL.ask`; y el hook
+`event:pre`/`simulacion`, que compara con `=== false`, nunca se cumplía (G-003).
+
+**Evidencia — corrida en rojo:** `300 de 300 eventos perdieron la marca al encolarse`,
+con ejemplos `coach_offer: definición false -> encolado undefined`.
+
+**Qué se cambió.** Los **tres** constructores del objeto llevan ahora `important`.
+No era uno: `rollEvent` tiene cuatro capas y la última cae a las anteriores cuando su pool
+se vacía, así que corregir sólo la capa ganadora dejaba 288 de 300 eventos sin marca.
+Se corrigió la capa 1 (5309), la capa 2 (22111) y la capa ganadora (26469).
+
+**Nota de método.** La primera versión de la prueba exigía que apareciera un evento marcado
+`important` entre 300 sorteos. Falló, pero **por culpa de la prueba**: en una carrera recién
+creada esos 10 eventos no son elegibles (piden campeón, pelea firmada, edad, racha
+negativa). Se reescribió para medir el mecanismo: para **cada** evento sorteado, la marca
+del objeto encolado debe coincidir con la de su definición.
+
+**Honestidad sobre el efecto real.** Medido con 120 bloques de 26 semanas, reproduciendo
+el comportamiento anterior en el arnés para tener un "antes" limpio:
+
+| | antes | después |
+|---|---|---|
+| bloques detenidos por un evento | 95,0% | 95,0% |
+| **de ellos, procedentes del banco** | **0** | **0** |
+
+**No hay diferencia observable.** Los bloques se detienen por eventos dinámicos (`cl_dyn`,
+que siempre llevaron `important:true`), y esos se adelantan al banco: `advancePeriod` sólo
+sortea del banco con `chance(.12)` y para entonces ya suele haber un `cl_dyn` en cola.
+El mecanismo queda corregido y hay una prueba directa de que un evento importante del banco
+**sí** frena el bloque cuando llega a la cola — pero afirmar que esto cambia la experiencia
+sería inventar un resultado que no medí.
+
+**Golden master**: cambian 3 de 5 trazas. Verificado entrada por entrada que **el estado
+final observable y la traza semana a semana son IDÉNTICOS** en las tres: lo único que
+cambió es la forma del estado (`G.pending` ahora lleva el campo, y entra en la huella).
+El juego no cambió. Suite: **57 pruebas verdes**.
+
+**Lo que deja al descubierto**, para la parte estructural de F2: `rollEvent` tiene **cuatro
+capas** y tres constructores duplicados del mismo objeto. Es el candidato más claro a
+consolidación del dominio de eventos.
