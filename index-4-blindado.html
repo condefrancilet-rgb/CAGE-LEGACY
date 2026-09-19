@@ -17543,6 +17543,17 @@ CL.year = function(){
   };
   for(var _sk in CL.screens){ if(CL.screens.hasOwnProperty(_sk)) CL.SCREENS[_sk]={fn:CL.screens[_sk]}; }
 
+  /* El despachador DIBUJA; lo que lleva al tope del documento es NAVEGAR.
+     Mientras las dos cosas fueron la misma, cualquier redibujado en sitio
+     -elegir foco de entrenamiento, comprar en la tienda, cambiar la division
+     del ranking, desplegar una ficha, actuar en la pelea- devolvia el scroll
+     al inicio, porque todos pasan por render() sin cambiar de pantalla.
+     Se recuerda la ultima pantalla realmente dibujada y solo se sube cuando
+     cambia: asi las transiciones que asignan UI.screen directamente, sin
+     pasar por go(), siguen llegando arriba igual que antes. Quien quiera
+     subir sin cambiar de pantalla lo pide explicitamente, como ya hace el
+     paso a paso de la creacion de carrera. */
+  var CL_LAST_DRAWN = null;
   function clDraw(){
     var sc = CL.SCREENS[UI.screen];
     if(sc){
@@ -17552,12 +17563,13 @@ CL.year = function(){
         if(html!==null && html!==undefined){
           APP.innerHTML = html;
           if(sc.nav==='hide') NAV.style.display='none'; else renderNav();
-          window.scrollTo(0,0);
+          if(CL_LAST_DRAWN !== UI.screen){ CL_LAST_DRAWN = UI.screen; window.scrollTo(0,0); }
           return;
         }
         UI.screen = (G&&G.player)? 'hub':'title';
       }
     }
+    CL_LAST_DRAWN = null;
     CL_BASE_RENDER();
   }
   /* ==========================================================================
