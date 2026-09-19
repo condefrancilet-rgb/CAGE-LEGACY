@@ -3411,7 +3411,13 @@ function applyWinLossResult(){
   // registro de carrera
   p.career.push({y:G.year, w:G.week, opp:fname(o), oppId:o.id, res:won?'W':'L', m:res.methodEs, r:res.round,
     org:orgId, title:f.title, purse:net, pop:Math.round(p.pop), event:f.event});
-  if(G.contract && G.contract.org===orgId){ G.contract.left--; }
+  /* ESCRITOR UNICO de contract.left. El hook 'fight:applied'/'economia'
+     descontaba una segunda vez, asi que los contratos duraban la mitad de las
+     peleas firmadas y el evento contract_dispute (left<=1) saltaba antes de
+     tiempo. Aquel duplicado ademas no comprobaba la organizacion: una pelea
+     fuera del contrato tambien lo consumia. La cuenta vive aqui, donde se
+     sabe bajo que organizacion se peleo. */
+  if(G.contract && G.contract.org===orgId && safeInt(G.contract.left,0)>0){ G.contract.left--; }
   recalcRank(orgId, p.div);
   var news = (won?fname(p)+' venció a '+fname(o):fname(o)+' venció a '+fname(p))+' por '+res.methodEs+
     (f.title?' [TÍTULO]':'');
@@ -12580,7 +12586,8 @@ hookOn('fight:applied','economia', function(c){
     G.careerEarn=safeNum(G.careerEarn,0)+Math.max(0,diff);
     G.player.earn=safeNum(G.player.earn,0)+Math.max(0,diff);
     G.lastPayout=q;
-    if(G.contract && safeInt(G.contract.left,0)>0) G.contract.left=safeInt(G.contract.left,1)-1;
+    /* La cuenta de peleas del contrato la lleva applyWinLossResult, que es
+       quien sabe bajo que organizacion se peleo. Aqui solo se ajusta la caja. */
   }
 }, 20);
 /* Desglose después de la pelea. */

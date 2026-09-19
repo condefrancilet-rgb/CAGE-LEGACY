@@ -254,3 +254,63 @@ suite('F2 · D-001 cobrar una pelea es idempotente', () => {
   });
 
 });
+
+suite('F2 · A-001 el contrato se descuenta una vez por pelea', () => {
+
+  /* Firma contrato por la via real (negociacion) y deja una pelea lista. */
+  function conContrato(seed, orgPelea){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 2468, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx, p = c.G.player;
+    const co = c.G.offers.find(o => o.type === 'contract' && c.G.orgs[o.org]);
+    ok(co, 'no hubo oferta de contrato para la prueba');
+    c.negoStart(co); c.negoClose(); c.G.mg = null; c.UI.screen = 'hub';
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    const org = orgPelea || p.org;
+    c.G.nextFight = { oppId: opp.id, weeks: 0, org: org, title: false, purse: 5000, event: 'T' };
+    c.startCamp(c.G.nextFight);
+    c.G.camp.i = c.G.camp.weeks;
+    return { h, c, p };
+  }
+  function pelearYCobrar(c){
+    c.goFight();
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 600){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    c.confirmFight();
+  }
+
+  test('una pelea descuenta exactamente una del contrato', () => {
+    const { c } = conContrato(55);
+    const antes = c.G.contract.left;
+    ok(antes >= 2, 'el contrato de la prueba es demasiado corto: ' + antes);
+    pelearYCobrar(c);
+    eq(c.G.contract.left, antes - 1,
+       'el contrato se descuento ' + (antes - c.G.contract.left) + ' veces en una sola pelea');
+  });
+
+  test('una pelea de OTRA organizacion no consume el contrato', () => {
+    /* El escritor base comprueba que el contrato sea de la organizacion de la
+       pelea. Esa regla no puede perderse al quitar el duplicado. */
+    const { c, p } = conContrato(56);
+    const otra = Object.keys(c.G.orgs).find(o => o !== p.org);
+    ok(otra, 'no hay otra organizacion para la prueba');
+    c.G.nextFight.org = otra;
+    const antes = c.G.contract.left;
+    pelearYCobrar(c);
+    eq(c.G.contract.left, antes,
+       'una pelea de otra organizacion consumio el contrato');
+  });
+
+  test('el contador no baja de cero', () => {
+    const { c } = conContrato(57);
+    c.G.contract.left = 0;
+    pelearYCobrar(c);
+    ok(c.G.contract.left >= 0, 'contract.left quedo negativo: ' + c.G.contract.left);
+  });
+
+});

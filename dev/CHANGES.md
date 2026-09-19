@@ -202,3 +202,58 @@ exige el reset de D-006. Separarlos habría dejado un arreglo que introduce un f
 **Lo que NO cierra:** **D-002** — `applyPlayerFight` sigue sin envolver, así que una
 excepción a mitad deja la aplicación a medias; el reintento ya no duplica (la guarda lo
 impide) pero el estado queda parcial. Tiene su propio turno.
+
+---
+
+## F2-05 · El contrato se descuenta una vez por pelea (A-001)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable:** los contratos duran las peleas
+que dicen durar.
+
+**Qué pasaba.** Dos escritores descontaban `G.contract.left` en la misma pelea:
+- `applyWinLossResult` **3414**: `if(G.contract && G.contract.org===orgId){ G.contract.left--; }`
+- hook `fight:applied`/`economia` **12583**: `if(G.contract && ...>0) G.contract.left = ...-1;`
+
+Los contratos duraban **la mitad** de las peleas firmadas, y el evento
+`contract_dispute` (3042, `c: left<=1`) saltaba antes de tiempo. Los invariantes 27762-27763
+no lo detectaban porque sólo comprueban `left<0` y `left>fights`.
+
+Además el duplicado **no comprobaba la organización**: una pelea fuera del contrato también
+lo consumía. Eso no estaba en el hallazgo original; lo destapó el test.
+
+**Evidencia — corrida en rojo antes del arreglo:**
+```
+• una pelea descuenta exactamente una del contrato
+  esperado: 3 · obtenido: 2          (contrato de 4, una sola pelea)
+• una pelea de OTRA organizacion no consume el contrato
+  esperado: 4 · obtenido: 3
+```
+
+**Qué se cambió.** Escritor único: la cuenta vive en `applyWinLossResult`, que es donde se
+sabe bajo qué organización se peleó. Conserva la regla de organización y se le añadió el
+suelo explícito (`left > 0`) que tenía el duplicado. El hook `economia` deja de descontar
+y conserva su trabajo real, ajustar la caja al contrato firmado.
+
+**Efecto medido — 40 carreras × 150 semanas.** Aquí hay que tener cuidado con la media,
+porque la economía tiene cola pesada (ver H-005):
+
+| | antes | después |
+|---|---|---|
+| dinero **medio** | 146.998 | 112.257 |
+| dinero **mediana** | **11.289** | **11.496** |
+| dinero **máximo** | 1.227.237 | **1.227.237** (idéntico) |
+| ganancias medianas | 49.749 | 48.398 |
+| peleas por carrera | 11,93 | 11,93 |
+| fallos de invariante | 0 | 0 |
+
+La media cae un 24% pero **la mediana no se mueve y el máximo es exactamente el mismo**:
+lo que cambió es la posición de un par de carreras dentro de la cola, no el
+comportamiento del sistema. Tomar la media como evidencia de un efecto económico habría
+sido un error de lectura — es justo la trampa que enseñó H-005.
+
+Se comprobó además que **no existe ningún manejador de expiración de contrato**:
+`left` llegando a 0 no dispara renegociación ni agencia libre. Los únicos lectores son la
+pantalla de contratos (5085), el evento `contract_dispute` y los saneadores. Así que el
+arreglo no podía tener un efecto económico sistemático, y no lo tiene.
+
+**Golden master**: cambian 2 de 5 trazas (101 y 404), las que agotan un contrato; 202, 303
+y 505 se reproducen **idénticas**. Suite: **54 pruebas verdes**.
