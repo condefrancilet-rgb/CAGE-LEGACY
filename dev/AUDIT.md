@@ -102,3 +102,28 @@ terminar, o que el bucle de asaltos no respete el tope.
   numéricos, récord no negativo, semana en rango, rankings sin duplicados ni
   referencias rotas, retirado sin pelea activa).
 - **Compatibilidad de saves**: las 5 fixtures cargan y siguen siendo jugables.
+
+---
+
+## Medición en navegador real (Chromium, F0)
+`node dev/browser-tests.js` · 28 comprobaciones verdes, 0 errores de JavaScript.
+
+| viewport | pantallas sin excepción | desborde H | targets | <44 px | solapados |
+|---|---|---|---|---|---|
+| 360×640 vertical | 35/35 | 0 | 76 | 38 | 0 |
+| 360×640 horizontal | 35/35 | 0 | 76 | 38 | 0 |
+| 390×844 vertical | 35/35 | 0 | 76 | 38 | **6** |
+| 412×915 vertical | 35/35 | 0 | 76 | 38 | **6** |
+
+**I1 confirmado en navegador real** en los cuatro viewports: interacción en sitio
+400 → 400; navegación 400 → 0.
+
+### H-010 · Targets táctiles por debajo de 44 px — CONFIRMADO · severidad media (F17)
+38 de 76 targets del hub bajan de 44 px CSS en algún eje. Pendiente de clasificar
+en F17 entre controles aislados (hay que corregirlos) y filas de lista de ancho
+completo (aceptables).
+
+### H-011 · Targets solapados sólo en viewports anchos — CONFIRMADO · severidad media (F17)
+6 pares de targets se solapan a 390×844 y 412×915, y **ninguno** a 360×640.
+Que el solape aparezca al *ensanchar* sugiere un layout que reflowa mal por
+encima de cierto ancho, no un problema de espacio.
