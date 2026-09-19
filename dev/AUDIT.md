@@ -143,7 +143,7 @@ re-verificados de forma independiente por el orquestador antes de marcarse CONFI
 | B · Navegación y render | `dev/audit/B-navegacion-render.md` | completo (8 hallazgos) |
 | C · Tiempo | `dev/audit/C-tiempo.md` | completo (14 hallazgos) |
 | D · Combate | `dev/audit/D-combate.md` | completo (11 hallazgos) |
-| E · Entrenamiento | — | **PENDIENTE** (el subagente se cortó por límite de sesión) |
+| E · Entrenamiento | `dev/audit/E-entrenamiento.md` | completo (3 hallazgos) — hecho por el orquestador |
 | F · Save/load | `dev/audit/F-saveload.md` | completo (8 hallazgos) |
 | G · Eventos | `dev/audit/G-eventos.md` | completo (8 hallazgos) |
 | H · Economía | `dev/audit/H-economia.md` | completo (12 hallazgos) |
@@ -181,6 +181,12 @@ reproduzca, después el fix en un commit `[F2] fix:` aparte, y entrada en `CHANG
 | 12 | **C-002/C-003/C-004** | ALTA | Rutas que consumen semana sin publicar noticias; `advancePeriod` no guarda nunca y destruye las ofertas cada semana | unificar el cierre de semana |
 | 13 | **I-002** | ALTA | Campeón fantasma al ascender de organización: la división abandonada se congela | `recalcRank` debe comprobar `f.org===orgId` |
 | 14 | **F-002** | ALTA | La copia de respaldo pre-migración nunca se escribe | usar `diag.v`, calculado antes de mutar |
+
+**Balance y diseño, para F6+** (no son bugs; se anotan aquí para no perderlos):
+**E-001** seis stats de 26 no afectan al combate (`takedowns`, `speed`, `discipline`,
+`confidence`, `aggression`, `adaptability`), medido con dos políticas distintas ·
+tras corregir I-001, el 67,5% de las carreras termina con título, demasiado alto ·
+sumisiones en el 0,2% de los resultados · colapso demográfico del mundo (I-003/I-004).
 
 **Deuda estructural, no bugs puntuales** (F2-F4, con golden master):
 `saveGame` acoplado a `normalizeWorldState` (F-005/A-006) · 43 nombres redefinidos y 42
