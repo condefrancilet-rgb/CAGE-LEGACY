@@ -1658,6 +1658,12 @@ function fightStart(oppId, cfg){
     cards:[], log:[], purse: cfg.purse||0, event: cfg.event||'',
     subLock:0, oppSubLock:0, momentum:0
   };
+  /* Una pelea nueva nace SIN cobrar. El reset vivia en goFight(), que no es la
+     funcion canonica de arranque: cualquier pelea empezada por otra via
+     heredaba el "ya cobrada" de la anterior y su resultado no se podia cobrar
+     nunca. Aqui es atomico con la creacion de G.fight, que es lo que hace de
+     G.paid un cerrojo fiable para confirmFight(). */
+  G.paid = false;
   // condición inicial: sharpness del campamento, fatiga, corte de peso
   var camp = G.camp;
   if(camp){
@@ -4790,7 +4796,6 @@ function goFight(){
     UI.screen='hub'; if(typeof render==='function') render();
     return;
   }
-  G.paid=false;
   fightStart(nf.oppId,{rounds:nf.title?5:3,title:nf.title,org:nf.org,purse:nf.purse,event:nf.event});
 }
 function scrFight(){
@@ -4857,6 +4862,19 @@ function scrFightResult(){
   return hookFilter('screen:fightresult', h, {});
 }
 function confirmFight(){
+  /* ======================================================================
+     COBRAR UNA PELEA ES IDEMPOTENTE
+     ----------------------------------------------------------------------
+     No habia guarda: G.paid solo se leia en la presentacion
+     (scrFightResult), o sea que era decoracion de interfaz, no un cerrojo.
+     Tres llamadas daban record 0-3, tres entradas de career, tres bolsas y
+     tres semanas consumidas para UNA sola pelea. Sin pelea cargada, ademas,
+     applyPlayerFight lanzaba al leer G.fight.result.
+     Ahora la condicion de entrada es explicita: hace falta una pelea con
+     resultado y sin cobrar. El cerrojo funciona porque fightStart() pone
+     G.paid=false al crear la pelea.
+     ====================================================================== */
+  if(!G || !G.fight || !G.fight.result || G.paid) return false;
   applyPlayerFight();
   var p=G.player;
   if(G.flags.wonder){
@@ -4869,6 +4887,7 @@ function confirmFight(){
   advanceWeek();
   saveGame(true);
   render();
+  return true;
 }
 function postFightQuote(won,res){
   var c=coachById(G.player.coach), m=memRef(c);

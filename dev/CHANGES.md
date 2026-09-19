@@ -152,3 +152,53 @@ Suite: 47 pruebas verdes · navegador: 28 verdes · golden master **sin cambios*
 **D-001**, `confirmFight()` sigue sin guarda de idempotencia — llamarla dos veces por otra
 vía sigue duplicando récord y bolsa; y **D-004**, un autoguardado con el resultado sin
 cobrar sigue pudiendo perderlo al recargar.
+
+---
+
+## F2-04 · Cobrar una pelea es idempotente (D-001 + D-006)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable:** ninguno en el camino nominal;
+deja de ser posible duplicar récord, bolsa y semanas.
+
+**Qué pasaba.** `confirmFight()` (4859) llamaba a `applyPlayerFight()` sin ninguna
+condición de entrada. `G.paid` sólo se leía en la presentación (`scrFightResult` 4842 y
+`TQ.rewardCard` 21391): era decoración de interfaz, **no un cerrojo**. GATE sólo añade
+guarda de retiro y autoguardado, no idempotencia.
+
+Y el cerrojo no podía funcionar aunque se usara, porque `G.paid = false` vivía en
+`goFight()` (4793) y no en `fightStart()`, que es la función canónica de arranque: una
+pelea empezada por otra vía heredaba el "ya cobrada" de la anterior (**D-006**).
+
+**Evidencia — corrida en rojo antes del arreglo:**
+```
+• llamarla varias veces no duplica record, bolsa ni semanas
+  esperado: {"rec":"0-1-0","cash":5767, "career":1,"semana":104834}
+  obtenido: {"rec":"0-3-0","cash":12301,"career":3,"semana":104836}
+• sin pelea o sin resultado no hace nada
+  Cannot read properties of null (reading 'result')      ← ademas lanzaba
+• D-006: fightStart no reseteo G.paid
+  esperado: false · obtenido: true
+```
+Tres llamadas: **récord 0-3, tres entradas de `career`, tres bolsas y tres semanas
+consumidas para una sola pelea.**
+
+**Qué se cambió.** Tres cosas, todas sobre el mismo concepto — hacer de `G.paid` un
+cerrojo real:
+1. `G.paid = false` se movió a `fightStart()`, **atómico con la creación de `G.fight`**.
+2. `goFight()` deja de resetearlo: un solo dueño.
+3. `confirmFight()` abre con una condición de entrada explícita —
+   `if(!G || !G.fight || !G.fight.result || G.paid) return false;` — y devuelve `true`
+   cuando cobra, para que el llamador pueda distinguir.
+
+Se corrigió la causa (un flag de UI hacía de cerrojo sin serlo), no el síntoma.
+
+**Impacto en el juego: ninguno en el camino nominal.** Golden master **sin cambios**: las
+5 trazas se reproducen idénticas. Suite: **51 pruebas verdes**.
+
+**Nota sobre el alcance.** D-001 y D-006 van en el mismo commit a propósito: la guarda de
+D-001 sólo es correcta si `G.paid` significa de verdad "la pelea actual ya se cobró", y eso
+exige el reset de D-006. Separarlos habría dejado un arreglo que introduce un fallo latente
+(una pelea que nunca se puede cobrar). Es un cambio a un concepto, no dos cambios sueltos.
+
+**Lo que NO cierra:** **D-002** — `applyPlayerFight` sigue sin envolver, así que una
+excepción a mitad deja la aplicación a medias; el reintento ya no duplica (la guarda lo
+impide) pero el estado queda parcial. Tiene su propio turno.

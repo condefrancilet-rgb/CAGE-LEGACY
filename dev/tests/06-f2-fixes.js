@@ -176,3 +176,81 @@ suite('F2 · D-003 no se puede re-jugar una pelea sin cobrarla', () => {
   });
 
 });
+
+suite('F2 · D-001 cobrar una pelea es idempotente', () => {
+
+  /* Prepara una pelea terminada y sin cobrar, por la via real del juego. */
+  function peleaTerminada(seed, cfg){
+    cfg = cfg || {};
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 2468, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: !!cfg.title, purse: 8000, event: 'Test' };
+    c.startCamp(c.G.nextFight);
+    c.G.camp.i = c.G.camp.weeks;
+    c.goFight();
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 600){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    return { h, c, p };
+  }
+  const foto = (c) => ({
+    rec: c.G.player.rec.w + '-' + c.G.player.rec.l + '-' + c.G.player.rec.d,
+    cash: Math.round(c.G.cash),
+    career: c.G.player.career.length,
+    semana: c.G.year * 52 + c.G.week,
+  });
+
+  test('la primera llamada SI cobra la pelea', () => {
+    const { c } = peleaTerminada(77);
+    const antes = foto(c);
+    ok(!c.G.paid, 'el caso de prueba no aplica: ya estaba cobrada');
+    c.confirmFight();
+    const despues = foto(c);
+    ok(despues.career === antes.career + 1, 'la pelea no se anoto en el historial');
+    ok(despues.rec !== antes.rec, 'el record no cambio al cobrar');
+    ok(despues.semana === antes.semana + 1, 'cobrar deberia consumir la semana');
+    ok(c.G.paid, 'G.paid no quedo marcado');
+  });
+
+  test('llamarla varias veces no duplica record, bolsa ni semanas', () => {
+    const { c } = peleaTerminada(78);
+    c.confirmFight();
+    const trasUna = foto(c);
+    c.confirmFight();
+    c.confirmFight();
+    eq(foto(c), trasUna, 'cobrar de nuevo altero el estado de la partida');
+  });
+
+  test('sin pelea o sin resultado no hace nada', () => {
+    const h = H.boot({ seed: 79 });
+    H.startCareer(h, { metaSeed: 2469, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx;
+    const antes = foto(c);
+    c.confirmFight();
+    eq(foto(c), antes, 'confirmFight actuo sin una pelea que cobrar');
+  });
+
+  test('D-006: una pelea nueva se puede volver a cobrar', () => {
+    /* G.paid solo sirve de cerrojo si lo resetea la funcion canonica de
+       arranque. Si el reset vive fuera, una pelea empezada por otra via hereda
+       el "ya cobrada" de la anterior y su resultado no se puede cobrar nunca. */
+    const { c, p } = peleaTerminada(80);
+    c.confirmFight();
+    ok(c.G.paid, 'la primera pelea no quedo cobrada');
+
+    const opp2 = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired && f.id !== c.G.fight.opp);
+    c.G.fight = null;
+    c.G.nextFight = { oppId: opp2.id, weeks: 0, org: p.org, title: false, purse: 9000, event: 'Test2' };
+    /* arranque por la funcion canonica, no por goFight */
+    c.fightStart(opp2.id, { rounds: 3, title: false, org: p.org, purse: 9000, event: 'Test2' });
+    eq(c.G.paid, false, 'fightStart no reseteo G.paid: la pelea nueva nace marcada como cobrada');
+  });
+
+});
