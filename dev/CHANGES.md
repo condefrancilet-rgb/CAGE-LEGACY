@@ -454,3 +454,36 @@ solución es la que el propio archivo ya había escrito para este caso. Preserva
 comportamiento aquí significaría preservar que dibujar cambie el mundo.
 
 Golden master regenerado (las 5 trazas). Suite: **68 pruebas verdes**.
+
+---
+
+## F2-10 · Aplicar el resultado de una pelea es todo-o-nada (D-002)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable:** ninguno en el camino normal;
+un fallo a mitad ya no deja la partida a medias.
+
+**Qué pasaba.** `applyPlayerFight()` (3345) no estaba envuelta en nada. Toca récord, bolsa,
+popularidad, lesión, títulos, ranking, historial y la limpieza de `nextFight`/`camp`, y
+además emite `fight:pre` y `fight:applied`, con seis suscriptores cada uno. Una excepción a
+mitad dejaba aplicado **todo el prefijo que sí funcionó** y sin aplicar el resto.
+
+**Evidencia — corrida en rojo**, inyectando un fallo en `changePopularity`:
+```
+esperado (sin tocar): rec 0-0-0 · cash 3.150 · career 0
+obtenido            : rec 1-0-0 · cash 9.470 · career 0
+```
+Récord sumado y bolsa cobrada, historial vacío y `nextFight` sin limpiar.
+Antes de F2-04 esto además se combinaba con la falta de guarda: el botón seguía vivo y el
+reintento duplicaba el prefijo. Con la guarda ya puesta el reintento no duplicaba, pero el
+estado parcial se quedaba.
+
+**Qué se cambió.** El cuerpo va dentro de `TX.run('applyPlayerFight', …)`, que hace
+snapshot y `TX.restore` ante excepción, con `errRecord` CRÍTICO. Es **la misma garantía que
+`advanceWeek` ya tenía**, no un mecanismo nuevo. El `rethrow` se conserva a propósito:
+`confirmFight` **no debe** marcar `G.paid` si esto no terminó, y la excepción propagándose
+es justo lo que se lo impide.
+
+Ahora, tras un fallo: el estado vuelve intacto, `G.paid` sigue en `false`, el resultado de
+la pelea se conserva, y **reintentar cobra exactamente una vez** (probado).
+
+**Golden master sin cambios**: en el camino feliz `TX.run` es transparente —hace snapshot y
+no restaura—, así que no altera el consumo de RNG. Suite: **71 pruebas verdes**.

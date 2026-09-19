@@ -548,3 +548,71 @@ suite('F2 · B-001 dibujar no consume el RNG del mundo', () => {
   });
 
 });
+
+suite('F2 · D-002 aplicar el resultado es todo-o-nada', () => {
+
+  function peleaLista(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 3579, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks;
+    c.goFight();
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 600){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    return { h, c, p };
+  }
+  const foto = (c) => JSON.stringify({
+    rec: c.G.player.rec, cash: Math.round(c.G.cash),
+    career: c.G.player.career.length, pop: Math.round(c.G.player.pop),
+    nextFight: !!c.G.nextFight,
+  });
+
+  test('si algo falla a mitad, no queda estado aplicado a medias', () => {
+    const { c } = peleaLista(81);
+    const antes = foto(c);
+    /* se rompe una funcion del medio del pipeline, despues de que el record y
+       la bolsa ya se hayan tocado */
+    const orig = c.changePopularity;
+    c.changePopularity = function(){ throw new Error('fallo inyectado'); };
+    let lanzo = false;
+    try { c.confirmFight(); } catch(e){ lanzo = true; }
+    c.changePopularity = orig;
+
+    ok(lanzo, 'el fallo inyectado no se propago: la prueba no aplica');
+    eq(foto(c), antes, 'quedo estado aplicado a medias tras el fallo');
+    eq(c.G.paid, false, 'la pelea quedo marcada como cobrada pese al fallo');
+    ok(c.G.fight && c.G.fight.result, 'se perdio el resultado de la pelea');
+  });
+
+  test('tras el fallo, reintentar cobra exactamente una vez', () => {
+    const { c } = peleaLista(82);
+    const antes = foto(c);
+    const orig = c.changePopularity;
+    c.changePopularity = function(){ throw new Error('fallo inyectado'); };
+    try { c.confirmFight(); } catch(e){}
+    c.changePopularity = orig;
+    eq(foto(c), antes, 'el estado no volvio a su sitio antes de reintentar');
+
+    c.confirmFight();
+    ok(c.G.paid, 'el reintento no cobro la pelea');
+    eq(c.G.player.career.length, 1, 'el historial no tiene exactamente una pelea');
+    eq(c.G.player.rec.w + c.G.player.rec.l + c.G.player.rec.d, 1,
+       'el record no suma exactamente una pelea');
+  });
+
+  test('el camino normal sigue aplicando el resultado', () => {
+    const { c } = peleaLista(83);
+    c.confirmFight();
+    ok(c.G.paid, 'no se cobro la pelea');
+    eq(c.G.player.career.length, 1, 'el historial no registro la pelea');
+    eq(c.G.nextFight, null, 'la pelea firmada no se limpio');
+  });
+
+});

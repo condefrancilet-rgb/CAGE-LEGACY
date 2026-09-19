@@ -3343,12 +3343,27 @@ function acceptFight(i){
    ========================================================================== */
 var applyDrawResult = null;   /* la define el módulo de empates, más abajo */
 function applyPlayerFight(){
-  var f = G && G.fight;
-  var ctx = {f:f, draw: !!(f && f.result && f.result.winner==='d')};
-  hookEmit('fight:pre', ctx);
-  var r = ctx.draw ? applyDrawResult() : applyWinLossResult();
-  hookEmit('fight:applied', ctx);
-  return r;
+  /* ======================================================================
+     TODO-O-NADA
+     ----------------------------------------------------------------------
+     Aplicar el resultado toca record, bolsa, popularidad, lesion, titulos,
+     ranking, historial y la limpieza de nextFight/camp, y ademas emite dos
+     hooks con seis suscriptores cada uno. Sin transaccion, una excepcion a
+     mitad dejaba aplicado todo el prefijo que si funciono -record y bolsa ya
+     sumados- y sin aplicar el resto, con el boton de cobrar todavia vivo.
+     Reproducido inyectando un fallo en changePopularity: la pelea quedaba
+     1-0 con la bolsa cobrada y el historial vacio.
+     Es la misma garantia que advanceWeek ya tiene. El rethrow se conserva a
+     proposito: confirmFight NO debe marcar G.paid si esto no termino.
+     ====================================================================== */
+  return TX.run('applyPlayerFight', function(){
+    var f = G && G.fight;
+    var ctx = {f:f, draw: !!(f && f.result && f.result.winner==='d')};
+    hookEmit('fight:pre', ctx);
+    var r = ctx.draw ? applyDrawResult() : applyWinLossResult();
+    hookEmit('fight:applied', ctx);
+    return r;
+  });
 }
 function applyWinLossResult(){
   var f = G.fight, res = f.result, p = G.player, o = F(f.opp);
