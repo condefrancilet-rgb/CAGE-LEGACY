@@ -1,0 +1,70 @@
+{
+  "01-recien-creada": {
+    "bytes": 627895,
+    "saveVersion": 4,
+    "semana": 1,
+    "año": 2016
+  },
+  "02-antes-primera-pelea": {
+    "bytes": 635011,
+    "saveVersion": 4,
+    "semana": 2,
+    "campamento": true,
+    "peleas": 0
+  },
+  "03-mitad-carrera": {
+    "bytes": 764727,
+    "saveVersion": 4,
+    "semana": 27,
+    "año": 2018,
+    "rec": {
+      "w": 9,
+      "l": 1,
+      "d": 0,
+      "ko": 1,
+      "sub": 0,
+      "dec": 8,
+      "kol": 0,
+      "subl": 0,
+      "decl": 1
+    }
+  },
+  "05-retirado": {
+    "bytes": 833626,
+    "saveVersion": 4,
+    "rec": {
+      "w": 17,
+      "l": 2,
+      "d": 1,
+      "ko": 1,
+      "sub": 0,
+      "dec": 16,
+      "kol": 1,
+      "subl": 0,
+      "decl": 1
+    },
+    "semana": 43,
+    "año": 2020,
+    "retirado": true,
+    "edad": 30
+  },
+  "04-con-titulo": {
+    "bytes": 801355,
+    "saveVersion": 4,
+    "semana": 47,
+    "año": 2018,
+    "titulos": 1,
+    "rec": {
+      "w": 11,
+      "l": 2,
+      "d": 0,
+      "ko": 5,
+      "sub": 0,
+      "dec": 6,
+      "kol": 1,
+      "subl": 0,
+      "decl": 1
+    },
+    "esCampeon": false
+  }
+}
