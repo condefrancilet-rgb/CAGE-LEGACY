@@ -61,32 +61,41 @@ function analyze(){
   const codeLines = lines(code);
 
   /* --- funciones globales: declaraciones y asignaciones --- */
-  const decl = new Map();     // nombre -> [lineas]  (function f(){})
-  const assign = new Map();   // nombre -> [lineas]  (f = function / window.f = ...)
-  const reDecl   = /^\s*function\s+([A-Za-z_$][\w$]*)\s*\(/;
-  const reAssign = /^\s*(?:window\.)?([A-Za-z_$][\w$]*)\s*=\s*function\s*[(*]/;
-  const reVarFn  = /^\s*(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*function\s*[(*]/;
+  /* Una `function f(){}` ANIDADA (indentada, dentro de otra funcion o de un
+     objeto) no redefine nada global: es local a su ambito. Contarla como
+     redefinicion infla la metrica de control de F2. Se separan por eso las
+     declaraciones de nivel superior (columna 0) de las anidadas.            */
+  const decl = new Map();       // nombre -> [lineas]  function f(){} en columna 0
+  const declAnidada = new Map();// nombre -> [lineas]  function f(){} indentada
+  const assign = new Map();     // nombre -> [lineas]  f = function / window.f = ...
+  const reDeclTop = /^function\s+([A-Za-z_$][\w$]*)\s*\(/;
+  const reDeclAny = /^\s+function\s+([A-Za-z_$][\w$]*)\s*\(/;
+  const reAssign  = /^\s*(?:window\.)?([A-Za-z_$][\w$]*)\s*=\s*function\s*[(*]/;
+  const reVarFn   = /^\s*(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*function\s*[(*]/;
 
   codeLines.forEach((l, i) => {
     let m;
-    if((m = l.match(reDecl)))   push(decl, m[1], i+1);
+    if((m = l.match(reDeclTop)))      push(decl, m[1], i+1);
+    else if((m = l.match(reDeclAny))) push(declAnidada, m[1], i+1);
     if((m = l.match(reAssign))) push(assign, m[1], i+1);
     if((m = l.match(reVarFn)))  push(assign, m[1], i+1);
   });
   function push(map, k, v){ if(!map.has(k)) map.set(k, []); map.get(k).push(v); }
 
   /* nombres con mas de una definicion efectiva (declaracion o asignacion) */
-  const allDefs = new Map();
-  for(const [k, v] of decl)   push(allDefs, k, ...v);
-  for(const [k, v] of assign) push(allDefs, k, ...v);
   function pushAll(map,k,...vs){ if(!map.has(k)) map.set(k,[]); map.get(k).push(...vs); }
-  allDefs.clear();
+  const allDefs = new Map();
   for(const [k, v] of decl)   pushAll(allDefs, k, ...v);
   for(const [k, v] of assign) pushAll(allDefs, k, ...v);
 
   const multi = [];
   for(const [k, v] of allDefs) if(v.length > 1) multi.push({ nombre: k, veces: v.length, lineas: v.sort((a,b)=>a-b) });
   multi.sort((a,b) => b.veces - a.veces || a.nombre.localeCompare(b.nombre));
+
+  /* nombres que SOLO colisionan por una declaracion anidada: no son redefiniciones */
+  const falsosPositivos = [];
+  for(const [k, v] of declAnidada)
+    if(allDefs.has(k)) falsosPositivos.push({ nombre: k, lineasAnidadas: v, lineasGlobales: allDefs.get(k) });
 
   /* --- wrappers: captura de la implementacion previa --- */
   /* patron: var X = f;  /  var _prev = f;  seguido de reasignacion de f       */
@@ -151,12 +160,15 @@ function analyze(){
     bloquesScript: scripts.length,
     funciones: {
       declaraciones: decl.size,
+      declaracionesAnidadas: declAnidada.size,
       asignaciones: assign.size,
       totalNombres: allDefs.size,
       definidosMasDeUnaVez: multi.length,
       detalleMultiples: multi.slice(0, 60),
       wrappers: wrappers.length,
       detalleWrappers: wrappers,
+      colisionesConAnidadas: falsosPositivos.length,
+      detalleColisionesAnidadas: falsosPositivos.slice(0, 40),
     },
     listeners: {
       addEventListener: count(code, /\baddEventListener\s*\(/g),
@@ -202,8 +214,8 @@ function tabla(m){
   L.push(`md5                      ${m.md5}`);
   L.push(`sha256                   ${m.sha256.slice(0,32)}…`);
   L.push(`bloques <script>         ${m.bloquesScript}`);
-  L.push(`nombres de funcion       ${m.funciones.totalNombres}  (decl ${m.funciones.declaraciones} · asign ${m.funciones.asignaciones})`);
-  L.push(`definidos >1 vez         ${m.funciones.definidosMasDeUnaVez}`);
+  L.push(`nombres de funcion       ${m.funciones.totalNombres}  (decl ${m.funciones.declaraciones} · asign ${m.funciones.asignaciones} · anidadas ${m.funciones.declaracionesAnidadas})`);
+  L.push(`definidos >1 vez         ${m.funciones.definidosMasDeUnaVez}   (colisiones con anidadas, no cuentan: ${m.funciones.colisionesConAnidadas})`);
   L.push(`wrappers (captura previa)${String(m.funciones.wrappers).padStart(2)}`);
   L.push(`addEventListener/remove  ${m.listeners.addEventListener} / ${m.listeners.removeEventListener}`);
   L.push(`setTimeout/clear         ${m.timers.setTimeout} / ${m.timers.clearTimeout}`);

@@ -1,0 +1,1243 @@
+{
+  "total": 43,
+  "offsetHTML": 566,
+  "filas": [
+    {
+      "nombre": "rollEvent",
+      "veces": 4,
+      "lineas": [
+        4700,
+        21446,
+        25282,
+        25823
+      ],
+      "lineasHTML": [
+        5266,
+        22012,
+        25848,
+        26389
+      ],
+      "tipoVivo": "function",
+      "ganadora": 25823,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "prev",
+          "linea": 21445
+        },
+        {
+          "alias": "_rollEventFinal",
+          "linea": 25281
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 26389
+    },
+    {
+      "nombre": "cardioStart",
+      "veces": 3,
+      "lineas": [
+        1878,
+        6067,
+        10153
+      ],
+      "lineasHTML": [
+        2444,
+        6633,
+        10719
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_cardioStartArcade",
+          "linea": 6066
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "drillStart",
+      "veces": 3,
+      "lineas": [
+        1931,
+        6002,
+        10155
+      ],
+      "lineasHTML": [
+        2497,
+        6568,
+        10721
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_drillStartStable",
+          "linea": 6001
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "fxLoop",
+      "veces": 3,
+      "lineas": [
+        6607,
+        10386,
+        15245
+      ],
+      "lineasHTML": [
+        7173,
+        10952,
+        15811
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15245,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_errFxLoopPrev",
+          "linea": 10385
+        },
+        {
+          "alias": "_perfFxLoopPrev",
+          "linea": 15244
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15811
+    },
+    {
+      "nombre": "strStart",
+      "veces": 3,
+      "lineas": [
+        1906,
+        6073,
+        10154
+      ],
+      "lineasHTML": [
+        2472,
+        6639,
+        10720
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_strStartArcade",
+          "linea": 6072
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "cardioPick",
+      "veces": 2,
+      "lineas": [
+        1882,
+        5994
+      ],
+      "lineasHTML": [
+        2448,
+        6560
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_cardioPickStable",
+          "linea": 5993
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "careerEnding",
+      "veces": 2,
+      "lineas": [
+        2854,
+        17491
+      ],
+      "lineasHTML": [
+        3420,
+        18057
+      ],
+      "tipoVivo": "function",
+      "ganadora": 17491,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_clEnding",
+          "linea": 17490
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 18057
+    },
+    {
+      "nombre": "drain",
+      "veces": 2,
+      "lineas": [
+        1137,
+        20510
+      ],
+      "lineasHTML": [
+        1703,
+        21076
+      ],
+      "tipoVivo": "function",
+      "ganadora": 20510,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_tqDrain",
+          "linea": 20509
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 21076
+    },
+    {
+      "nombre": "fameResolve",
+      "veces": 2,
+      "lineas": [
+        13807,
+        14350
+      ],
+      "lineasHTML": [
+        14373,
+        14916
+      ],
+      "tipoVivo": "function",
+      "ganadora": 14350,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_shopFameResolvePrev",
+          "linea": 14349
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 14916
+    },
+    {
+      "nombre": "fameStart",
+      "veces": 2,
+      "lineas": [
+        13796,
+        21345
+      ],
+      "lineasHTML": [
+        14362,
+        21911
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "prevFame",
+          "linea": 21344
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "fightFinishResolve",
+      "veces": 2,
+      "lineas": [
+        5815,
+        7805
+      ],
+      "lineasHTML": [
+        6381,
+        8371
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_fxFightFinishResolvePrev",
+          "linea": 7804
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "fightPayout",
+      "veces": 2,
+      "lineas": [
+        11938,
+        13131
+      ],
+      "lineasHTML": [
+        12504,
+        13697
+      ],
+      "tipoVivo": "function",
+      "ganadora": 13131,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_shPayoutPrev",
+          "linea": 13130
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 13697
+    },
+    {
+      "nombre": "fname",
+      "veces": 2,
+      "lineas": [
+        392,
+        12550
+      ],
+      "lineasHTML": [
+        958,
+        13116
+      ],
+      "tipoVivo": "function",
+      "ganadora": 12550,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_nickFnamePrev",
+          "linea": 12549
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 13116
+    },
+    {
+      "nombre": "fxBurst",
+      "veces": 2,
+      "lineas": [
+        6270,
+        15299
+      ],
+      "lineasHTML": [
+        6836,
+        15865
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15299,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_perfBurstPrev",
+          "linea": 15298
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15865
+    },
+    {
+      "nombre": "fxFinish",
+      "veces": 2,
+      "lineas": [
+        6597,
+        14397
+      ],
+      "lineasHTML": [
+        7163,
+        14963
+      ],
+      "tipoVivo": "function",
+      "ganadora": 14397,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_shopFxFinishPrev",
+          "linea": 14396
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 14963
+    },
+    {
+      "nombre": "fxFloat",
+      "veces": 2,
+      "lineas": [
+        6269,
+        15307
+      ],
+      "lineasHTML": [
+        6835,
+        15873
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15307,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_perfFloatPrev",
+          "linea": 15306
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15873
+    },
+    {
+      "nombre": "fxOpen",
+      "veces": 2,
+      "lineas": [
+        6484,
+        15285
+      ],
+      "lineasHTML": [
+        7050,
+        15851
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15285,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_perfFxOpenPrev",
+          "linea": 15284
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15851
+    },
+    {
+      "nombre": "fxPickGame",
+      "veces": 2,
+      "lineas": [
+        7727,
+        11792
+      ],
+      "lineasHTML": [
+        8293,
+        12358
+      ],
+      "tipoVivo": "function",
+      "ganadora": 11792,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_styFxPickPrev",
+          "linea": 11791
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 12358
+    },
+    {
+      "nombre": "fxResize",
+      "veces": 2,
+      "lineas": [
+        6411,
+        15270
+      ],
+      "lineasHTML": [
+        6977,
+        15836
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15270,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_perfResizePrev",
+          "linea": 15269
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15836
+    },
+    {
+      "nombre": "fxResolveMini",
+      "veces": 2,
+      "lineas": [
+        7739,
+        8026
+      ],
+      "lineasHTML": [
+        8305,
+        8592
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_legFxResolvePrev",
+          "linea": 8025
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "fxShake",
+      "veces": 2,
+      "lineas": [
+        6277,
+        15312
+      ],
+      "lineasHTML": [
+        6843,
+        15878
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15312,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_perfShakePrev",
+          "linea": 15311
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15878
+    },
+    {
+      "nombre": "historicAdvicePending",
+      "veces": 2,
+      "lineas": [
+        4637,
+        24813
+      ],
+      "lineasHTML": [
+        5203,
+        25379
+      ],
+      "tipoVivo": "function",
+      "ganadora": 24813,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_hist",
+          "linea": 24812
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 25379
+    },
+    {
+      "nombre": "legacyRegisterRun",
+      "veces": 2,
+      "lineas": [
+        7967,
+        23561
+      ],
+      "lineasHTML": [
+        8533,
+        24127
+      ],
+      "tipoVivo": "function",
+      "ganadora": 23561,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_mReg",
+          "linea": 23560
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 24127
+    },
+    {
+      "nombre": "negoAsk",
+      "veces": 2,
+      "lineas": [
+        2206,
+        11902
+      ],
+      "lineasHTML": [
+        2772,
+        12468
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_ecoNegoAskPrev",
+          "linea": 11901
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "pressPick",
+      "veces": 2,
+      "lineas": [
+        2128,
+        11348
+      ],
+      "lineasHTML": [
+        2694,
+        11914
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_socPressPickPrev",
+          "linea": 11347
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "pruneWorld",
+      "veces": 2,
+      "lineas": [
+        849,
+        17399
+      ],
+      "lineasHTML": [
+        1415,
+        17965
+      ],
+      "tipoVivo": "function",
+      "ganadora": 17399,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_clPrune",
+          "linea": 17398
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 17965
+    },
+    {
+      "nombre": "recPick",
+      "veces": 2,
+      "lineas": [
+        2177,
+        5860
+      ],
+      "lineasHTML": [
+        2743,
+        6426
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_recPickStable",
+          "linea": 5859
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "render",
+      "veces": 2,
+      "lineas": [
+        3488,
+        17018
+      ],
+      "lineasHTML": [
+        4054,
+        17584
+      ],
+      "tipoVivo": "function",
+      "ganadora": 17018,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [],
+      "nota": "",
+      "ganadoraHTML": 17584
+    },
+    {
+      "nombre": "renderNav",
+      "veces": 2,
+      "lineas": [
+        3476,
+        8166
+      ],
+      "lineasHTML": [
+        4042,
+        8732
+      ],
+      "tipoVivo": "function",
+      "ganadora": 8166,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_legRenderNavPrev",
+          "linea": 8165
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 8732
+    },
+    {
+      "nombre": "sagaAfterFight",
+      "veces": 2,
+      "lineas": [
+        11504,
+        14951
+      ],
+      "lineasHTML": [
+        12070,
+        15517
+      ],
+      "tipoVivo": "function",
+      "ganadora": 14951,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_drSagaAfterPrev",
+          "linea": 14950
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15517
+    },
+    {
+      "nombre": "savePrune",
+      "veces": 2,
+      "lineas": [
+        12038,
+        13327
+      ],
+      "lineasHTML": [
+        12604,
+        13893
+      ],
+      "tipoVivo": "function",
+      "ganadora": 13327,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_qSavePrunePrev",
+          "linea": 13326
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 13893
+    },
+    {
+      "nombre": "scrContracts",
+      "veces": 2,
+      "lineas": [
+        4483,
+        21283
+      ],
+      "lineasHTML": [
+        5049,
+        21849
+      ],
+      "tipoVivo": "function",
+      "ganadora": 21283,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "prev",
+          "linea": 21282
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 21849
+    },
+    {
+      "nombre": "scrEnding",
+      "veces": 2,
+      "lineas": [
+        4662,
+        24273
+      ],
+      "lineasHTML": [
+        5228,
+        24839
+      ],
+      "tipoVivo": "function",
+      "ganadora": 24273,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_mFinal",
+          "linea": 24271
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 24839
+    },
+    {
+      "nombre": "scrGym",
+      "veces": 2,
+      "lineas": [
+        4426,
+        10180
+      ],
+      "lineasHTML": [
+        4992,
+        10746
+      ],
+      "tipoVivo": "function",
+      "ganadora": 10180,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_tgScrGymPrev",
+          "linea": 10179
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 10746
+    },
+    {
+      "nombre": "scrHub",
+      "veces": 2,
+      "lineas": [
+        3830,
+        17043
+      ],
+      "lineasHTML": [
+        4396,
+        17609
+      ],
+      "tipoVivo": "function",
+      "ganadora": 17043,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [],
+      "nota": "",
+      "ganadoraHTML": 17609
+    },
+    {
+      "nombre": "scrMG",
+      "veces": 2,
+      "lineas": [
+        3992,
+        17130
+      ],
+      "lineasHTML": [
+        4558,
+        17696
+      ],
+      "tipoVivo": "function",
+      "ganadora": 17130,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [],
+      "nota": "",
+      "ganadoraHTML": 17696
+    },
+    {
+      "nombre": "sparFinishResolve",
+      "veces": 2,
+      "lineas": [
+        1863,
+        7825
+      ],
+      "lineasHTML": [
+        2429,
+        8391
+      ],
+      "tipoVivo": "function",
+      "ganadora": 7825,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_fxSparFinishResolvePrev",
+          "linea": 7824
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 8391
+    },
+    {
+      "nombre": "startCamp",
+      "veces": 2,
+      "lineas": [
+        1680,
+        25447
+      ],
+      "lineasHTML": [
+        2246,
+        26013
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_startCampFinal",
+          "linea": 25446
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "strPick",
+      "veces": 2,
+      "lineas": [
+        1910,
+        5998
+      ],
+      "lineasHTML": [
+        2476,
+        6564
+      ],
+      "tipoVivo": "function",
+      "ganadora": null,
+      "comoGana": "no coincide con ninguna definicion del archivo",
+      "capturadaPor": [
+        {
+          "alias": "_strPickStable",
+          "linea": 5997
+        }
+      ],
+      "nota": "probablemente envuelta en runtime (GATE, wrapper o hook)"
+    },
+    {
+      "nombre": "tgPick",
+      "veces": 2,
+      "lineas": [
+        10061,
+        11755
+      ],
+      "lineasHTML": [
+        10627,
+        12321
+      ],
+      "tipoVivo": "function",
+      "ganadora": 11755,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_styTgPickPrev",
+          "linea": 11754
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 12321
+    },
+    {
+      "nombre": "tgStart",
+      "veces": 2,
+      "lineas": [
+        10073,
+        21340
+      ],
+      "lineasHTML": [
+        10639,
+        21906
+      ],
+      "tipoVivo": "function",
+      "ganadora": 21340,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "prevTg",
+          "linea": 21339
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 21906
+    },
+    {
+      "nombre": "trainQuality",
+      "veces": 2,
+      "lineas": [
+        1625,
+        4737
+      ],
+      "lineasHTML": [
+        2191,
+        5303
+      ],
+      "tipoVivo": "function",
+      "ganadora": 4737,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_trainQuality",
+          "linea": 4736
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 5303
+    },
+    {
+      "nombre": "weighEnd",
+      "veces": 2,
+      "lineas": [
+        2053,
+        15140
+      ],
+      "lineasHTML": [
+        2619,
+        15706
+      ],
+      "tipoVivo": "function",
+      "ganadora": 15140,
+      "comoGana": "ultima definicion",
+      "capturadaPor": [
+        {
+          "alias": "_wfWeighEndPrev",
+          "linea": 15139
+        }
+      ],
+      "nota": "",
+      "ganadoraHTML": 15706
+    }
+  ],
+  "wrappers": [
+    {
+      "alias": "_trainQuality",
+      "objetivo": "trainQuality",
+      "linea": 4736,
+      "lineaHTML": 5302
+    },
+    {
+      "alias": "_recPickStable",
+      "objetivo": "recPick",
+      "linea": 5859,
+      "lineaHTML": 6425
+    },
+    {
+      "alias": "_cardioPickStable",
+      "objetivo": "cardioPick",
+      "linea": 5993,
+      "lineaHTML": 6559
+    },
+    {
+      "alias": "_strPickStable",
+      "objetivo": "strPick",
+      "linea": 5997,
+      "lineaHTML": 6563
+    },
+    {
+      "alias": "_drillStartStable",
+      "objetivo": "drillStart",
+      "linea": 6001,
+      "lineaHTML": 6567
+    },
+    {
+      "alias": "_cardioStartArcade",
+      "objetivo": "cardioStart",
+      "linea": 6066,
+      "lineaHTML": 6632
+    },
+    {
+      "alias": "_strStartArcade",
+      "objetivo": "strStart",
+      "linea": 6072,
+      "lineaHTML": 6638
+    },
+    {
+      "alias": "_fxFightFinishResolvePrev",
+      "objetivo": "fightFinishResolve",
+      "linea": 7804,
+      "lineaHTML": 8370
+    },
+    {
+      "alias": "_fxSparFinishResolvePrev",
+      "objetivo": "sparFinishResolve",
+      "linea": 7824,
+      "lineaHTML": 8390
+    },
+    {
+      "alias": "_legFxResolvePrev",
+      "objetivo": "fxResolveMini",
+      "linea": 8025,
+      "lineaHTML": 8591
+    },
+    {
+      "alias": "_legRenderNavPrev",
+      "objetivo": "renderNav",
+      "linea": 8165,
+      "lineaHTML": 8731
+    },
+    {
+      "alias": "_tgScrGymPrev",
+      "objetivo": "scrGym",
+      "linea": 10179,
+      "lineaHTML": 10745
+    },
+    {
+      "alias": "_errFxLoopPrev",
+      "objetivo": "fxLoop",
+      "linea": 10385,
+      "lineaHTML": 10951
+    },
+    {
+      "alias": "_socPressPickPrev",
+      "objetivo": "pressPick",
+      "linea": 11347,
+      "lineaHTML": 11913
+    },
+    {
+      "alias": "_styTgPickPrev",
+      "objetivo": "tgPick",
+      "linea": 11754,
+      "lineaHTML": 12320
+    },
+    {
+      "alias": "_styFxPickPrev",
+      "objetivo": "fxPickGame",
+      "linea": 11791,
+      "lineaHTML": 12357
+    },
+    {
+      "alias": "_ecoNegoAskPrev",
+      "objetivo": "negoAsk",
+      "linea": 11901,
+      "lineaHTML": 12467
+    },
+    {
+      "alias": "_nickFnamePrev",
+      "objetivo": "fname",
+      "linea": 12549,
+      "lineaHTML": 13115
+    },
+    {
+      "alias": "_shPayoutPrev",
+      "objetivo": "fightPayout",
+      "linea": 13130,
+      "lineaHTML": 13696
+    },
+    {
+      "alias": "_qSavePrunePrev",
+      "objetivo": "savePrune",
+      "linea": 13326,
+      "lineaHTML": 13892
+    },
+    {
+      "alias": "_shopFameResolvePrev",
+      "objetivo": "fameResolve",
+      "linea": 14349,
+      "lineaHTML": 14915
+    },
+    {
+      "alias": "_shopFxFinishPrev",
+      "objetivo": "fxFinish",
+      "linea": 14396,
+      "lineaHTML": 14962
+    },
+    {
+      "alias": "_drSagaAfterPrev",
+      "objetivo": "sagaAfterFight",
+      "linea": 14950,
+      "lineaHTML": 15516
+    },
+    {
+      "alias": "_wfWeighEndPrev",
+      "objetivo": "weighEnd",
+      "linea": 15139,
+      "lineaHTML": 15705
+    },
+    {
+      "alias": "_perfFxLoopPrev",
+      "objetivo": "fxLoop",
+      "linea": 15244,
+      "lineaHTML": 15810
+    },
+    {
+      "alias": "_perfResizePrev",
+      "objetivo": "fxResize",
+      "linea": 15269,
+      "lineaHTML": 15835
+    },
+    {
+      "alias": "_perfFxOpenPrev",
+      "objetivo": "fxOpen",
+      "linea": 15284,
+      "lineaHTML": 15850
+    },
+    {
+      "alias": "_perfBurstPrev",
+      "objetivo": "fxBurst",
+      "linea": 15298,
+      "lineaHTML": 15864
+    },
+    {
+      "alias": "_perfFloatPrev",
+      "objetivo": "fxFloat",
+      "linea": 15306,
+      "lineaHTML": 15872
+    },
+    {
+      "alias": "_perfShakePrev",
+      "objetivo": "fxShake",
+      "linea": 15311,
+      "lineaHTML": 15877
+    },
+    {
+      "alias": "_clPrune",
+      "objetivo": "pruneWorld",
+      "linea": 17398,
+      "lineaHTML": 17964
+    },
+    {
+      "alias": "_clEnding",
+      "objetivo": "careerEnding",
+      "linea": 17490,
+      "lineaHTML": 18056
+    },
+    {
+      "alias": "_tqDrain",
+      "objetivo": "drain",
+      "linea": 20509,
+      "lineaHTML": 21075
+    },
+    {
+      "alias": "prev",
+      "objetivo": "scrContracts",
+      "linea": 21282,
+      "lineaHTML": 21848
+    },
+    {
+      "alias": "prevTg",
+      "objetivo": "tgStart",
+      "linea": 21339,
+      "lineaHTML": 21905
+    },
+    {
+      "alias": "prevFame",
+      "objetivo": "fameStart",
+      "linea": 21344,
+      "lineaHTML": 21910
+    },
+    {
+      "alias": "prev",
+      "objetivo": "rollEvent",
+      "linea": 21445,
+      "lineaHTML": 22011
+    },
+    {
+      "alias": "_mReg",
+      "objetivo": "legacyRegisterRun",
+      "linea": 23560,
+      "lineaHTML": 24126
+    },
+    {
+      "alias": "_mFinal",
+      "objetivo": "scrEnding",
+      "linea": 24271,
+      "lineaHTML": 24837
+    },
+    {
+      "alias": "_hist",
+      "objetivo": "historicAdvicePending",
+      "linea": 24812,
+      "lineaHTML": 25378
+    },
+    {
+      "alias": "_rollEventFinal",
+      "objetivo": "rollEvent",
+      "linea": 25281,
+      "lineaHTML": 25847
+    },
+    {
+      "alias": "_startCampFinal",
+      "objetivo": "startCamp",
+      "linea": 25446,
+      "lineaHTML": 26012
+    }
+  ],
+  "huerfanos": []
+}

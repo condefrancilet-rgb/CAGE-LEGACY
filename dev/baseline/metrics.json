@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-19T07:46:34.975Z",
+  "generado": "2026-09-19T08:09:05.865Z",
   "archivo": "index-4-blindado.html",
   "bytes": 1538459,
   "lineasHTML": 28128,
@@ -8,23 +8,12 @@
   "sha256": "1dbee778409b69f1296193178e833889181ba35ec0a44b7d398a6c6c5321a14b",
   "bloquesScript": 1,
   "funciones": {
-    "declaraciones": 602,
+    "declaraciones": 512,
+    "declaracionesAnidadas": 91,
     "asignaciones": 61,
-    "totalNombres": 622,
-    "definidosMasDeUnaVez": 50,
+    "totalNombres": 532,
+    "definidosMasDeUnaVez": 43,
     "detalleMultiples": [
-      {
-        "nombre": "add",
-        "veces": 6,
-        "lineas": [
-          5705,
-          7940,
-          16698,
-          20591,
-          23339,
-          25776
-        ]
-      },
       {
         "nombre": "rollEvent",
         "veces": 4,
@@ -69,14 +58,6 @@
           1906,
           6073,
           10154
-        ]
-      },
-      {
-        "nombre": "bar",
-        "veces": 2,
-        "lineas": [
-          3465,
-          13619
         ]
       },
       {
@@ -224,27 +205,11 @@
         ]
       },
       {
-        "nombre": "n",
-        "veces": 2,
-        "lineas": [
-          14933,
-          21671
-        ]
-      },
-      {
         "nombre": "negoAsk",
         "veces": 2,
         "lineas": [
           2206,
           11902
-        ]
-      },
-      {
-        "nombre": "normalize",
-        "veces": 2,
-        "lineas": [
-          24314,
-          26793
         ]
       },
       {
@@ -261,14 +226,6 @@
         "lineas": [
           849,
           17399
-        ]
-      },
-      {
-        "nombre": "push",
-        "veces": 2,
-        "lineas": [
-          16516,
-          18257
         ]
       },
       {
@@ -376,14 +333,6 @@
         ]
       },
       {
-        "nombre": "t",
-        "veces": 2,
-        "lineas": [
-          17789,
-          21740
-        ]
-      },
-      {
         "nombre": "tgPick",
         "veces": 2,
         "lineas": [
@@ -405,14 +354,6 @@
         "lineas": [
           1625,
           4737
-        ]
-      },
-      {
-        "nombre": "W",
-        "veces": 2,
-        "lineas": [
-          16056,
-          16928
         ]
       },
       {
@@ -636,6 +577,18 @@
         "objetivo": "startCamp",
         "linea": 25446
       }
+    ],
+    "colisionesConAnidadas": 1,
+    "detalleColisionesAnidadas": [
+      {
+        "nombre": "bar",
+        "lineasAnidadas": [
+          13619
+        ],
+        "lineasGlobales": [
+          3465
+        ]
+      }
     ]
   },
   "listeners": {
@@ -833,9 +786,8 @@
   },
   "inventarioPorDominio": {
     "navegacion": {
-      "n": 38,
+      "n": 36,
       "fns": [
-        "clDraw",
         "go",
         "goFight",
         "render",
@@ -856,7 +808,6 @@
         "scrHallOfFame",
         "scrHistory",
         "scrHub",
-        "scrLegacy",
         "scrLoad",
         "scrMG",
         "scrMGArcade",
@@ -888,18 +839,15 @@
       ]
     },
     "combate": {
-      "n": 20,
+      "n": 17,
       "fns": [
         "eff",
         "fightAct",
         "fightFinishResolve",
-        "fightIdentity",
-        "fightMoment",
         "fightOptions",
         "fightOptionsBase",
         "fightPayout",
         "fightPower",
-        "fightStamp",
         "fightStart",
         "fightXP",
         "fighterFocus",
@@ -913,12 +861,11 @@
       ]
     },
     "saveload": {
-      "n": 15,
+      "n": 14,
       "fns": [
         "listSaves",
         "loadGame",
         "loadMult",
-        "migrateFeed",
         "migrateLegacyBlob",
         "saveExpand",
         "saveGame",
@@ -1029,14 +976,11 @@
       ]
     },
     "eventos": {
-      "n": 7,
+      "n": 4,
       "fns": [
         "eventAdmissible",
-        "eventAllowed",
-        "eventCategory",
         "eventContextAllows",
         "eventContextOK",
-        "eventWeight",
         "fireEvent"
       ]
     },
@@ -1065,7 +1009,7 @@
       ]
     },
     "social": {
-      "n": 30,
+      "n": 29,
       "fns": [
         "pressArcadePick",
         "pressContextQs",
@@ -1095,15 +1039,13 @@
         "socTagHTML",
         "socWeakness",
         "socWhyBlocked",
-        "socialState",
         "toast"
       ]
     },
     "relaciones": {
-      "n": 18,
+      "n": 17,
       "fns": [
         "coachById",
-        "coachCompatibility",
         "coachEdge",
         "coachEdgeCard",
         "coachLine",
@@ -1123,27 +1065,20 @@
       ]
     },
     "progresion": {
-      "n": 31,
+      "n": 24,
       "fns": [
         "focusGet",
         "focusSet",
         "focusWeights",
-        "st",
         "stCanon",
         "stHash",
         "stStable",
-        "stamp",
         "startCamp",
         "startCareer",
         "statPotentials",
         "statRow",
         "stateHash",
         "storageUsedKB",
-        "story",
-        "storyReact",
-        "storyReactApply",
-        "storyScreen",
-        "storyTick",
         "style2Hint",
         "styleBias",
         "styleBodyFit",
@@ -1160,25 +1095,18 @@
     }
   },
   "sinClasificar": {
-    "n": 351,
+    "n": 279,
     "fns": [
       "CL_JUDGES",
       "CL_JUDGE_LEAN",
       "F",
       "G_gymsPreview",
-      "O",
-      "V",
-      "W",
-      "absorb",
       "acceptFight",
-      "add",
       "addMem",
       "addMemF",
-      "addStoryEvents",
       "age",
       "ageCurve",
       "ageOf",
-      "aiProfile",
       "allSaves",
       "allyForm",
       "allyList",
@@ -1192,30 +1120,23 @@
       "applyResultCore",
       "applyTrain",
       "applyWinLossResult",
-      "arr",
       "askFight",
       "askManagerRaise",
       "autosaveNow",
       "backfill",
       "bar",
       "baseStats",
-      "best",
       "betterOrgForPlayer",
-      "betweenRounds",
       "bodyCard",
       "bondNote",
       "bondOf",
-      "boost",
       "btn",
-      "buildLegacySnapshot",
       "byName",
       "campWeek",
       "campWeekCore",
       "canOfferRematch",
       "cap",
-      "careerContext",
       "careerEnding",
-      "careerState",
       "chance",
       "changeCoach",
       "changeGym",
@@ -1224,7 +1145,6 @@
       "changeWeightClass",
       "chatPick",
       "chatStart",
-      "chin",
       "clAge",
       "clBar",
       "clEvoAccept",
@@ -1264,46 +1184,30 @@
       "dispHash",
       "doRetire",
       "drain",
-      "dur",
-      "eg",
-      "egBuy",
-      "egInvest",
-      "egRender",
-      "egTick",
       "endRound",
       "ensureFightTotals",
       "ensureNick",
       "ensureRel",
-      "entryOdds",
       "errLog",
       "errNote",
       "errRecord",
       "esc",
-      "escanear",
       "ev",
       "evolvePlayerDivisionWorld",
-      "feed",
-      "feedCtx",
-      "feedPush",
       "finBias",
-      "findFighterAnyDiv",
-      "findFighterByName",
       "finishByDecision",
       "finishDifficulty",
       "finishMiniContinue",
       "finishMiniEnd",
       "finishMiniStart",
       "finishTap",
-      "finite",
       "fireCoach",
-      "fix",
       "fname",
       "forceDivUp",
       "freshCareer",
       "gainText",
       "gameplayLevel",
       "gauss",
-      "generateFeed",
       "gpBlock",
       "gpConfirm",
       "gpCouncil",
@@ -1312,7 +1216,6 @@
       "gpSet",
       "gpStart",
       "grapR",
-      "gutCheck",
       "handler",
       "headToHeadCount",
       "heightForDiv",
@@ -1329,17 +1232,12 @@
       "hookOff",
       "hookOn",
       "hookRun",
-      "hurt",
-      "impactChance",
-      "inList",
-      "injectReal",
       "insertAfterTopbar",
       "inv",
       "inviteChance",
       "isNum",
       "isPlainObject",
       "isRetired",
-      "land",
       "legMedal",
       "legacyApplyRewards",
       "legacyBlank",
@@ -1351,10 +1249,8 @@
       "legacyScore",
       "legacyStore",
       "legacyTier",
-      "losses",
       "makeFighter",
       "makeOffers",
-      "mark",
       "memRef",
       "mentR",
       "metaBar",
@@ -1366,8 +1262,6 @@
       "metaRaceJoin",
       "miniHud",
       "miniTile",
-      "n",
-      "nameKey",
       "natFightLb",
       "naturalDiv",
       "negoAsk",
@@ -1376,17 +1270,10 @@
       "negoLeverage",
       "negoStart",
       "newWorld",
-      "normalize",
-      "normalizeCareer",
       "normalizeFighterState",
       "normalizeFull",
       "normalizeGlobals",
-      "normalizeLight",
-      "normalizePending",
       "normalizeRuntime",
-      "normalizeStory",
-      "num",
-      "obj",
       "onerror",
       "orgPopFactor",
       "overall",
@@ -1404,17 +1291,12 @@
       "persPair",
       "persW",
       "pick",
-      "pickBy",
       "pickSafe",
       "pickStable",
       "podPick",
       "podcastStart",
-      "poolOf",
       "postFightQuote",
-      "postOpts",
-      "probe",
       "pruneWorld",
-      "push",
       "queueEvent",
       "randName",
       "randNamedFighter",
@@ -1425,12 +1307,9 @@
       "recStart",
       "recStr",
       "recalcRank",
-      "recentEvent",
       "recordar",
       "recsHTML",
-      "remember",
       "repairCritical",
-      "reparar",
       "requestGameplayUpgrade",
       "requestPromoterChange",
       "rerollRec",
@@ -1440,7 +1319,6 @@
       "resolveExchangeCore",
       "rest",
       "retire",
-      "revisar",
       "rf",
       "ri",
       "rnd",
@@ -1458,7 +1336,6 @@
       "sagaFighter",
       "sagaSet",
       "sagas",
-      "sameName",
       "scn",
       "scoutReport",
       "seedChampions",
@@ -1470,7 +1347,6 @@
       "setMetaSeed",
       "setPerf",
       "setStartW",
-      "setWobble",
       "shapeCareer",
       "shortName",
       "shuffle",
@@ -1478,13 +1354,8 @@
       "simWeeks",
       "skipWeek",
       "spawnLocals",
-      "subDef",
-      "subLock",
-      "subLockOdds",
-      "subOff",
       "sym",
       "syncCreateInputs",
-      "t",
       "tkoCheck",
       "tkoRisk",
       "toggleC",
@@ -1494,20 +1365,12 @@
       "travelWith",
       "typeBtn",
       "uid",
-      "v25Clamp",
-      "v25Fighter",
-      "v25Int",
-      "v25JudgeCards",
-      "v25JudgeLean",
-      "v25Num",
-      "validRef",
       "walkLb",
       "watchFight",
       "weighAct",
       "weighEnd",
       "weighPulse",
       "weighStart",
-      "wins",
       "withOwnRng",
       "worldTick",
       "wpick",
