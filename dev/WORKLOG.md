@@ -1,13 +1,16 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F2 — Consolidación y corrección (2 de 14 bugs corregidos).
+**Fase actual:** F2 — Consolidación y corrección (3 de 14 bugs corregidos).
 **Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
 Seguir con **F2**, por la lista priorizada de `dev/AUDIT.md` → "Lista priorizada de
-correcciones para F2". Hechos los dos primeros (F-001 e I-001). **El siguiente es el #3,
-D-003** (re-roll infinito del resultado de la pelea).
+correcciones para F2". Hechos los tres primeros (F-001, I-001, D-003). **El siguiente es el #4, D-001**:
+`confirmFight()` no tiene guarda de idempotencia — tres llamadas dan récord 0-3, tres
+entradas de `career` y tres bolsas para una sola pelea. Arreglo indicado en
+`dev/audit/D-combate.md`: guarda al principio de `confirmFight`. Ojo: el test debe
+comprobar también que la llamada legítima **sí** sigue cobrando.
 
 **Protocolo por cada bug, ya rodado dos veces:**
 1. Escribir el test en `dev/tests/06-f2-fixes.js` **incluyendo las pruebas que vigilan que
@@ -78,6 +81,9 @@ node dev/make-baseline.js        regenera TODA la línea base
   nulo, verificado aislando el arreglo.
 - **I-001** · el jugador puede volver a ser campeón. Carreras con título 12,5% → **67,5%**;
   defensas por carrera 0 → 0,38. Golden master regenerado; fixtures intactas.
+- **D-003** · la pantalla de resultado ya no se abandona sin resolver: `fightresult` se
+  añadió a la lista de pantallas sin barra de navegación. Cerraba el re-roll infinito del
+  resultado. Verificado en Chromium real. Golden master sin cambios.
 
 ## Bloqueos
 - Los subagentes de auditoría corren en modo sólo lectura y **no pueden escribir**
@@ -85,9 +91,11 @@ node dev/make-baseline.js        regenera TODA la línea base
   `dev/audit/`. El de navegación (B) sí consiguió escribir el suyo.
 - El límite de sesión cortó a los subagentes de **B**, **E** e **I** a mitad.
   B e I alcanzaron a entregar su informe completo; **E no**.
-- `git push` de los tags falla con desconexión del proxy (`send-pack: unexpected
-  disconnect`). La rama sí sube. Los tags `baseline-original` y `fase-0-ok` están en
-  local; reintentar más adelante.
+- **Los tags no se pueden empujar**: el proxy git devuelve `HTTP 403` para refs de tag
+  (`git push origin fase-1-ok` → `RPC failed; HTTP 403`). La rama sí sube sin problema.
+  `baseline-original`, `fase-0-ok` y `fase-1-ok` existen **sólo en local**. No es algo que
+  se pueda resolver desde aquí; los commits de cada gate están identificados en este
+  documento por si hay que recrearlos.
 
 ## Notas de rendimiento (medidas, para F5/F18)
 - `saveGame` 39,2 ms de media · `normalizeWorldState` 25,8 ms · `advanceWeek`
