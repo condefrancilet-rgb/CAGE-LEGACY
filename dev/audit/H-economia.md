@@ -25,15 +25,42 @@ El orden es correcto: todos los que mueven caja corren antes de la liquidación.
 | 80 | **3** | 15.690 | 8.909 | 196 |
 | 100 | 2.002 | 21.752 | 10.251 | **218** |
 
-**La curva NO es superlineal en el bucle base**: ingresos perfectamente lineales
-(≈218 $/semana constante) y caja **anclada cerca de cero**, porque `CL.overdraft`
-(21683-21687) pone `cash = 0` y convierte el rojo en deuda. El `cash: 0` que vimos en F0
-tras 40 semanas sin pelear **es el descubierto funcionando**, no una pérdida de dinero.
+Hasta la semana ~100 la curva es **lineal** (≈218 $/semana constante) y la caja queda
+**anclada cerca de cero**, porque `CL.overdraft` (21683-21687) pone `cash = 0` y convierte
+el rojo en deuda. El `cash: 0` que vimos en F0 tras 40 semanas sin pelear **es el
+descubierto funcionando**, no una pérdida de dinero.
 
-**Conclusión sobre la anomalía de F0**: la media de 137.206 y el máximo de 1.303.591 son
-**incompatibles con este bucle base** (a 150 semanas debería dar ≈32.000 de `careerEarn`).
-El ×10 de dispersión no es varianza: son las pocas carreras que tocan los sistemas de
-composición. Ver H-001…H-005 y H-008.
+### Corrección medida: la curva SÍ es superlineal, a partir de la semana ~125
+
+Una segunda medición (8 semillas × 150 semanas) corrigió la conclusión anterior:
+
+| sem | cash medio | cash máx | earn medio | deuda media | peleas |
+|---|---|---|---|---|---|
+| 100 | 853 | 3.986 | 22.234 | 17.901 | 8 |
+| 125 | 2.134 | 11.634 | 30.429 | 20.871 | 10 |
+| **150** | **44.743** | **319.121** | **87.522** | 19.278 | 12 |
+
+Entre 125 y 150 la media de caja se multiplica por **21**. La media la crea **una sola
+carrera** de ocho: desglose a 150 semanas `0 · 500 · 186 · 4.112 · 31.214 · 2.813 ·
+319.121 · 0`, mediana ≈2.800 frente a media 44.743. Máx/media = 7,1×, que **reproduce** el
+9,5× de la simulación 40×150 de F0 (1.303.591/137.206): misma forma, cola derecha pesada
+creada por una minoría de carreras.
+
+**El causante es H-005, no los minijuegos.** El autopiloto nunca compra en el SHOP, nunca
+abre un minijuego y nunca entra al casino, así que H-001/H-002/H-003/H-008 quedan
+**descartados como causa de esta cola**. Lo único que sí hace es resolver eventos al azar,
+lo que incluye firmar el evento `sponsor` (2906), sin guarda `seen()`. Cada firma se apila
+en `G.spons` y `publicoSpon` (19757) multiplica cada patrocinio cada año: ese es el motor
+exponencial, y explica por qué la explosión llega tarde — necesita varios años de
+reescalado compuesto sobre varios contratos apilados.
+Corolario que lo confirma: la deuda media **deja de crecer justo en ese tramo**
+(20.871 → 19.278, la única bajada de toda la serie), porque los patrocinios apilados pasan
+a cubrir el gasto fijo y `CL.runwayWeeks()` devuelve `Infinity`.
+
+**H-005 sube de ALTO a CRÍTICO**: es el único hallazgo que se manifiesta sin que el jugador
+haga nada deliberado, y es el que deforma la distribución de la simulación masiva.
+H-001/H-002/H-003 siguen siendo exploits confirmados y mucho más rápidos, pero son
+**adicionales** a esta cola, no su causa.
 
 ## Hallazgos
 
@@ -71,7 +98,7 @@ Precio **cero** por **+420 $/semana** (21.840/año) perpetuos. La única baja es
 y `changePopularity` tiene un **suelo del 45% del pico histórico** (21555-21560), así que
 tras llegar a 45 es casi imposible bajar de 30. No existe razón para no comprarlo.
 
-### H-005 · Patrocinios apilables con reescalado anual compuesto — ALTO · CONFIRMADO
+### H-005 · Patrocinios apilables con reescalado anual compuesto — **CRÍTICO** · CONFIRMADO
 Evento `sponsor` 2906: `c: return G.player.pop > 18` — **sin guarda `seen()`** y sin mirar
 `G.spons.length`. Cada disparo hace `G.spons.push(...)`. Sobre el total, el hook
 `publicoSpon` 19757 aplica **cada año** `s.week *= clamp(aud.mult, 0.7, 1.6)`: interés
@@ -146,7 +173,7 @@ canjearlas sin jugar convierte caja en "ganancias de carrera" al 5%. Medido: cic
 | H-002 | CRÍTICO | `stream` paga ~5.010 por clic, ilimitado y sin coste |
 | H-003 | ALTO | `photo` paga ~7.800 por clic, sin requerir compra alguna |
 | H-004 | ALTO | Artículo `sponsor` a coste 0 con renta perpetua de 420/sem |
-| H-005 | ALTO | Patrocinios apilables sin límite y reescalados en compuesto cada año |
+| H-005 | **CRÍTICO** | Patrocinios apilables sin límite y reescalados en compuesto cada año — **causa la cola pesada de la simulación** |
 | H-006 | ALTO | Runway de 6 semanas contra un primer ingreso a 6-11 semanas |
 | H-007 | INFO | Las tasas e intereses están bien acotados; no tocar |
 | H-008 | MEDIO | Las tres inversiones endgame tienen EV positivo y son repetibles |

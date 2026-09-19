@@ -127,3 +127,64 @@ completo (aceptables).
 6 pares de targets se solapan a 390×844 y 412×915, y **ninguno** a 360×640.
 Que el solape aparezca al *ensanchar* sugiere un layout que reflowa mal por
 encima de cierto ancho, no un problema de espacio.
+
+---
+---
+
+# F1 — AUDITORÍA ARQUITECTÓNICA (consolidado)
+
+Siete dominios auditados en paralelo, en modo sólo lectura, cada uno en
+`dev/audit/<dominio>.md`. **Todos los hallazgos de severidad ALTA o CRÍTICA fueron
+re-verificados de forma independiente por el orquestador antes de marcarse CONFIRMADO.**
+
+| Dominio | Archivo | Estado |
+|---|---|---|
+| A · Estado global | `dev/audit/A-estado-global.md` | completo (11 hallazgos) |
+| B · Navegación y render | `dev/audit/B-navegacion-render.md` | completo (8 hallazgos) |
+| C · Tiempo | `dev/audit/C-tiempo.md` | completo (14 hallazgos) |
+| D · Combate | `dev/audit/D-combate.md` | completo (11 hallazgos) |
+| E · Entrenamiento | — | **PENDIENTE** (el subagente se cortó por límite de sesión) |
+| F · Save/load | `dev/audit/F-saveload.md` | completo (8 hallazgos) |
+| G · Eventos | `dev/audit/G-eventos.md` | completo (8 hallazgos) |
+| H · Economía | `dev/audit/H-economia.md` | completo (12 hallazgos) |
+| I · Rankings y mundo | `dev/audit/I-rankings-mundo.md` | completo (6 hallazgos) |
+
+## Resolución de los hallazgos abiertos de F0
+
+| F0 | Veredicto de F1 |
+|---|---|
+| **H-001** `render()` no es puro | **RESUELTO — causa raíz aislada.** `pick()` en `cornerAdvice()` (2117) y `postFightQuote()` (4868-4871), por la ruta de dibujo. Verificado: quitando **sólo** esos `pick()` y dejando `render()` completo, la huella coincide **exactamente** con la de stubear render entero (`2357404e`). Son el 100% de la impureza. El archivo ya tiene la solución escrita: `pickStable(a,key)` (602). Ver **B-001**. |
+| **H-002** `saveGame` muta el mundo | **CONFIRMADO y detallado.** Ver **F-005** y **A-006**: el saneo se registró como listener del hook `save` (6598), así que guardar es el reloj del saneo. Dos pérdidas reales: `cash:"1200"→0` y `retiredList.slice(-60)`. |
+| **H-003** la primera carga normaliza sin perder datos | **CONFIRMADO.** Ver **F-008**. |
+| **H-006** `feed` e `hist` vacíos | **RESUELTO.** No es que se alimenten mal: `G.feed`, `G.hist`, `G.events`, `G.seasonEvents` y `G.mgState` son **claves muertas** (0 referencias). El feed real es `G.story.feed`. Ver **A-005**. |
+| **H-008** título ganado sin campeón registrado | **RESUELTO — es un defecto grave.** `repairCritical` (6163) vacía el cinturón de cualquier campeón referenciado por la carrera activa, y el jugador **siempre** lo está. Ver **I-001**. |
+| **H-009** rounds por encima del máximo | **REFUTADA la causa temida.** `endRound()` incrementa `f.round` **antes** de comprobar el tope, así que el centinela queda visible. No contamina el estado persistido. El `round:6` era una pelea de título. Ver **D-005**. |
+
+## Lista priorizada de correcciones para F2
+
+Bugs CONFIRMADOS, ordenados por daño al jugador. Cada uno exige primero un test que lo
+reproduzca, después el fix en un commit `[F2] fix:` aparte, y entrada en `CHANGES.md`.
+
+| # | ID | Sev | Qué rompe | Arreglo |
+|---|---|---|---|---|
+| 1 | **F-001** | CRÍTICA | `migrateLegacyBlob` borra el blob legado aunque no migrara ninguna partida por falta de cuota. Corre sola al arrancar | mover el `removeItem` (13809) dentro de "se migraron todas" |
+| 2 | **I-001** | CRÍTICA | El jugador no puede ser campeón más de una semana; `defenses` siempre 0; nunca hay defensa de título | en 6163 usar `G.fighters[c]`, o que `revisar` devuelva el peleador en el camino memoizado |
+| 3 | **D-003** | ALTA | Re-roll infinito del resultado: salir de `fightresult` sin confirmar borra la pelea y deja `nextFight` firmado | `renderNav` debe ocultar la barra en `fightresult`, y/o `go()` debe resolver o conservar la pelea sin cobrar |
+| 4 | **D-001** | ALTA | `confirmFight()` aplica récord, bolsa y semana tantas veces como se llame | guarda de idempotencia al principio de `confirmFight` |
+| 5 | **A-001** | ALTA | `contract.left` se decrementa dos veces por pelea: los contratos duran la mitad | un solo escritor (3408 **o** 12549, no ambos) |
+| 6 | **H-005** | CRÍTICA | Patrocinios apilables sin guarda `seen()` y reescalados en compuesto cada año: deforma toda la economía a largo plazo | acotar `G.spons` y/o reescalar sobre el valor BASE, no sobre el del año anterior |
+| 7 | **G-001** | ALTA | `rollEvent` pierde `important`: la simulación descarta **todos** los eventos del banco | copiar `important` en el objeto encolado (26397) |
+| 8 | **C-001** | ALTA | `advancePeriod` quema semanas de campamento sin aplicarlo | usar `campWeek` cuando `G.camp` existe |
+| 9 | **B-001** | ALTA | `render()` consume el RNG: los códigos de semilla no reproducen la partida | `pickStable` en `cornerAdvice` y `postFightQuote` |
+| 10 | **D-002** | ALTA | Excepción a mitad de `applyPlayerFight` + reintento = doble récord y doble bolsa | envolver en `safeRun` o hacerla transaccional |
+| 11 | **G-002** | ALTA | La puerta de drama está puenteada: eventos de drama en la semana 3 con 0 peleas | `eventAllowed` debe comprobar `e.drama` |
+| 12 | **C-002/C-003/C-004** | ALTA | Rutas que consumen semana sin publicar noticias; `advancePeriod` no guarda nunca y destruye las ofertas cada semana | unificar el cierre de semana |
+| 13 | **I-002** | ALTA | Campeón fantasma al ascender de organización: la división abandonada se congela | `recalcRank` debe comprobar `f.org===orgId` |
+| 14 | **F-002** | ALTA | La copia de respaldo pre-migración nunca se escribe | usar `diag.v`, calculado antes de mutar |
+
+**Deuda estructural, no bugs puntuales** (F2-F4, con golden master):
+`saveGame` acoplado a `normalizeWorldState` (F-005/A-006) · 43 nombres redefinidos y 42
+wrappers · 37 escrituras directas de `UI.screen` (→ F3) · claves de sesión que persisten
+(A-004) · derivados almacenados sin dueño: `bestRank`, `careerEarn`, `lastFights`
+(A-002/A-003/A-011 → F4) · colapso demográfico del mundo (I-003/I-004, decisión de diseño
+para F6) · 11 artículos de tienda con el efecto muerto o inerte (H-009/H-010/H-011 → F14).
