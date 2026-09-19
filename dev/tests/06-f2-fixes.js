@@ -425,3 +425,51 @@ suite('F2 · H-005 el reescalado de patrocinios no compone', () => {
   });
 
 });
+
+suite('F2 · C-001 el avance en bloque aplica el campamento', () => {
+
+  function conCampamento(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 1470, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 10, org: p.org, title: false, purse: 5000, event: 'T' };
+    c.startCamp(c.G.nextFight);
+    return { h, c, p };
+  }
+
+  test('un bloque de N semanas avanza el campamento N semanas', () => {
+    const { c } = conCampamento(41);
+    const antes = c.G.camp.i;
+    eq(antes, 0, 'el campamento no arranco en cero');
+    c.advancePeriod(5);
+    const corridas = c.G.period.weeks;
+    ok(corridas >= 1, 'el bloque no avanzo ninguna semana');
+    eq(c.G.camp.i, antes + corridas,
+       'el campamento avanzo ' + (c.G.camp.i - antes) + ' de ' + corridas + ' semanas consumidas');
+  });
+
+  test('el bloque mueve sharp, peso y diario del campamento', () => {
+    const { c, p } = conCampamento(42);
+    const sharp0 = c.G.camp.sharp, peso0 = p.weightNow, log0 = c.G.camp.log.length;
+    c.advancePeriod(4);
+    const corridas = c.G.period.weeks;
+    ok(c.G.camp.sharp !== sharp0, 'el afilado del campamento no se movio');
+    ok(p.weightNow < peso0, 'el corte de peso no avanzo: ' + peso0 + ' -> ' + p.weightNow);
+    eq(c.G.camp.log.length, log0 + corridas, 'el diario no recibio una entrada por semana');
+  });
+
+  test('sin campamento el bloque sigue entrenando igual', () => {
+    /* La correccion no puede cambiar el avance fuera de campamento. */
+    const h = H.boot({ seed: 43 });
+    H.startCareer(h, { metaSeed: 1471, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx;
+    eq(c.G.camp, null, 'el caso de prueba no aplica: hay campamento');
+    const st0 = JSON.stringify(c.G.player.st);
+    c.advancePeriod(4);
+    ok(c.G.period.weeks >= 1, 'el bloque no avanzo');
+    ok(JSON.stringify(c.G.player.st) !== st0, 'el bloque no entreno nada sin campamento');
+  });
+
+});

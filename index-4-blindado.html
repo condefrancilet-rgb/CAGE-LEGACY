@@ -26031,7 +26031,23 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     G.simRunning=true;
     for(var i=0;i<weeks;i++){
       if(p.retired){sum.stop='retired';break;}
-      if(!p.inj){Object.keys(w).forEach(function(k){var r=applyTrain(k,w[k]*lm*1.25,0);r.gain.forEach(function(g){sum.gains[g[0]]=(sum.gains[g[0]]||0)+g[1];});if(r.inj)sum.stop='inj';});}
+      if(!p.inj){
+        /* El bloque entrena tres disciplinas por semana, pero el campamento
+           avanza UNA semana. La disciplina de mayor peso pasa por campWeek(),
+           que lleva la contabilidad del campamento (c.i, sharp, corte de peso,
+           diario), y el resto por applyTrain().
+           Antes TODAS iban por applyTrain sin mirar G.camp, asi que el bloque
+           consumia semanas de campamento sin aplicarlo: c.i, sharp y el corte
+           de peso se quedaban clavados mientras el reloj y nextFight.weeks si
+           avanzaban. El jugador perdia preparacion de forma invisible. */
+        var claves=Object.keys(w);
+        var principal=(G.camp && claves.length)? claves.reduce(function(a,b){ return w[b]>w[a]? b:a; }, claves[0]) : null;
+        claves.forEach(function(k){
+          var r=(k===principal)? campWeek(k,w[k]*lm*1.25,0) : applyTrain(k,w[k]*lm*1.25,0);
+          r.gain.forEach(function(g){sum.gains[g[0]]=(sum.gains[g[0]]||0)+g[1];});
+          if(r.inj)sum.stop='inj';
+        });
+      }
       else p.fatigue=clamp(p.fatigue-10,0,100);
       if(focusGet().load!=='dura') p.fatigue=clamp(p.fatigue-6,0,100);
       var news=advanceWeek();sum.weeks++;

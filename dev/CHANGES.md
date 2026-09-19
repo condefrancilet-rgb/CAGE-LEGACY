@@ -354,3 +354,44 @@ coloquial. **La causa de la cola sigue sin identificar** y queda abierta para F5
 final —`cash` −152 y −116 en la entrada 156 de 160— que son exactamente el efecto buscado,
 pequeño a 3 años porque el compuesto necesita años para morder (101, 505).
 Suite: **60 pruebas verdes**.
+
+---
+
+## F2-08 · El avance en bloque aplica el campamento (C-001)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable:** avanzar por bloques durante un
+campamento ya no quema la preparación.
+
+**Qué pasaba.** `advancePeriod` (26034) entrenaba con `applyTrain` **sin comprobar
+`G.camp`**. El reloj avanzaba y `nextFight.weeks` bajaba, pero `camp.i`, `camp.sharp`, el
+corte de peso y el diario se quedaban clavados: el jugador llegaba a la pelea con la
+preparación de la semana cero sin ninguna señal de que la había perdido.
+
+**Evidencia — corrida en rojo:** `el campamento avanzó 0 de 2 semanas consumidas`.
+
+**Qué se cambió.** El bloque entrena tres disciplinas por semana, pero el campamento avanza
+**una** semana: la disciplina de mayor peso pasa ahora por `campWeek()`, que lleva la
+contabilidad del campamento, y el resto sigue por `applyTrain()`. Así `camp.i` avanza
+exactamente una vez por semana, no tres.
+
+**Efecto medido — A/B real, 5 semillas, bloque de 8 semanas con campamento activo:**
+
+| | antes | después |
+|---|---|---|
+| semanas consumidas | 2 | 2 |
+| **`camp.i`** | **0** | **2** |
+| **`camp.sharp`** | **35** (el inicial) | **45** |
+| **peso bajado** | **0** | **2,7 lb** |
+| entradas de diario | 0 | 2 |
+
+Idéntico en las 5 semillas. Las semanas consumidas no cambian: lo que cambia es que ahora
+cuentan.
+
+**Golden master sin cambios**: el autopiloto avanza con `doWeek`, no con `advancePeriod`,
+así que la vía corregida no aparece en las trazas. Suite: **63 pruebas verdes**.
+
+**Lo que NO se tocó, y queda anotado:** el bloque y la semana a semana **no son
+equivalentes** y siguen sin serlo. El bloque reparte Σ 1,0625 de intensidad entre tres
+disciplinas con tres tiradas de lesión; `doWeek` aplica 0,85 a una sola con una tirada, y el
+bloque además regala −6 de fatiga (26036). Es C-013 en `dev/audit/C-tiempo.md`, una
+diferencia de balance entre dos formas de jugar la misma semana. Decidir cuál es la
+intención es trabajo de F14, no de una corrección.
