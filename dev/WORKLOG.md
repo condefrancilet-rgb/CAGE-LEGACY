@@ -1,16 +1,37 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F0 — Reconocimiento y línea base.
+**Fase actual:** F1 — Auditoría arquitectónica (7 de 8 dominios cerrados).
 **Rama:** `cage-legacy-rework` · **Tag de partida:** `baseline-original` (b9480fe)
 
 ## Siguiente paso exacto
-**F0 cerrado (tag `fase-0-ok`).** Abrir **F1 — auditoría arquitectónica, sólo
-lectura**. Empezar por los dominios que ya tienen hallazgos abiertos en
-`dev/AUDIT.md`: B (navegación/render, por H-001), F (save/load, por H-002),
-D (combate, por H-009) e I (rankings, por H-008). Un documento por dominio en
-`dev/audit/<dominio>.md`, citando función y línea. Los hallazgos de severidad
-alta pasan por refutación antes de marcarse CONFIRMADO.
+1. **Cerrar F1**: falta el dominio **E — entrenamiento y progresión**
+   (`dev/audit/E-entrenamiento.md`). Su subagente se cortó por límite de sesión.
+   La pregunta central, que debe responderse con pruebas: **qué del entrenamiento
+   afecta de verdad al combate y qué es decorativo.** Método: rastrear cada stat de
+   `player.st` hasta `eff()` (~1673) y `fightAct`; una stat que nadie lee en combate es
+   decorativa. Producir tabla stat → dónde se lee → ¿afecta? con la prueba de cada una.
+   Después poner el tag `fase-1-ok`.
+2. **Abrir F2 — consolidación.** La lista priorizada de 14 correcciones está en
+   `dev/AUDIT.md`, sección "Lista priorizada de correcciones para F2". Orden del encargo:
+   startCareer → loadGame → advanceWeek → combate → entrenamiento → navegación/render →
+   minijuegos → save/load → eventos → progresión de rivales.
+   **Protocolo por cada bug**: primero un test en `dev/tests/` que lo reproduce y falla,
+   después el fix en un commit `[F2] fix:` aparte, entrada en `CHANGES.md`, y golden
+   master verde (`node dev/run-tests.js`).
+   Los dos primeros por daño al jugador: **F-001** (borra partidas al arrancar) e
+   **I-001** (el jugador no puede ser campeón).
+
+## Comandos
+```
+node dev/run-tests.js            suite completa (golden master incluido, ~4 min)
+node dev/run-tests.js --solo X   filtra por nombre
+node dev/browser-tests.js        smoke de UI en Chromium real
+node dev/metrics.js              métricas · --diff dev/baseline/metrics.json
+node dev/redef-map.js            cadenas de redefinición verificadas en runtime
+node dev/sim.js --n 200 --weeks 150
+node dev/make-baseline.js        regenera TODA la línea base
+```
 
 ## Tareas cerradas
 - [x] Entorno inventariado: node v22.22.2, git 2.43.0, Chromium en
@@ -48,7 +69,14 @@ alta pasan por refutación antes de marcarse CONFIRMADO.
 - [x] `dev/AUDIT.md` con 9 hallazgos medidos en F0 (H-001…H-009).
 
 ## Bloqueos
-Ninguno.
+- Los subagentes de auditoría corren en modo sólo lectura y **no pueden escribir**
+  archivos: entregan el informe en su handback y el orquestador lo vuelca a
+  `dev/audit/`. El de navegación (B) sí consiguió escribir el suyo.
+- El límite de sesión cortó a los subagentes de **B**, **E** e **I** a mitad.
+  B e I alcanzaron a entregar su informe completo; **E no**.
+- `git push` de los tags falla con desconexión del proxy (`send-pack: unexpected
+  disconnect`). La rama sí sube. Los tags `baseline-original` y `fase-0-ok` están en
+  local; reintentar más adelante.
 
 ## Notas de rendimiento (medidas, para F5/F18)
 - `saveGame` 39,2 ms de media · `normalizeWorldState` 25,8 ms · `advanceWeek`
