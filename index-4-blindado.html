@@ -4038,8 +4038,15 @@ function statRow(f,k){
 }
 
 /* ================= NAV ================= */
+/* Pantallas sin barra de navegacion: las que hay que RESOLVER antes de salir.
+   'fightresult' faltaba en esta lista y era la unica via de escape de la
+   pantalla de resultado, que por lo demas solo ofrece confirmFight() y
+   recStart(). Saliendo por la barra sin cobrar, go() descartaba la pelea y
+   dejaba G.nextFight firmado: la misma pelea se podia repetir hasta que el
+   resultado gustara, y la derrota, la lesion y el dano no se aplicaban nunca. */
+var NAV_SIN_BARRA = ['title','create','ending','fight','fightresult','mg'];
 function renderNav(){
-  if(['title','create','ending','fight','mg'].indexOf(UI.screen)>=0 || !G || !G.player){ NAV.style.display='none'; return; }
+  if(NAV_SIN_BARRA.indexOf(UI.screen)>=0 || !G || !G.player){ NAV.style.display='none'; return; }
   NAV.style.display='grid';
   var items=[['hub','◉','Inicio'],['train','⚡','Entrenar'],['rank','≡','Ranking'],['people','◐','Gente'],['menu','⚙','Menú']];
   NAV.innerHTML = items.map(function(i){

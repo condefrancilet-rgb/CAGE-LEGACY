@@ -110,3 +110,45 @@ calibrado. Es una decisión de balance, no de corrección.
 **Cubierto por** `dev/tests/06-f2-fixes.js`, 5 pruebas, dos de ellas dedicadas a que el
 arreglo **no** desactive el saneo: un campeón retirado y una referencia colgante siguen
 dejando el cinturón vacante, y las stats no numéricas se siguen reparando.
+
+---
+
+## F2-03 · La pantalla de resultado ya no se puede abandonar sin resolver (D-003)
+**Tipo** fix · **Severidad** ALTA · **Cambio observable:** desaparece la barra de
+navegación inferior mientras hay un resultado de pelea sin cobrar.
+
+**Qué pasaba.** `scrFightResult` ofrece exactamente dos botones, `confirmFight()` y
+`recStart()`, ambos resuelven hacia adelante. Pero `renderNav` (4042) ocultaba la barra
+inferior sólo en `['title','create','ending','fight','mg']`: **`fightresult` faltaba en una
+lista a la que pertenece**, junto a `fight` y `mg`, que son las otras pantallas que hay que
+resolver antes de salir.
+
+Con la barra visible, el jugador podía tocar "Inicio" sin cobrar. Entonces `go()` (4021)
+descartaba `G.fight`, pero `G.nextFight` sólo se anula dentro de `applyWinLossResult`
+(3414), que no había corrido. Resultado: la pelea seguía firmada y se podía volver a
+disputar tantas veces como se quisiera.
+
+**Evidencia — corrida en rojo antes del arreglo:**
+```
+intento 1: sub, ganador=o → go('hub') → fight=null, nextFight=true, rec 0-0
+intento 2: dec, ganador=o → go('hub') → fight=null, nextFight=true, rec 0-0
+intento 3: ko,  ganador=o → go('hub') → fight=null, nextFight=true, rec 0-0
+```
+Tres derrotas encajadas, récord 0-0 y la pelea aún firmada. La lesión, la fatiga y el daño
+tampoco se aplicaban.
+
+**Qué se cambió.** La lista pasó a ser una constante con nombre, `NAV_SIN_BARRA`, y se le
+añadió `fightresult`. Un solo elemento; la intención de la lista queda escrita.
+
+**Verificado en Chromium real:** en la pantalla de resultado sin cobrar,
+`nav.style.display === 'none'` y el único botón de la pantalla es `confirmFight()`.
+La barra sigue visible en `hub`, `train`, `rank`, `people` y `menu`, y oculta en `title`
+y `create`. Tras cobrar, `go()` sigue descartando la pelea como antes.
+
+**Impacto en la simulación: ninguno** — el autopiloto nunca usó la barra de navegación.
+Suite: 47 pruebas verdes · navegador: 28 verdes · golden master **sin cambios**.
+
+**Lo que este arreglo NO cierra** (queda para su propio turno en F2):
+**D-001**, `confirmFight()` sigue sin guarda de idempotencia — llamarla dos veces por otra
+vía sigue duplicando récord y bolsa; y **D-004**, un autoguardado con el resultado sin
+cobrar sigue pudiendo perderlo al recargar.

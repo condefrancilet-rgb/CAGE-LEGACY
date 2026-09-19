@@ -114,3 +114,65 @@ suite('F2 · I-001 el campeon conserva el cinturon', () => {
   });
 
 });
+
+suite('F2 · D-003 no se puede re-jugar una pelea sin cobrarla', () => {
+
+  function peleaTerminada(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 5150, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'Test' };
+    c.startCamp(c.G.nextFight);
+    c.G.camp.i = c.G.camp.weeks;
+    c.goFight();
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 600){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    return { h, c, p };
+  }
+
+  test('la pantalla de resultado no ofrece barra de navegacion', () => {
+    /* Es la unica via de escape: scrFightResult solo tiene los botones
+       confirmFight() y recStart(), que resuelven hacia adelante. Mientras la
+       barra inferior este visible, el jugador puede salir sin cobrar, y al
+       salir go() descarta la pelea dejando nextFight firmado: re-roll infinito. */
+    const { c } = peleaTerminada(88);
+    eq(c.UI.screen, 'fightresult', 'la pelea no dejo la pantalla de resultado');
+    ok(!c.G.paid, 'el caso de prueba no aplica: la pelea ya estaba cobrada');
+    c.render();
+    eq(c.document.getElementById('nav').style.display, 'none',
+       'la barra de navegacion esta visible en la pantalla de resultado');
+  });
+
+  test('las pantallas que exigen resolver ocultan la barra, las demas no', () => {
+    const h = H.boot({ seed: 89 });
+    H.startCareer(h, { metaSeed: 5151, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx;
+    const nav = () => c.document.getElementById('nav').style.display;
+
+    for(const s of ['hub', 'train', 'rank', 'people', 'menu']){
+      c.go(s);
+      eq(nav(), 'grid', 'la barra deberia verse en ' + s);
+    }
+    for(const s of ['title', 'create']){
+      c.UI.screen = s; c.render();
+      eq(nav(), 'none', 'la barra no deberia verse en ' + s);
+    }
+  });
+
+  test('tras cobrar, la pelea si se descarta al navegar', () => {
+    /* La limpieza que go() hace sobre una pelea ya cobrada debe seguir intacta:
+       una pelea con resultado aplicado no es estado de la partida. */
+    const { c } = peleaTerminada(90);
+    c.confirmFight();
+    ok(c.G.paid, 'confirmFight no marco la pelea como cobrada');
+    c.go('hub');
+    eq(c.G.fight, null, 'go() dejo viva una pelea ya cobrada');
+  });
+
+});
