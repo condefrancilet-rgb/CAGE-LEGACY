@@ -4,15 +4,15 @@
   "weeks": 150,
   "politica": "basica",
   "io": false,
-  "ms": 123191
+  "ms": 119260
  },
  "resumen": {
   "carreras": 40,
   "ok": 40,
   "conError": 0,
-  "msTotal": 123191,
-  "msPorCarrera": 3080,
-  "msPorSemana": 20.53,
+  "msTotal": 119260,
+  "msPorCarrera": 2982,
+  "msPorSemana": 19.88,
   "peleasTotales": 477,
   "peleasPorCarrera": 11.93,
   "winRate": 73.4,
@@ -26,7 +26,7 @@
   "campeones": 65,
   "titulosMedia": 0.75,
   "defensasMedia": 0.5,
-  "cashMedia": 112256.63,
+  "cashMedia": 112183.03,
   "cashMax": 1227237,
   "earnMedia": 155134.42,
   "popMedia": 55.75,
@@ -107,7 +107,7 @@
  "carreras": [
   {
    "seed": 1000,
-   "ms": 10269,
+   "ms": 11253,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 14,
@@ -162,7 +162,7 @@
   },
   {
    "seed": 1004,
-   "ms": 10307,
+   "ms": 10627,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -212,12 +212,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "4ce2980d",
+   "fp": "de98b05f",
    "invariantes": []
   },
   {
    "seed": 1008,
-   "ms": 10557,
+   "ms": 10561,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -272,7 +272,7 @@
   },
   {
    "seed": 1012,
-   "ms": 11098,
+   "ms": 11232,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 10,
@@ -327,7 +327,7 @@
   },
   {
    "seed": 1016,
-   "ms": 12919,
+   "ms": 11559,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 14,
@@ -377,12 +377,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "73531b48",
+   "fp": "01112c56",
    "invariantes": []
   },
   {
    "seed": 1020,
-   "ms": 10894,
+   "ms": 10624,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -437,7 +437,7 @@
   },
   {
    "seed": 1024,
-   "ms": 11563,
+   "ms": 11629,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -492,7 +492,7 @@
   },
   {
    "seed": 1028,
-   "ms": 10628,
+   "ms": 11687,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -542,12 +542,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "3e57893b",
+   "fp": "91a7c061",
    "invariantes": []
   },
   {
    "seed": 1032,
-   "ms": 12104,
+   "ms": 11641,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -597,12 +597,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "3889c55b",
+   "fp": "ac7bf883",
    "invariantes": []
   },
   {
    "seed": 1036,
-   "ms": 12293,
+   "ms": 11065,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -657,7 +657,7 @@
   },
   {
    "seed": 1001,
-   "ms": 10431,
+   "ms": 11106,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -707,12 +707,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "741bbc51",
+   "fp": "b75067f3",
    "invariantes": []
   },
   {
    "seed": 1005,
-   "ms": 11631,
+   "ms": 12514,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -767,7 +767,7 @@
   },
   {
    "seed": 1009,
-   "ms": 11667,
+   "ms": 11625,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -822,7 +822,7 @@
   },
   {
    "seed": 1013,
-   "ms": 11933,
+   "ms": 12329,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -877,7 +877,7 @@
   },
   {
    "seed": 1017,
-   "ms": 12480,
+   "ms": 11608,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -932,7 +932,7 @@
   },
   {
    "seed": 1021,
-   "ms": 11362,
+   "ms": 10703,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -982,12 +982,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "454f67a8",
+   "fp": "4ef856ee",
    "invariantes": []
   },
   {
    "seed": 1025,
-   "ms": 12734,
+   "ms": 11098,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -1037,12 +1037,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "77af2548",
+   "fp": "4a521406",
    "invariantes": []
   },
   {
    "seed": 1029,
-   "ms": 11402,
+   "ms": 10884,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1097,7 +1097,7 @@
   },
   {
    "seed": 1033,
-   "ms": 10609,
+   "ms": 10372,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 10,
@@ -1147,12 +1147,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "1ac49afb",
+   "fp": "2a79985f",
    "invariantes": []
   },
   {
    "seed": 1037,
-   "ms": 11061,
+   "ms": 10672,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -1207,7 +1207,7 @@
   },
   {
    "seed": 1002,
-   "ms": 12010,
+   "ms": 12235,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1262,7 +1262,7 @@
   },
   {
    "seed": 1006,
-   "ms": 11189,
+   "ms": 11582,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -1317,7 +1317,7 @@
   },
   {
    "seed": 1010,
-   "ms": 10834,
+   "ms": 10699,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1372,7 +1372,7 @@
   },
   {
    "seed": 1014,
-   "ms": 11705,
+   "ms": 12029,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1422,12 +1422,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "b961d258",
+   "fp": "eb8073fa",
    "invariantes": []
   },
   {
    "seed": 1018,
-   "ms": 10520,
+   "ms": 10368,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -1477,12 +1477,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "93b39709",
+   "fp": "a9d0fff3",
    "invariantes": []
   },
   {
    "seed": 1022,
-   "ms": 11835,
+   "ms": 11264,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 10,
@@ -1532,12 +1532,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "83de38ac",
+   "fp": "391eff72",
    "invariantes": []
   },
   {
    "seed": 1026,
-   "ms": 12850,
+   "ms": 11815,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1592,7 +1592,7 @@
   },
   {
    "seed": 1030,
-   "ms": 12236,
+   "ms": 11172,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 14,
@@ -1642,12 +1642,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "9f4d29e6",
+   "fp": "107a6382",
    "invariantes": []
   },
   {
    "seed": 1034,
-   "ms": 12206,
+   "ms": 11629,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 14,
@@ -1697,12 +1697,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "9aea97db",
+   "fp": "f40ecb91",
    "invariantes": []
   },
   {
    "seed": 1038,
-   "ms": 12115,
+   "ms": 10999,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 14,
@@ -1757,7 +1757,7 @@
   },
   {
    "seed": 1003,
-   "ms": 11258,
+   "ms": 11530,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -1786,7 +1786,7 @@
     "dec": 4,
     "otro": 1
    },
-   "cash": 47008,
+   "cash": 45030,
    "careerEarn": 95148,
    "pop": 88.65,
    "rep": 94,
@@ -1807,12 +1807,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "4e82b12c",
+   "fp": "d48f782a",
    "invariantes": []
   },
   {
    "seed": 1007,
-   "ms": 11286,
+   "ms": 10952,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -1862,12 +1862,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "8b33ec6f",
+   "fp": "6d8117ea",
    "invariantes": []
   },
   {
    "seed": 1011,
-   "ms": 10824,
+   "ms": 10746,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -1922,7 +1922,7 @@
   },
   {
    "seed": 1015,
-   "ms": 12035,
+   "ms": 12143,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -1977,7 +1977,7 @@
   },
   {
    "seed": 1019,
-   "ms": 10980,
+   "ms": 11105,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -2006,7 +2006,7 @@
     "dec": 6,
     "otro": 0
    },
-   "cash": 73043,
+   "cash": 72077,
    "careerEarn": 104829,
    "pop": 87.86,
    "rep": 84,
@@ -2027,12 +2027,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "186e93fb",
+   "fp": "caca4fa9",
    "invariantes": []
   },
   {
    "seed": 1023,
-   "ms": 11018,
+   "ms": 10826,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 13,
@@ -2087,7 +2087,7 @@
   },
   {
    "seed": 1027,
-   "ms": 12687,
+   "ms": 11937,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 12,
@@ -2142,7 +2142,7 @@
   },
   {
    "seed": 1031,
-   "ms": 11927,
+   "ms": 11499,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -2197,7 +2197,7 @@
   },
   {
    "seed": 1035,
-   "ms": 11342,
+   "ms": 11045,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,
@@ -2247,12 +2247,12 @@
     "pending": 1,
     "memPlayer": 0
    },
-   "fp": "312511b3",
+   "fp": "b51b5943",
    "invariantes": []
   },
   {
    "seed": 1039,
-   "ms": 11421,
+   "ms": 11705,
    "err": null,
    "semanas": 150,
    "peleasJugadas": 11,

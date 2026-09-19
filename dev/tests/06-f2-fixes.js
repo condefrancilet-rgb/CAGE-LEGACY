@@ -371,3 +371,57 @@ suite('F2 · G-001 los eventos importantes frenan la simulacion', () => {
   });
 
 });
+
+suite('F2 · H-005 el reescalado de patrocinios no compone', () => {
+
+  /* Deja una carrera con un patrocinio y un multiplicador de audiencia fijo,
+     para poder ejercer el reescalado anual de forma determinista. */
+  function conPatrocinio(seed, mult){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 8642, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx;
+    c.G.spons = [{ n: 'Marca de prueba', week: 500 }];
+    const audReal = c.CL.aud;
+    c.CL.aud = function(){ const a = audReal(); a.mult = mult; return a; };
+    return { h, c };
+  }
+  /* Fuerza el reescalado anual N veces, saltando el cerrojo onceYear. */
+  function reescalarAnios(c, n){
+    for(let i = 0; i < n; i++){
+      const s = c.CL.S();
+      if(s && s.once) delete s.once['Y' + c.G.year];
+      if(s && s.once) for(const k of Object.keys(s.once)) if(k.indexOf('audSpon') >= 0) delete s.once[k];
+      c.G.year++;
+      c.hookEmit('week', { news: [] });
+    }
+    return c.G.spons[0].week;
+  }
+
+  test('diez anios con audiencia alta no disparan el ingreso', () => {
+    /* Con mult=1.6 sostenido, componer da 500 * 1.6^10 = 52.428 por semana.
+       Reescalar sobre el valor BASE da 800, que es lo que significa
+       "los patrocinios siguen al tamano de tu publico". */
+    const { c } = conPatrocinio(91, 1.6);
+    const final = reescalarAnios(c, 10);
+    ok(final <= 900,
+      'el ingreso semanal crecio hasta ' + final + ': el reescalado esta componiendo');
+    ok(final >= 700, 'el reescalado dejo de responder a la audiencia: ' + final);
+  });
+
+  test('el reescalado sigue respondiendo a la audiencia', () => {
+    const alto = reescalarAnios(conPatrocinio(92, 1.6).c, 3);
+    const bajo = reescalarAnios(conPatrocinio(93, 0.7).c, 3);
+    ok(alto > bajo, 'mas audiencia deberia pagar mas: ' + alto + ' vs ' + bajo);
+    ok(bajo < 500, 'con audiencia a la baja el ingreso deberia caer: ' + bajo);
+  });
+
+  test('un patrocinio guardado sin base no da un salto al recargar', () => {
+    /* Compatibilidad: los saves existentes traen {n, week} y ninguna base.
+       Adoptar el valor actual como base debe dejar el ingreso donde estaba. */
+    const { c } = conPatrocinio(94, 1.0);
+    const antes = c.G.spons[0].week;
+    const despues = reescalarAnios(c, 1);
+    eq(despues, antes, 'un patrocinio antiguo cambio de valor con multiplicador neutro');
+  });
+
+});

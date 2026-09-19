@@ -19820,8 +19820,23 @@ CL.on('week','publico', function(){
 /* Consecuencia 1 — patrocinios: quién te sigue decide qué marcas te llaman. */
 CL.on('week','publicoSpon', function(){
   if(!CL.onceYear('audSpon')) return;
-  var a=CL.aud();
-  (G.spons||[]).forEach(function(s){ s.week=Math.round(clN(s.week,200)*clamp(a.mult,0.7,1.6)); });
+  var a=CL.aud(), m=clamp(a.mult,0.7,1.6);
+  /* ======================================================================
+     EL MULTIPLICADOR DE AUDIENCIA ES UN NIVEL, NO UNA TASA DE CRECIMIENTO
+     ----------------------------------------------------------------------
+     Dice cuanto vale tu publico HOY, no cuanto ha crecido desde el año
+     pasado. Se aplicaba sobre el valor YA reescalado del año anterior, asi
+     que componia sin techo: 500/semana se convertian en 54.976 en diez años
+     con el multiplicador en su tope. Era el motor que deformaba la economia
+     a largo plazo sin que el jugador hiciera nada deliberado.
+     Ahora se reescala sobre el valor BASE del contrato. Los patrocinios ya
+     guardados no traen base: adoptan su valor actual la primera vez, de modo
+     que el ingreso no da ningun salto al cargar una partida antigua.
+     ====================================================================== */
+  (G.spons||[]).forEach(function(s){
+    if(!isFinite(s.base)) s.base = clN(s.week, 200);
+    s.week = Math.round(clN(s.base, 200) * m);
+  });
 }, 57);
 /* Consecuencia 2 — ofertas: el hardcore te consigue peleas buenas, el casual
    te consigue peleas grandes. No es lo mismo y no se compran igual. */

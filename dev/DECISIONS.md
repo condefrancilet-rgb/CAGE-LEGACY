@@ -66,3 +66,28 @@ leyendo inputs del DOM; sin navegador quedan vacíos y `metaSeed` vuelve a 0.
 harness** y fija el borrador en `UI.tmp.c`.
 **Motivo.** El juego no se toca (I2/«el juego no conoce al harness»). Sin esto la
 simulación no sería reproducible por semilla.
+
+## D-008 · H-005: se corrige el compuesto, no el apilado — **decisión del usuario**
+**Contexto.** H-005 tiene dos mitades: (a) el reescalado anual compone sobre el valor ya
+reescalado, que es exponencial sin techo; (b) el evento `sponsor` (2906) no tiene guarda
+`seen()`, así que los patrocinios se apilan sin límite.
+**Consulta.** Se planteó que (a) es claramente un bug y (b) **puede ser diseño**.
+**Respuesta del usuario:** *"arregla solo el bug de H-005 y segui"*.
+**Elección.** Corregido sólo (a). El apilado queda **intacto** y pasa a F14 (economía) como
+decisión de diseño, no como defecto.
+**Revertir.** El apilado nunca se tocó, así que no hay nada que revertir por ese lado.
+
+## D-009 · Los tags no se empujan — **decisión del usuario**
+**Contexto.** El proxy git devuelve `HTTP 403` para refs de tag; la rama sí sube.
+**Respuesta del usuario:** *"los tags no importan"*.
+**Elección.** Se dejan de intentar. `baseline-original`, `fase-0-ok` y `fase-1-ok` viven
+sólo en local; los commits de cada gate quedan identificados en `dev/WORKLOG.md`.
+
+## D-010 · `boot({file})` en el harness para comparar versiones
+**Contexto.** Medir el efecto de un arreglo exige un "antes" limpio. Revertir el árbol de
+trabajo para cada medición es lento y propenso a dejar restos.
+**Elección.** El harness acepta `boot({file})` y carga cualquier versión del archivo
+(p. ej. `git show HEAD:index-4-blindado.html`), de modo que dos versiones conviven en el
+mismo proceso con las mismas semillas.
+**Motivo.** Es lo que permitió demostrar que H-005 **no** causaba la cola de dinero, en vez
+de suponerlo. El juego no se entera: es una opción de lectura del arnés.

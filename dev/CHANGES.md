@@ -308,3 +308,49 @@ El juego no cambió. Suite: **57 pruebas verdes**.
 **Lo que deja al descubierto**, para la parte estructural de F2: `rollEvent` tiene **cuatro
 capas** y tres constructores duplicados del mismo objeto. Es el candidato más claro a
 consolidación del dominio de eventos.
+
+---
+
+## F2-07 · El reescalado de patrocinios deja de componer (H-005, mitad bug)
+**Tipo** fix · **Severidad** CRÍTICA · **Alcance acotado por decisión del usuario**: se
+corrige **sólo** el compuesto, no el apilado sin límite (ver D-008 en DECISIONS.md).
+
+**Qué pasaba.** El hook `publicoSpon` (19824) aplicaba cada año
+`s.week = round(s.week * clamp(mult, 0.7, 1.6))` sobre el valor **ya reescalado** del año
+anterior. El multiplicador de audiencia es un **nivel** —dice cuánto vale tu público hoy—,
+no una tasa de crecimiento, así que aplicarlo en cadena es exponencial sin techo.
+
+**Evidencia — corrida en rojo:** con `mult` en su tope sostenido diez años,
+**500/semana se convertían en 54.976/semana**.
+
+**Qué se cambió.** El patrocinio guarda su valor `base` y el reescalado parte de ahí:
+`s.week = round(s.base * m)`. Los patrocinios ya guardados no traen `base`: **adoptan su
+valor actual la primera vez**, de modo que cargar una partida antigua no produce ningún
+salto de ingreso (cubierto por una prueba). Sigue respondiendo a la audiencia: con `mult`
+alto paga más que con `mult` bajo, y baja cuando el público se encoge.
+
+**Efecto medido — A/B real.** Para esto se añadió al harness la opción `boot({file})`, que
+carga otra versión del archivo; así se comparan dos versiones en el mismo proceso, con las
+mismas semillas, sin revertir el árbol de trabajo. 8 carreras × 400 semanas (≈7 años):
+
+| | antes | después |
+|---|---|---|
+| ingreso semanal de patrocinios, **mediana** | 1.218 | **472** (−61%) |
+| ingreso semanal de patrocinios, **máximo** | 3.756 | **1.673** (−55%) |
+| nº de patrocinios por carrera | 1 (máx 2) | 1 (máx 2) — sin cambio, el apilado no se tocó |
+| `cash` mediana | 1.746.795 | 1.727.067 (−1%) |
+| `careerEarn` | 2.011.922 | **2.011.922 (idéntico)** |
+
+**Corrección importante a la auditoría.** El informe de economía atribuía a H-005 la cola
+pesada de la distribución de dinero. **Es falso**, y este A/B lo demuestra: el compuesto
+desaparece y la cola no se mueve. El mecanismo lo explica: el ingreso de `G.spons` se suma
+**sólo a `G.cash`** (1323), mientras que `careerEarn` lo alimenta `G.flags.sponsorW`
+(15131), que es el **artículo de tienda** de H-004 — otra cosa distinta con el mismo nombre
+coloquial. **La causa de la cola sigue sin identificar** y queda abierta para F5.
+`dev/audit/H-economia.md` lleva la corrección anotada.
+
+**Golden master**: de 5 trazas, 2 idénticas (202, 303); 1 cambia sólo de huella por el campo
+`base` nuevo, con estado y traza idénticos (404); y 2 tienen diferencias reales de caja al
+final —`cash` −152 y −116 en la entrada 156 de 160— que son exactamente el efecto buscado,
+pequeño a 3 años porque el compuesto necesita años para morder (101, 505).
+Suite: **60 pruebas verdes**.
