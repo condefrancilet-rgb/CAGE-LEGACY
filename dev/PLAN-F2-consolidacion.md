@@ -53,12 +53,24 @@ Lo que queda es de F3/F4: 30 hooks de `week` con empates de orden resueltos por 
 carga del archivo (C-014) y `audit_final_week` registrado sin `order`, que corre en la
 posición 16 de 30 creyéndose final (C-007).
 
-### 4. Combate
+### 4. Combate — **siguiente candidato, pero necesita red propia primero**
 `eff`, `oppAction` y `fightAct` ya se consolidaron en una sesión anterior (3 capas → 1
 función + suscripciones). **Pendiente**: `fightFinishResolve` y `sparFinishResolve` tienen
 2 capas cada una; `TQ.apply` duplica a mano las reglas de reloj de `fightAct` con
 constantes distintas y sin emitir `exchange:pre/post` (D-009) — eso es duplicación real de
 lógica, no un wrapper.
+
+Son **tres** cierres de intercambio con tres relojes distintos (`ri(38,62)`, `ri(24,46)`,
+`ri(30,52)`) y sólo uno emite los hooks (adenda F2 de `dev/audit/D-combate.md`). Medido:
+en 5 carreras x 200 semanas el autopiloto cierra **1433 intercambios por `fightAct` y 0
+por los otros dos** — lo que significa que **el golden master no puede validar este
+refactor**, igual que no podía validar el respaldo de `rollEvent`. Hay que escribir antes
+una caracterización que conduzca `TQ.apply` y `fightFinishResolve` desde el harness.
+
+Frontera: unificar las tres constantes de reloj es **balance** (F14). Emitir los hooks en
+los tres caminos **cambia comportamiento** y necesita su propia evidencia. Lo que sí es
+consolidación es que la estructura del cierre viva en un solo sitio con el coste de reloj
+como parámetro.
 
 ### 5. Entrenamiento
 `campWeek` ya es 1 función + 2 puntos de extensión. Poco que hacer.

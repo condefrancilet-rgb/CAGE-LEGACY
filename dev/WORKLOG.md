@@ -148,3 +148,64 @@ node dev/make-baseline.js        regenera TODA la línea base
 **Suite: 82 pruebas verdes · navegador: 28 verdes · 0 fallos de invariante.**
 Métricas de control planas: 43 redefiniciones, 42 wrappers, 3 escrituras de scroll,
 0 dependencias externas, 0 `eval`.
+
+
+---
+
+## F2 — parte estructural (sesión en curso)
+
+### Hecho
+
+| # | qué | evidencia |
+|---|---|---|
+| F2-15 | `closeWeek(opts)`: el cierre de semana vive en un sitio (C-002) | 5/5 trazas idénticas |
+| F2-16 | el filtro de eventos: dos niveles, no dos copias | golden idéntico · suite 93 |
+| F2-17 | `rollEvent`: 4 capas encadenadas → 1 función | golden idéntico · suite 93 · A/B en curso |
+
+**Suite: 93 verdes · navegador: 28 verdes.** Métricas: redefiniciones 43 → **42**,
+wrappers 42 → **40**, escrituras de scroll **3** (I1 intacto), `eval` 0, deps externas 0.
+`rollEvent` ha desaparecido del mapa de redefiniciones.
+
+### Cómo se hizo `rollEvent`, que es el método a repetir
+
+1. **Medir primero, con una señal que no mienta.** Sólo la capa ganadora escribe
+   `G.story.eventHistory`, así que contar su crecimiento dice qué capa resolvió cada
+   sorteo: **328 de 328 por la capa 4, 0 por las de abajo**.
+2. **Forzar el camino muerto** (llenar el historial con los 66 eventos) y **caracterizar
+   lo que hace**, no lo que debería hacer: 7 pruebas en `dev/tests/07-rollevent.js`,
+   escritas **contra las cuatro capas**, commit aparte y **antes** de tocar nada.
+3. **Demostrar que las capas viejas eran un nivel más de la misma escalera**: si el evento
+   que devolvían hubiera pasado la veda corta, la capa 4 lo habría tenido en su mazo y no
+   habría caído. Luego devolvían contexto + drama + `c()` **sin veda**.
+4. **Fundir**, y dejar la política declarada en tres líneas en vez de repartida en cuatro
+   capas.
+5. **Hacer medible lo que antes se deducía**: `CL.evNivel()` (fuera de `G`, no se guarda)
+   convierte "el respaldo no se usa" en una prueba permanente en vez de una medición de
+   una vez.
+6. **Nombrar las diferencias en vez de esconderlas**: D-012 deja escritas las dos, por qué
+   caen en el nivel inalcanzable, y qué las volvería inaceptables.
+
+### Dos trampas que costaron tiempo y conviene recordar
+
+- **`Array.filter` pasa `(elemento, índice, array)`.** Un predicado `eventAllowed(e,
+  relajado)` pasado directo a `filter` recibe el índice como segundo argumento: todo el
+  banco en modo relajado salvo el primer elemento. Los predicados van envueltos.
+- **`e.c()` no es puro.** Tres condiciones del banco hacen inicialización perezosa
+  (`x1_parking` crea `G.flags.seen`; `sg_callout` y `sg_invcamp` crean su registro de
+  saga). Medido: llamar a las 66 mueve la huella en la primera pasada (`95ab9be9` →
+  `ce51317e`) y ya no en la segunda. **Adelantar una comprobación barata delante de
+  `e.c()` cambia el estado que se guarda**, así que el orden de los filtros es carga útil,
+  no estilo.
+
+### Siguiente: combate — y por qué no es tan mecánico como parecía
+
+Hay **tres** cierres de intercambio con tres relojes distintos y sólo uno emite
+`exchange:pre/post` (adenda F2 de `dev/audit/D-combate.md`). Pero medido: en 5 carreras x
+200 semanas el autopiloto cierra **1433 intercambios por `fightAct` y 0 por
+`fightFinishResolve` y `TQ.apply`**. Eso **no** dice que esos caminos no se usen — dice que
+el autopiloto no los pisa, porque resuelve las peleas a `fightAct` y nunca abre el
+minijuego de finalización ni el árbol de técnicas. Un humano sí los recorre.
+
+Consecuencia: **el golden master no puede validar ese refactor**. Necesita primero una red
+de caracterización que conduzca esos dos puntos de entrada desde el harness, igual que hubo
+que forzar el mazo vacío para `rollEvent`.
