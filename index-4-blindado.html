@@ -3097,8 +3097,11 @@ var EVENTS = [
     {t:'Volver a dormir',f:function(){return 'Mañana hay entrenamiento.';}}]}
 ];
 
-/* La implementacion base de rollEvent quedo inalcanzable: el selector por personalidad la reemplazo sin llamarla nunca. */
-var rollEvent = null;   /* lo asigna su modulo, mas abajo */
+/* rollEvent tenia cuatro implementaciones encadenadas y hoy tiene una sola: la
+   del modulo de narrativa, al final del archivo, con su politica de tres
+   niveles declarada en un solo sitio. El hueco se declara aqui porque hay
+   codigo intermedio que la nombra. */
+var rollEvent = null;   /* lo asigna el modulo de narrativa, mas abajo */
 /* ==========================================================================
    FASE 25 — COHERENCIA DE CONTEXTO DE LOS EVENTOS
    --------------------------------------------------------------------------
@@ -5340,23 +5343,9 @@ hookOn('event:pre','marcarVisto', function(c){
   if(c.handled) return;
   if(c.e){ G.flags.seen=G.flags.seen||{}; G.flags.seen[c.e.id]=1; }
 }, 50);
-/* la personalidad inclina qué tipo de evento aparece */
-rollEvent = function(){
-  var pool = EVENTS.filter(function(e){ try{ return e.c(); }catch(err){ return false; } });
-  if(!pool.length) return null;
-  var heat = persMul('heat'), tot=0, ws=[];
-  pool.forEach(function(e){
-    var w=e.w;
-    if(e.drama) w *= (0.5 + heat);            // arrogante/mediático atrae quilombo
-    if(e.calm)  w *= (1.6 - heat*0.6);        // humilde/reservado atrae vida tranquila
-    ws.push(w); tot+=w;
-  });
-  var r=rnd()*tot, acc=0, sel=pool[0];
-  for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
-  /* `important` viaja con el evento: si esta capa lo deja caer, el evento
-     encolado por esta via pierde la marca igual que en la de arriba. */
-  return {id:sel.id, txt:sel.x(), opts:sel.o, important:sel.important};
-};
+/* El sorteo de eventos vive en una sola función, al final del módulo de
+   narrativa. Aquí había una primera implementación —peso por personalidad, sin
+   memoria ni contexto— que sólo se alcanzaba si la de arriba lanzaba. */
 
 /* ---------- equipo técnico (hasta 3 entrenadores) ---------- */
 function team(){
@@ -22118,7 +22107,9 @@ CL.mod('historia','Cola de eventos, memoria de decisiones y orden narrativo');
    la repetían por su cuenta. */
 
 /* -------- 2. memoria de eventos: nada se repite pisándose los talones ---- */
-var EV_COOL = 26;                        /* semanas de veda tras salir       */
+/* La veda por repetición tiene una sola constante y vive en el selector
+   (EV_VEDA). Este registro sobrevive porque lo escribe el hook event:resolved
+   y lo comprueba un autotest, pero el sorteo ya no lo consulta. */
 CL.evSeen = function(){
   var s=CL.S();
   if(!s.evSeen || typeof s.evSeen!=='object') s.evSeen={};
@@ -22139,50 +22130,9 @@ CL.dramaOk = function(){
   var semanas = (clN(G.year)-clN(p.debutYear, G.year))*52 + clN(G.week) - 1;
   return jugadas>=2 || clN(p.pop)>=24 || semanas>=20;
 };
-(function(){
-  var prev = rollEvent;
-  rollEvent = function(){
-    return safeRun('rollEvent34', function(){
-      var dramaOk = CL.dramaOk();
-      var pool = EVENTS.filter(function(e){
-        try{
-          if(!e.c()) return false;
-          if(e.drama && !dramaOk) return false;      /* nada de circo el mes 1 */
-          if(CL.evAge(e.id) < EV_COOL) return false; /* veda por repetición    */
-          return true;
-        }catch(err){ return false; }
-      });
-      /* Si la veda dejó el mazo vacío se relaja la veda, PERO NUNCA el umbral
-         de drama: caer al motor viejo dejaba entrar por la ventana los eventos
-         de circo mediático que la puerta acababa de rechazar. */
-      if(pool.length < 4){
-        pool = EVENTS.filter(function(e){
-          try{ return e.c() && (!e.drama || dramaOk) && CL.evAge(e.id) >= 8; }catch(err){ return false; }
-        });
-      }
-      if(!pool.length){
-        pool = EVENTS.filter(function(e){
-          try{ return e.c() && (!e.drama || dramaOk); }catch(err){ return false; }
-        });
-      }
-      if(!pool.length) return null;                  /* mejor nada que un evento fuera de lugar */
-      var heat = persMul('heat'), tot=0, ws=[];
-      pool.forEach(function(e){
-        var w=clN(e.w,1);
-        if(e.drama) w *= (0.5 + heat);
-        if(e.calm)  w *= (1.6 - heat*0.6);
-        /* lo visto hace poco pesa menos aunque haya salido de la veda */
-        var age=CL.evAge(e.id);
-        if(age<52) w *= clamp(age/52, 0.25, 1);
-        ws.push(Math.max(0.01,w)); tot+=Math.max(0.01,w);
-      });
-      var r=rnd()*tot, acc=0, sel=pool[0];
-      for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
-      CL.evSeen()[sel.id] = CL.evStamp();
-      return {id:sel.id, txt:sel.x(), opts:sel.o, important:sel.important};
-    }, function(){ return prev(); }, true);
-  };
-})();
+/* La escalera de veda y la puerta de drama que este módulo introdujo están
+   hoy en el selector único, que es el que las aplica de verdad. CL.dramaOk()
+   se queda aquí porque es el umbral, y lo consulta ese selector. */
 
 /* -------- 3. las decisiones dejan rastro -------------------------------- */
 CL.evLog = function(){
@@ -25976,16 +25926,10 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
 
     return true;
   };
-  var _rollEventFinal=rollEvent;
-  rollEvent=function(){
-    if(!G||!G.player||G.player.retired) return null;
-    for(var tries=0;tries<12;tries++){
-      var base=_rollEventFinal();
-      if(!base) return null;
-      if(eventContextOK(base.id)) return base;
-    }
-    return null;
-  };
+  /* Este hueco lo rellena eventContextOK, arriba. La capa que reintentaba el
+     sorteo hasta doce veces esperando que el contexto cuadrara ya no hace
+     falta: el selector filtra por contexto antes de sortear, así que no puede
+     elegir un evento incoherente ni por casualidad. */
 
   CL.worldPressure=function(){
     var p=G.player,s=CL.S(); if(!p||p.retired||G.pending.length) return;
@@ -26513,6 +26457,18 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     if(e.c&&!e.c())return false;
     return !recentEvent(e.id,EV_VEDA_CORTA);
   }
+  /* Ultimo recurso: se cae la veda entera, nunca la coherencia. Es lo que
+     hacian las capas viejas del selector cuando se llegaba a ellas. */
+  function eventSinVeda(e){
+    if(!eventCore(e))return false;
+    return !(e.c&&!e.c());
+  }
+  /* Que nivel resolvio el ultimo sorteo. No vive en G: no se guarda ni viaja
+     en el save, existe para que la politica sea medible desde fuera sin tener
+     que deducirla del historial. Medido con esto: 328 de 328 sorteos de juego
+     real salen por los niveles 1 y 2. */
+  var EV_NIVEL = 0;
+  CL.evNivel = function(){ return EV_NIVEL; };
   function eventWeight(e){
     var p=G.player,s=story(),cat=eventCategory(e),w=Math.max(.05,num(e.w,1));
     if(s.recentCats[0]===cat)w*=.35;
@@ -26577,17 +26533,46 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     if(G.player.retired){G.nextFight=null;G.camp=null;G.fight=null;G.offers=[];G.pending=[];}
   }, 30);
 
-  /* ---------- selector inteligente de eventos ---------- */
-  var oldRoll=window.rollEvent;
-  window.rollEvent=function(){
+  /* ---------- EL SELECTOR DE EVENTOS — DEFINICIÓN ÚNICA ----------
+     Esto eran cuatro capas encadenadas: una base con peso por personalidad,
+     una con su propia memoria de repeticiones y su propia puerta de drama, una
+     que reintentaba el sorteo hasta doce veces esperando que el contexto
+     cuadrara, y ésta. Cada una construía por su cuenta el objeto que se
+     encola, y de ahí salieron dos bugs que hubo que arreglar en varios sitios:
+     la marca `important` (G-001, tres constructores) y la puerta de drama
+     (G-002, dos filtros).
+     Medido antes de fundirlas: en 8 carreras x 150 semanas, 328 de 328 sorteos
+     salieron por esta capa y ninguno por las de abajo, que sólo se alcanzaban
+     con el mazo vacío. Y lo que hacían cuando se las alcanzaba era devolver un
+     evento que cumplía contexto + drama + c() saltándose la veda — es decir,
+     exactamente el nivel 3 de aquí abajo. La política entera cabe en tres
+     líneas y ahora se lee de una vez:
+
+       nivel 1   veda EV_VEDA + contexto + drama + categoría + c()
+       nivel 2   veda EV_VEDA_CORTA + contexto + drama + c()   (si quedan <4)
+       nivel 3   sin veda + contexto + drama + c()             (si no queda ninguno)
+
+     Dos diferencias respecto de las capas viejas, ambas dentro del nivel 3,
+     que es el camino que el juego no recorre:
+       · pesa con el mismo eventWeight que los otros dos niveles, en vez del
+         peso por personalidad de la capa base;
+       · si una condición del banco lanza, ahora propaga en vez de contarse
+         como "no cumple". Era un try/catch que tapaba un error funcional, y el
+         camino vivo nunca lo tuvo.
+     El nivel 3 también deja rastro en el historial, como los otros dos: antes
+     el respaldo sorteaba sin registrar nada. */
+  rollEvent=function(){
+    EV_NIVEL = 0;
     if(!G||!G.player||G.player.retired)return null;
     /* filter() pasa (elemento, indice, array): los predicados se llaman con un
        solo argumento a propósito, para que el indice no se cuele como opción. */
     var s=story(),pool=EVENTS.filter(function(e){return eventAllowed(e);});
-    /* El nivel relajado afloja el enfriamiento, NO la coherencia: un campeón no
-       puede recibir un evento de aspirante ni siquiera porque falten candidatos. */
-    if(pool.length<4)pool=EVENTS.filter(function(e){return eventAllowedRelajado(e);});
-    if(!pool.length)return oldRoll?oldRoll():null;
+    EV_NIVEL = 1;
+    /* Los niveles 2 y 3 aflojan el enfriamiento, NO la coherencia: un campeón
+       no puede recibir un evento de aspirante ni porque falten candidatos. */
+    if(pool.length<4){ pool=EVENTS.filter(function(e){return eventAllowedRelajado(e);}); EV_NIVEL = 2; }
+    if(!pool.length){ pool=EVENTS.filter(function(e){return eventSinVeda(e);}); EV_NIVEL = 3; }
+    if(!pool.length){ EV_NIVEL = 0; return null; }
     var total=0,weights=pool.map(function(e){var w=eventWeight(e);total+=w;return w;});
     var r=rnd()*total,acc=0,sel=pool[0];
     for(var i=0;i<pool.length;i++){acc+=weights[i];if(r<=acc){sel=pool[i];break;}}

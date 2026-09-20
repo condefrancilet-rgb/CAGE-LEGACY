@@ -655,3 +655,119 @@ Métricas de control planas (43 redefiniciones, 42 wrappers, 3 escrituras de scr
 `advancePeriod` queda **fuera a propósito**: recoge las noticias en `sum.news` para el
 resumen del bloque, así que no las pierde — las muestra en otra superficie. Cambiar eso
 sería una decisión de diseño sobre qué ve el jugador al avanzar por bloques.
+
+---
+
+## F2-16 · El filtro de eventos tiene dos niveles, no dos copias
+
+**Commit** `857f777` · refactor, sin cambio de comportamiento.
+
+El selector sorteaba con `eventAllowed()` y, si le quedaban menos de cuatro candidatos,
+repetía con un predicado escrito a mano **en la misma línea**. Los dos compartían tres
+reglas duras —carrera viva, coherencia de contexto y puerta de drama— escritas por
+separado. De ahí que G-002 hubiera que arreglarlo dos veces: tras corregir el estricto se
+seguían colando eventos de circo por el relajado (el arreglo bajó de 4/328 a 1/328 antes
+de tocar el segundo predicado).
+
+Ahora las tres reglas viven en `eventCore()` y cada nivel declara **sólo lo que afloja**:
+
+| nivel | veda | contexto | drama | categoría | `c()` |
+|---|---|---|---|---|---|
+| 1 estricto | `EV_VEDA` (26) | sí | sí | sí | sí |
+| 2 relajado | `EV_VEDA_CORTA` (8) | sí | sí | — | sí |
+
+**El orden de las comprobaciones se conserva tal cual estaba en cada nivel**, y no es
+cosmético. Medido: **tres condiciones del banco hacen inicialización perezosa** —
+`x1_parking` crea `G.flags.seen`, `sg_callout` y `sg_invcamp` crean su registro de saga —
+así que adelantar una comprobación barata delante de `e.c()` se salta esa inicialización y
+**cambia el estado que se guarda**. Llamar a las 66 condiciones mueve la huella del estado
+en la primera pasada (`95ab9be9` → `ce51317e`) y ya no en la segunda.
+
+También se pasan los predicados a `filter()` envueltos en una función de un solo
+argumento: `filter()` pasa `(elemento, indice, array)` y el índice se colaría como segundo
+parámetro — con `eventAllowed(e, relajado)` habría dejado todo el banco en nivel relajado
+salvo el primer elemento.
+
+**Verificación.** Golden master idéntico. Suite **93 verde**.
+
+---
+
+## F2-17 · `rollEvent`: cuatro capas encadenadas → una función
+
+**Commit** pendiente · consolidación estructural, diferencia acotada y documentada.
+
+### Lo que había
+
+| capa | línea | qué añadía | alcanzable |
+|---|---|---|---|
+| 1 | 5344 | peso por personalidad, sin memoria ni contexto | sólo si la 2 lanzaba |
+| 2 | 22143 | memoria propia (`CL.evSeen`/`EV_COOL`), puerta de drama, escalera 26→8→sin veda | sólo con el mazo de la 4 vacío |
+| 3 | 25979 | reintento hasta 12 veces esperando que el contexto cuadrara | ídem |
+| 4 | 26553 | veda por `eventHistory`, contexto, drama, categoría, `eventWeight` | **100 %** |
+
+Cada capa construía **por su cuenta** el objeto que se encola. De ahí los dos bugs que
+hubo que arreglar en varios sitios: la marca `important` (G-001, **tres** constructores) y
+la puerta de drama (G-002, **dos** filtros).
+
+### Medición previa
+
+Señal sólida: sólo la capa 4 escribe `G.story.eventHistory`.
+
+```
+8 carreras x 150 semanas -> 328 sorteos
+  por la capa 4 ........ 328
+  por las capas 1-3 ....   0
+```
+
+Y, forzando el mazo vacío, lo que hacían las capas de abajo era devolver un evento que
+cumplía **contexto + drama + `c()` saltándose la veda** — porque si hubiera pasado la veda
+corta, la capa 4 lo habría tenido en su propio mazo y no habría caído. Es decir: las tres
+capas viejas eran, en conjunto, **un tercer nivel de la misma escalera**.
+
+### Lo que quedó
+
+Una sola definición, con la política entera a la vista:
+
+```
+nivel 1   veda EV_VEDA (26) + contexto + drama + categoría + c()
+nivel 2   veda EV_VEDA_CORTA (8) + contexto + drama + c()     (si quedan <4)
+nivel 3   sin veda + contexto + drama + c()                   (si no queda ninguno)
+```
+
+`CL.evNivel()` dice qué nivel resolvió el último sorteo. **No vive en `G`**: no se guarda
+ni viaja en el save; existe para que la política sea medible desde fuera sin deducirla del
+historial, que es lo que hacía la medición anterior.
+
+### Las dos diferencias, y por qué son aceptables
+
+Ambas caen **dentro del nivel 3**, que el juego no recorre:
+
+1. **Peso.** El nivel 3 pesa con el mismo `eventWeight` que los otros dos, en vez del peso
+   por personalidad de la capa base. Cambia *cuál* de los candidatos sale; el conjunto de
+   candidatos es el mismo.
+2. **Excepciones.** Si una condición del banco lanza, ahora propaga en vez de contarse
+   como "no cumple". Era un `try/catch` que tapaba un error funcional —lo que el encargo
+   prohíbe explícitamente— y el camino vivo (nivel 1) nunca lo tuvo. Medido: 0 de 66
+   condiciones lanzan en un mundo sano.
+
+Además el nivel 3 **deja rastro en el historial**, como los otros dos; antes el respaldo
+sorteaba sin registrar nada.
+
+### Lo que se conserva
+
+`CL.evSeen` / `CL.evStamp` / `CL.evAge` **no se borran**: el hook `event:resolved` sigue
+escribiendo ese registro y un autotest lo comprueba. Lo que se fue es `EV_COOL`, la
+*segunda* constante de veda, que ya no tenía lector. Que ese registro sobreviva sin que
+nadie lo consulte para sortear es deuda de **fuentes de la verdad**, y le toca en F4.
+
+### Verificación
+
+- Suite **93 verde**, golden master idéntico.
+- Las 7 pruebas de caracterización de `dev/tests/07-rollevent.js`, escritas **contra las
+  cuatro capas**, siguen verdes contra la función única. Lo único que cambió en ellas es
+  cómo se mide qué nivel resolvió el sorteo (antes: si el historial crecía; ahora:
+  `CL.evNivel()`).
+- A/B con `sim.js --file` contra una copia congelada de antes de fundir: **en curso** al
+  cerrar el commit (200 carreras x 300 semanas por lado). Resultado abajo cuando termine.
+- Métricas de control: redefiniciones 43 → **42**, wrappers 42 → **40**, escrituras de
+  scroll **3** (I1 intacto), `eval` 0, dependencias externas 0.

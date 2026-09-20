@@ -75,7 +75,7 @@ desconocido. `renderNav` 2 capas (`_legRenderNavPrev`). `scrHub`, `scrMG`, `scrG
 envueltas por GATE en runtime (`redef-map` las marca "no coincide con ninguna definición
 del archivo"). Requiere cuidado: hay que fundir sin romper la envoltura de GATE.
 
-### 8. Eventos
+### 8. Eventos ✅ HECHO (F2-16, F2-17)
 **El candidato más claro de todo F2.** `rollEvent` tiene **4 capas** (5265, 22011, 25847,
 26388) y **tres constructores duplicados del mismo objeto** — lo destapó el arreglo de
 G-001, que hubo que aplicar tres veces. Además:
@@ -84,6 +84,15 @@ G-001, que hubo que aplicar tres veces. Además:
 - el hook `event:pre`/`simulacion` era inalcanzable hasta el arreglo de G-001.
 
 Fundirlas en una función con la política declarada haría visible qué reglas están vivas.
+
+**Resuelto en F2-16 y F2-17.** Primero se fundieron los dos predicados del filtro en
+`eventCore()` + un nivel de exigencia (F2-16, golden idéntico). Después las cuatro capas en
+una sola función con la escalera declarada de tres niveles (F2-17). Medido antes de tocar
+nada: **328 de 328 sorteos de juego real salen por la capa 4**; las de abajo eran, en
+conjunto, un tercer nivel de la misma escalera. `CL.evNivel()` deja la política medible
+desde fuera y `dev/tests/07-rollevent.js` la fija con 7 pruebas de caracterización escritas
+**contra las cuatro capas** y que siguen valiendo contra la función única. Dos diferencias
+aceptadas, ambas dentro del nivel 3 que el juego no recorre: D-012.
 
 ### 9. Progresión de rivales
 `pruneWorld` 2 capas (`_clPrune`). `rollEvent` cubre buena parte del resto.

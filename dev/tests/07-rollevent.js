@@ -6,9 +6,12 @@
      nivel 1  veda de 26 semanas + contexto + categoria + drama + c()
      nivel 2  veda de  8 semanas + contexto +             drama + c()
      nivel 3  sin veda           + contexto +             drama + c()
-   El nivel 3 vive hoy en las capas antiguas (el `oldRoll()` de la capa
-   ganadora) y NO se dispara nunca en juego real: medido, 328 de 328 sorteos
-   en 8 carreras x 150 semanas salieron por la capa ganadora.                */
+   El nivel 3 NO se dispara nunca en juego real: medido, 328 de 328 sorteos en
+   8 carreras x 150 semanas salieron por los niveles 1 y 2. Hay que forzar el
+   pool agotado para ejercitarlo.
+   Escritas contra las 4 capas encadenadas y siguen valiendo contra la funcion
+   unica que las sustituye: lo unico que cambio es como se mide que nivel
+   resolvio el sorteo (antes, si el historial crecia; ahora, CL.evNivel()).   */
 const { suite, test, ok, eq } = require('../run-tests.js');
 const H = require('../harness.js');
 
@@ -26,28 +29,31 @@ suite('rollEvent (caracterizacion)', () => {
   }
   const def = (c, id) => c.EVENTS.filter(function(x){ return x.id === id; })[0];
 
-  test('en juego normal el sorteo sale por la politica estricta', () => {
+  test('en juego normal el sorteo nunca baja al nivel 3', () => {
     const A = require('../autopilot.js');
     const { h, c } = mundo(601);
-    let porRespaldo = 0, conEvento = 0;
+    const porNivel = [0, 0, 0, 0];
+    let conEvento = 0;
     const orig = c.rollEvent;
     c.rollEvent = function(){
-      const antes = c.G.story.eventHistory.length;
       const r = orig();
-      if(r){ conEvento++; if(c.G.story.eventHistory.length === antes) porRespaldo++; }
+      if(r){ conEvento++; porNivel[c.CL.evNivel()]++; }
       return r;
     };
     A.correrCarrera(h, { maxWeeks: 120, politica: 'basica', seedPolitica: 601 });
     ok(conEvento > 10, 'no se sortearon suficientes eventos: ' + conEvento);
-    eq(porRespaldo, 0, porRespaldo + ' de ' + conEvento + ' sorteos salieron por el respaldo');
+    eq(porNivel[3], 0, porNivel[3] + ' de ' + conEvento + ' sorteos bajaron al nivel 3');
+    ok(porNivel[1] + porNivel[2] === conEvento,
+       'algun sorteo no quedo atribuido a un nivel: ' + JSON.stringify(porNivel));
   });
 
-  test('con el pool agotado sigue devolviendo un evento', () => {
+  test('con el pool agotado sigue devolviendo un evento, por el nivel 3', () => {
     const { c } = mundo(602);
     agotarPool(c);
     const r = c.rollEvent();
     ok(r && r.id, 'con el pool agotado no devolvio nada');
     ok(def(c, r.id), 'devolvio un evento que no esta en el banco: ' + r.id);
+    eq(c.CL.evNivel(), 3, 'el pool agotado deberia resolverse por el nivel 3');
   });
 
   test('con el pool agotado el objeto sigue llevando la marca important', () => {

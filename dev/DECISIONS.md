@@ -121,3 +121,42 @@ pierda: hoy terminar un minijuego de entrenamiento nunca genera ofertas y nunca 
 las noticias de esa semana.
 
 **Revertir.** No hay nada que revertir: el comportamiento actual queda intacto.
+
+---
+
+## D-012 · Fundir `rollEvent` acepta dos diferencias en el nivel que el juego no recorre
+
+**Contexto.** `rollEvent` tenía cuatro capas encadenadas. Medido: 328 de 328 sorteos de
+juego real (8 carreras x 150 semanas) salen por la última; las tres de abajo sólo se
+alcanzan con el mazo vacío, y lo que hacen entonces es devolver un evento que cumple
+contexto + drama + `c()` **saltándose la veda**. Eso es exactamente un tercer nivel de la
+misma escalera, así que caben en una sola función.
+
+**La tensión.** F2 exige consolidar **sin cambiar el juego**, demostrado con golden master
+idéntico. Reproducir las tres capas viejas *exactamente* dentro de una función significa
+meter dentro tres esquemas de peso distintos y un bucle de doce reintentos: sería una
+función única sólo de nombre, y las reglas seguirían escritas más de una vez — que es el
+problema que se venía a resolver.
+
+**Decisión.** Se funde a la política declarada de tres niveles y se aceptan **dos**
+diferencias, ambas confinadas al nivel 3:
+
+1. el nivel 3 pesa con `eventWeight`, como los otros dos, en vez del peso por
+   personalidad de la capa base;
+2. si una condición del banco lanza, propaga en vez de contarse como "no cumple" — era un
+   `try/catch` que tapaba un error funcional, prohibido por el encargo, y el camino vivo
+   nunca lo tuvo.
+
+El **conjunto de candidatos** del nivel 3 es el mismo que devolvían las capas viejas; lo
+que puede cambiar es cuál de ellos sale.
+
+**Por qué es aceptable.** El nivel 3 no se alcanza en juego real: 0 de 328 sorteos. El
+golden master es idéntico, y `CL.evNivel()` convierte esa afirmación en una prueba
+permanente (`07-rollevent.js`) en vez de una medición de una vez.
+
+**Cómo se vigila.** `dev/tests/07-rollevent.js` falla si un sorteo de juego real baja al
+nivel 3. Si algún día baja, esta decisión hay que revisarla: dejaría de ser código
+inalcanzable.
+
+**Revertir.** `git revert` del commit de fusión devuelve las cuatro capas. No hay estado
+guardado que dependa de esto: `CL.evNivel()` no vive en `G`.
