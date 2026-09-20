@@ -17,17 +17,20 @@ El mapa vivo, verificado en runtime, está en `dev/baseline/redef-map.json`
 (`node dev/redef-map.js`). Dice qué definición **gana de verdad**, que es lo que importa al
 consolidar, no cuál es más prolija.
 
-## Punto 0 — el cierre de semana (viene de C-002)
+## Punto 0 — el cierre de semana (viene de C-002) ✅ HECHO (F2-15)
 
 **Antes que cualquier otra consolidación.** El cierre de semana está duplicado a mano en
 los nueve llamadores de `advanceWeek`, cada uno con un subconjunto distinto (tabla en
 `dev/DECISIONS.md`, D-011). De ahí sale C-002: terminar un minijuego de entrenamiento
 nunca publica las noticias de esa semana ni genera ofertas.
 
-Extraer una función de cierre con contrato explícito —qué publica, qué sortea, qué
-guarda— y que cada llamador declare qué parte quiere. **Sí cambia comportamiento** en los
-llamadores a los que hoy les falta algo, así que necesita su propia evidencia de
-simulación, no golden master idéntico.
+**Resuelto en F2-15.** Se extrajo : publicar es lo único no opcional,
+porque es lo único que se pierde; el resto lo declara cada llamador. Seis migrados.
+Resultado medido: estado observable y traza semana a semana **idénticos** en las 5
+semillas; sólo cambia el contenido del feed.  queda fuera a propósito
+(recoge en  para el resumen del bloque).
+Queda para F14 la decisión de diseño: hoy terminar un minijuego de entrenamiento sigue sin
+generar ofertas.
 
 ## Orden y candidatos
 

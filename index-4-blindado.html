@@ -2775,6 +2775,7 @@ function recPick(k){
   mg.picked.push(k); mg.log.unshift(o.t);
   mg.step++;
   advanceWeek(); // cada bloque = 1 semana
+  closeWeek({save:false});   /* el guardado lo pone GATE sobre recPick */
   if(mg.step>=3){ mg.done=true; mg.result='Fatiga '+Math.round(p.fatigue)+' · Daño '+Math.round(p.dmg)+'. '+(p.dmg<25?'Estás listo para volver al gimnasio.':'Todavía cargás la pelea en el cuerpo.'); }
   render();
 }
@@ -4566,12 +4567,28 @@ function doWeek(k){
   finishWeek(msg);
 }
 function skipWeek(){ finishWeek('Semana tranquila. El cuerpo agradece.'); G.player.fatigue=clamp(G.player.fatigue-12,0,100); }
+/* ==========================================================================
+   CIERRE DE SEMANA — UN SOLO SITIO
+   --------------------------------------------------------------------------
+   Todo lo que hay que hacer DESPUES de advanceWeek() vivia copiado a mano en
+   los nueve llamadores, y cada copia se quedo con un subconjunto distinto:
+   terminar un minijuego de entrenamiento no publicaba las noticias de esa
+   semana, y recPick no las publicaba en tres semanas seguidas. Como
+   G.weekLog se SOBRESCRIBE en la semana siguiente (advanceWeekCore), esas
+   noticias no se retrasaban: se perdian.
+   Publicar es lo unico que no es opcional, porque es lo unico que se pierde.
+   El resto lo declara cada llamador, conservando lo que hacia hasta ahora.
+   ========================================================================== */
+function closeWeek(opts){
+  opts = opts || {};
+  if(G.weekLog && G.weekLog.length) G.weekLog.forEach(function(n){ pushNews(n); });
+  if(opts.events && !G.pending.length && chance(.42)) fireEvent();
+  if(opts.offers && !G.nextFight && chance(.30)) makeOffers();
+  if(opts.save !== false) saveGame(true);
+}
 function finishWeek(msg){
   advanceWeek();
-  if(!G.pending.length && chance(.42)) fireEvent();
-  if(!G.nextFight && chance(.30)) makeOffers();
-  if(G.weekLog && G.weekLog.length) G.weekLog.forEach(function(n){ pushNews(n); });
-  saveGame(true);
+  closeWeek({events:true, offers:true});
   if(msg) toast(msg);
   go('hub');
 }
@@ -4809,7 +4826,7 @@ function mgClose(consumesWeek){
   hookEmit('mg:close:pre', {type:t, consumesWeek:!!consumesWeek});
   G.mg=null;
   if(consumesWeek){
-    if(old&&old.weekApplied){ advanceWeek(); if(chance(.42)) fireEvent(); saveGame(true); go('hub'); }
+    if(old&&old.weekApplied){ advanceWeek(); closeWeek({events:true}); go('hub'); }
     else finishWeek(null);
   } else { saveGame(true); go('hub'); }
   hookEmit('mg:closed', {type:t, consumesWeek:!!consumesWeek});
@@ -4918,7 +4935,7 @@ function confirmFight(){
   }
   G.paid=true;
   advanceWeek();
-  saveGame(true);
+  closeWeek();
   render();
   return true;
 }
@@ -13292,7 +13309,7 @@ function gymVisit(id){
     }
     G.socOut={t:'✈️ Entrenaste una semana en '+g.name+' ('+g.specName+'). '+gainText(r.gain||[])+
       (met?' Conociste a '+fname(met)+'.':'')+extra+' Costo: '+money(c.money)+'.'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 /* Cambio definitivo de gimnasio: conserva historial y relaciones. */
@@ -13551,7 +13568,7 @@ function watchFight(id){
     else if(roll<0.52){ p.st.adaptability=cap(p.st.adaptability+1.2); extra=' Te llevaste una idea táctica para tu propio juego.'; }
     else if(roll<0.62 && bondOf(f).rival){ socClash(f,4,'te vio en el evento y te buscó'); extra=' Te buscó en el pasillo. No fue amistoso.'; }
     G.socOut={t:'🏟️ Fuiste a ver a '+fname(f)+'. Le leíste el juego: '+pat+'.'+extra+' (+Fight IQ)'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 /* ============ F) VIAJAR CON OTRO PELEADOR ============================== */
@@ -13586,7 +13603,7 @@ function travelWith(id){
     bondNote(f,'Viajaron juntos');
     addMemF(f,'viajaron juntos a un evento',7);
     G.socOut={t:'✈️ Viajaste con '+fname(f)+': '+(bits[0]||'fue un viaje tranquilo')+'. Costo '+money(cost)+'.'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 

@@ -611,3 +611,47 @@ funciones que ya la usan. No se añade lógica nueva: se declara el blindaje que
 Suite: **82 pruebas verdes**. Golden master sin cambios.
 
 **C-002 queda abierto a propósito** — ver `dev/DECISIONS.md`, D-011.
+
+---
+
+## F2-15 · El cierre de semana vive en un solo sitio (C-002) — primera consolidación estructural
+**Tipo** refactor + fix · **El juego no cambia**: estado observable y traza semana a semana
+**idénticos** en las 5 semillas. Lo único que cambia es que el feed contiene las noticias
+que antes se perdían.
+
+**Qué pasaba.** Todo lo que hay que hacer **después** de `advanceWeek()` estaba copiado a
+mano en los nueve llamadores, y cada copia se quedó con un subconjunto distinto:
+
+| llamador | publicaba noticias | fireEvent | makeOffers | saveGame |
+|---|---|---|---|---|
+| `finishWeek` | sí | 42% | 30% | sí |
+| `mgClose` (rama `weekApplied`) | **no** | 42% | **no** | sí |
+| `recPick` | **no** | no | no | sí (GATE) |
+| `confirmFight` | **no** | no | no | sí |
+| `gymVisit` / `watchFight` / `travelWith` | **no** | no | no | sí |
+
+Y no era un retraso: `G.weekLog` **se sobrescribe** en la semana siguiente
+(`advanceWeekCore`), así que esas noticias **se perdían**.
+
+**Evidencia — corrida en rojo**, con una sonda que inyecta una noticia por semana:
+```
+finishWeek                 -> 1 noticia publicada   (control, correcto)
+cerrar minijuego (semana)  -> 0
+tres bloques de recPick    -> 0 de 3
+```
+
+**Qué se cambió.** Se extrajo `closeWeek(opts)`, un único cierre de semana. **Publicar es
+lo único que no es opcional**, porque es lo único que se pierde; el resto lo declara cada
+llamador, conservando exactamente lo que hacía. Seis llamadores migrados.
+
+No se añadieron `fireEvent` ni `makeOffers` a los que no los tenían: eso es una decisión
+de diseño, no una pérdida de datos, y queda anotada para F14 (hoy terminar un minijuego de
+entrenamiento sigue sin generar ofertas).
+
+**Verificación — 5 de 5 trazas:** `final IDENTICO · traza identica`. Sólo difiere el
+contenido de `G.news`, que sigue acotado a 40. Suite: **86 pruebas verdes**.
+Métricas de control planas (43 redefiniciones, 42 wrappers, 3 escrituras de scroll).
+
+`advancePeriod` queda **fuera a propósito**: recoge las noticias en `sum.news` para el
+resumen del bloque, así que no las pierde — las muestra en otra superficie. Cambiar eso
+sería una decisión de diseño sobre qué ve el jugador al avanzar por bloques.

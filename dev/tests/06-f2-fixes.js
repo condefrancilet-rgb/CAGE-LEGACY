@@ -827,3 +827,55 @@ suite('F2 · C-003/C-004 el avance en bloque guarda y no destruye las ofertas', 
   });
 
 });
+
+suite('F2 · C-002 el cierre de semana publica sus noticias', () => {
+
+  /* Inyecta una noticia reconocible en cada semana, via el hook 'week'. */
+  function conSonda(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 7531, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx;
+    let n = 0;
+    c.hookOn('week', 'sondaDePrueba', function(ctx){
+      if(ctx && Array.isArray(ctx.news)) ctx.news.push('SONDA-' + (++n));
+    }, 5);
+    return { h, c };
+  }
+  const sondas = (c) => (c.G.news || []).filter(x => String(x.t || x).indexOf('SONDA-') === 0).length;
+
+  test('finishWeek publica la noticia de la semana (control)', () => {
+    const { c } = conSonda(131);
+    eq(sondas(c), 0, 'la sonda ya habia publicado algo antes de empezar');
+    c.doWeek('box');
+    eq(sondas(c), 1, 'finishWeek no publico exactamente una noticia');
+  });
+
+  test('cerrar un minijuego que consume semana publica su noticia', () => {
+    const { c } = conSonda(132);
+    const antes = sondas(c);
+    /* minijuego cuya semana ya se aplico dentro: la rama weekApplied */
+    c.G.mg = { type: 'spar', weekApplied: true, done: true, log: [] };
+    c.mgClose(true);
+    eq(sondas(c), antes + 1, 'terminar el minijuego no publico la noticia de esa semana');
+  });
+
+  test('tres bloques de recuperacion publican sus tres noticias', () => {
+    const { c } = conSonda(133);
+    const antes = sondas(c);
+    c.recStart();                       /* via real del juego, no un mg falso */
+    ok(c.G.mg && c.G.mg.type === 'rec', 'recStart no abrio el minijuego de recuperacion');
+    for(let i = 0; i < 3; i++) c.recPick('rest');   /* la clave es textual, no un indice */
+    eq(sondas(c), antes + 3,
+       'tres semanas de recuperacion publicaron ' + (sondas(c) - antes) + ' noticias');
+  });
+
+  test('no se publica dos veces la misma semana', () => {
+    const { c } = conSonda(134);
+    c.doWeek('box');
+    const tras1 = sondas(c);
+    eq(tras1, 1, 'la primera semana no publico exactamente una');
+    c.doWeek('cardio');
+    eq(sondas(c), 2, 'la segunda semana no publico exactamente una mas');
+  });
+
+});
