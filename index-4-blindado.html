@@ -26432,6 +26432,14 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     /* FASE 25: el filtro de contexto entra acá, que es el camino que el
        selector recorre de verdad. Antes sólo se consultaba en un respaldo. */
     if(!eventContextAllows(e.id))return false;
+    /* La puerta de drama vive AQUI, que es el camino que el selector recorre de
+       verdad. Estaba escrita solo en una capa anterior de rollEvent (22119), a
+       la que esta no llega salvo que su pool quede vacio, asi que no se
+       aplicaba: un novato en su tercera semana de campamento, sin una sola
+       pelea disputada y con popularidad 8, podia recibir un evento de circo.
+       Medido en 10 carreras x 120 semanas: 4 de 328 eventos del banco eran
+       drama con la puerta cerrada, todos sg_counterplan. */
+    if(e.drama && typeof CL!=='undefined' && CL.dramaOk && !CL.dramaOk())return false;
     var cat=eventCategory(e),s=story(),last=s.recentCats[0];
     if(last===cat&&s.recentCats.length>=2)return false;
     if(e.c&&!e.c())return false;
@@ -26508,7 +26516,7 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     var s=story(),pool=EVENTS.filter(eventAllowed);
     /* El respaldo relaja el enfriamiento, NO la coherencia: un campeón no puede
        recibir un evento de aspirante ni siquiera porque falten candidatos. */
-    if(pool.length<4)pool=EVENTS.filter(function(e){if(!G||!G.player||G.player.retired)return false;if(!eventContextAllows(e.id))return false;if(e.c&&!e.c())return false;return !recentEvent(e.id,8);});
+    if(pool.length<4)pool=EVENTS.filter(function(e){if(!G||!G.player||G.player.retired)return false;if(!eventContextAllows(e.id))return false;if(e.drama&&typeof CL!=='undefined'&&CL.dramaOk&&!CL.dramaOk())return false;if(e.c&&!e.c())return false;return !recentEvent(e.id,8);});
     if(!pool.length)return oldRoll?oldRoll():null;
     var total=0,weights=pool.map(function(e){var w=eventWeight(e);total+=w;return w;});
     var r=rnd()*total,acc=0,sel=pool[0];

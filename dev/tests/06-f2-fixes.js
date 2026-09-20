@@ -616,3 +616,70 @@ suite('F2 · D-002 aplicar el resultado es todo-o-nada', () => {
   });
 
 });
+
+suite('F2 · G-002 la puerta de drama vuelve a aplicarse', () => {
+
+  /* Escenario REAL, no sintetico: un novato que acaba de firmar su primera
+     pelea y lleva tres semanas de campamento. Ahi `dramaOk` es falso (0 peleas
+     jugadas, pop baja, semana 3) y a la vez `sg_counterplan` es elegible,
+     porque su condicion pide campamento con `i>=2`. Medido en 10 carreras x 120 semanas: 4 de 328 eventos del
+     banco eran drama con la puerta cerrada, todos de este tipo.
+     Una primera version de esta prueba forzaba rec.w=5 con lastFights=[], un
+     estado que el juego nunca produce; pasaba sin arreglar nada y por tanto no
+     medía nada. */
+  function novatoConPeleaFirmada(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 2580, style: 'mma', div: 'LW', age: 22 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks: 8, org: p.org, title: false, purse: 4000, event: 'T' };
+    c.startCamp(c.G.nextFight);
+    c.G.camp.i = 3;            /* tercera semana de campamento: sg_counterplan pide i>=2 */
+    return { h, c, p };
+  }
+  const esDrama = (c, id) => {
+    const d = c.EVENTS.filter(function(x){ return x.id === id; })[0];
+    return !!(d && d.drama);
+  };
+
+  test('un novato con su primera pelea firmada no recibe drama', () => {
+    const { c } = novatoConPeleaFirmada(51);
+    eq(c.CL.dramaOk(), false, 'el caso de prueba no aplica: dramaOk es verdadero');
+    const elegibles = c.EVENTS.filter(function(e){
+      if(!e.drama) return false;
+      try { return !e.c || e.c(); } catch(x){ return false; }
+    });
+    ok(elegibles.length > 0,
+      'el caso de prueba no aplica: ningun evento de drama es elegible en este estado');
+
+    let drama = 0; const ejemplos = {};
+    for(let i = 0; i < 600; i++){
+      const e = c.rollEvent();
+      if(!e) continue;
+      if(esDrama(c, e.id)){ drama++; ejemplos[e.id] = (ejemplos[e.id] || 0) + 1; }
+    }
+    eq(drama, 0, 'salieron ' + drama + ' eventos de drama con la puerta cerrada: ' + JSON.stringify(ejemplos));
+  });
+
+  test('un peleador hecho SI recibe drama', () => {
+    /* La puerta no puede quedarse cerrada para siempre. */
+    const { c, p } = novatoConPeleaFirmada(52);
+    p.lastFights = [{}, {}, {}]; p.pop = 60; c.G.week = 40;
+    eq(c.CL.dramaOk(), true, 'dramaOk sigue en falso con un peleador hecho');
+    let drama = 0;
+    for(let i = 0; i < 600; i++){
+      const e = c.rollEvent();
+      if(e && esDrama(c, e.id)) drama++;
+    }
+    ok(drama > 0, 'un peleador hecho no recibio ni un evento de drama en 600 sorteos');
+  });
+
+  test('el novato sigue recibiendo eventos, no se queda sin nada', () => {
+    const { c } = novatoConPeleaFirmada(53);
+    let total = 0;
+    for(let i = 0; i < 200; i++) if(c.rollEvent()) total++;
+    ok(total > 100, 'cerrar la puerta de drama dejo al novato casi sin eventos: ' + total);
+  });
+
+});

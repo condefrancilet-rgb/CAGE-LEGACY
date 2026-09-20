@@ -487,3 +487,52 @@ la pelea se conserva, y **reintentar cobra exactamente una vez** (probado).
 
 **Golden master sin cambios**: en el camino feliz `TX.run` es transparente —hace snapshot y
 no restaura—, así que no altera el consumo de RNG. Suite: **71 pruebas verdes**.
+
+---
+
+## F2-11 · La puerta de drama vuelve a aplicarse (G-002)
+**Tipo** fix · **Severidad** ALTA · **Equivalencia estadística ACEPTADA.**
+
+**Qué pasaba.** `CL.dramaOk()` (22105) decide si el jugador ya está en condiciones de
+recibir eventos de circo: exige 2 peleas disputadas, o popularidad ≥24, o 20 semanas desde
+el debut. La regla estaba escrita **sólo** en una capa anterior de `rollEvent` (22119), a la
+que la capa ganadora no llega salvo que su pool quede vacío. Resultado: no se aplicaba.
+
+**Nota de método — la primera prueba no medía nada.** La escribí replicando el escenario de
+la auditoría (`rec.w=5` con `lastFights=[]`) y **pasaba sin arreglar nada**, porque en un
+novato limpio ninguno de los 20 eventos de drama tiene su `c()` verdadera: la condición
+propia de cada evento ya los excluía. El escenario de la auditoría era sintético —el juego
+nunca produce `rec.w=5` con `lastFights` vacío—.
+Hubo que buscar el caso **real**: un novato en su tercera semana de campamento, donde
+`sg_counterplan` sí es elegible (pide `camp.i>=2`) y `dramaOk` sigue en falso.
+
+**Evidencia — medición en juego real, 10 carreras × 120 semanas:**
+```
+eventos del banco encolados : 328
+de ellos, drama con la puerta cerrada : 4      (1,2%)
+    sg_counterplan @ semana 3, pop 8,  0 peleas
+    sg_counterplan @ semana 3, pop 8,  0 peleas
+    sg_counterplan @ semana 18, pop 16, 1 pelea
+    sg_counterplan @ semana 16, pop 16, 1 pelea
+```
+Tras el arreglo, **la misma medición: 0 de 321**.
+
+**Qué se cambió.** Dos sitios, porque el primero no bastaba:
+1. `eventAllowed` (26440), que es el camino que el selector recorre de verdad.
+2. El **respaldo relajado** (26519), que re-filtra con su propio predicado cuando el pool
+   baja de 4 candidatos. Su comentario dice que relaja el enfriamiento *"NO la coherencia"*
+   — y la puerta de drama es coherencia, así que faltaba ahí.
+
+Es el mismo patrón que G-001: una regla aplicada en un sitio y olvidada en los caminos de
+respaldo. `rollEvent` sigue siendo el candidato número uno a consolidación.
+
+**Equivalencia estadística — 250 carreras × 150 semanas por lado, mismas semillas:**
+todas las métricas dentro de tolerancia (`node dev/equivalencia.js`). 16 de 250 carreras
+quedan con la huella **idéntica**: las que nunca rozaron la puerta.
+
+Se añadió `dev/equivalencia.js`, que aplica el criterio de F2 y además imprime el **ruido de
+muestreo** de cada proporción. Ese dato importa: `% campeones` tiene 6,30 pp de ruido a
+n=250, así que una tolerancia plana de 2 pp es más estrecha que la propia medición y no
+puede discriminar. Es la misma cautela que quedó anotada en F2-09.
+
+Golden master regenerado (las 5 trazas). Suite: **74 pruebas verdes**.
