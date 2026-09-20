@@ -928,3 +928,83 @@ Es la cuarta vez en F2 que el instrumento miente antes que el código. Las otras
 la prueba de save/load que exigía punto fijo en la primera vuelta, la de G-001 que pedía un
 evento imposible en una carrera nueva, y la de reloj que medía 25 copias de la misma
 muestra.
+
+---
+
+# F2-bis · Cinco bugs abiertos, resueltos
+
+> Tras cerrar F2 quedaban hallazgos de auditoría sin tocar. Estos cinco son **defectos de
+> corrección**, no de balance ni de estructura, así que no cruzan ninguna frontera: el
+> balance sigue en F14, `UI.screen` y la navegación en F3, las fuentes de la verdad en F4.
+
+## F2-21 · G-004 · El sorteo tenía efectos aunque la cola lo rechazara
+
+`fireEvent()` era `queueEvent(rollEvent())`, y **JS evalúa el sorteo antes** de que
+`queueEvent` mire si hay sitio. Sortear no es gratis: escribe la veda de 26 semanas en
+`eventHistory` y `sel.x()` muta los temporales compartidos —`G.tmpOpp`, `G.tmpSpon`,
+`G.tmpAmt`— que el evento **ya en pantalla** va a leer cuando el jugador elija. Dos daños:
+una veda quemada por un evento que nadie vio, y el pendiente resolviéndose contra el
+peleador equivocado.
+
+**Medido:** 4 carreras x 300 semanas → 378 llamadas a `fireEvent`, **0 con la cola
+ocupada**. El defecto era **latente**: los dos llamadores de hoy comprueban la cola por su
+cuenta. Por eso el arreglo **no mueve el golden master**.
+
+Lo que cambia es de quién es la regla. `queueHasRoom()` la declara una vez y la consultan
+los dos que la necesitan: `queueEvent`, para rechazar, y `fireEvent`, para **no sortear en
+balde**. Tenerla repetida en los llamadores es justo lo que mantuvo el agujero abierto.
+
+**De paso, G-005 ya estaba resuelto.** La auditoría lo daba como el único llamador sin
+guarda; F2-15 lo migró a `closeWeek`, que sí comprueba. Verificado, no supuesto.
+
+## F2-22 · D-007 · Terminar una pelea ya terminada la reescribía
+
+`finishFight()` no tenía la guarda `f.over` que sí tienen `fightAct`, `tkoCheck` y
+`tqPasivas`. Una segunda llamada sobrescribía `f.result`, volvía a consumir RNG
+—`chance(.5)` para KO/TKO, tres `rnd()` para la decisión— y redibujaba. Es el mismo agujero
+que D-001 y D-002 ya costaron en la vía de cobro, tapado sólo por la disciplina de los
+llamadores. `finishByDecision` tampoco la tenía.
+
+La guarda va **antes del hook**: sobre una pelea terminada no hay nada que anunciar.
+
+## F2-23 · D-010 · La pantalla de resultado llamaba derrota a un empate
+
+`scrFightResult` calculaba `won = res.winner==='p'`, **sin tercer estado**, así que el
+empate caía en la rama de derrota: "DERROTA", "PERDISTE", y encima atribuía la pelea al
+rival ("*Conor McGregor* por empate unánime"). La capa de arriba antepone una tarjeta
+"EMPATE" correcta, de modo que el jugador veía **los dos mensajes contradictorios en la
+misma pantalla**.
+
+La auditoría lo marcaba BAJA. **Medido, no lo es:** 200 carreras x 300 semanas → 108
+empates de 4779 peleas (2,26%), y **85 de las 200 carreras tienen al menos uno**. Casi la
+mitad de las partidas ve esa pantalla.
+
+**Lo que se comprobó y NO era bug.** `applyWinLossResult` también tiene sólo dos ramas, y
+un empate por la rama `else` habría sumado derrota, puesto la racha en negativo y —peor—
+**quitado el cinturón al campeón**. No ocurre: `applyPlayerFight` enruta el empate a
+`applyDrawResult`, un manejador de primera clase. El hook de sagas también lo excluye
+explícitamente. Verificado antes de tocar nada.
+
+## F2-24 · C-006 · El descanso de `skipWeek` se evaporaba al guardar
+
+`skipWeek` era `finishWeek(...)` y **después** restar 12 de fatiga. `finishWeek` cierra la
+semana, y cerrar guarda: el save se escribía con la fatiga vieja. **Medido: 48,58 en el
+save contra 36,58 en memoria** — los 12 puntos de descanso, que son el único efecto de la
+acción, se perdían al recargar.
+
+**El arreglo obvio era incorrecto.** Restar antes de `finishWeek` cambia el resultado,
+porque `advanceWeek` aplica su propia recuperación y el orden importa cuando ésa no es una
+constante. La resta va **después de avanzar la semana y antes de guardar**, así que
+`finishWeek` acepta un segundo argumento opcional para el efecto propio de cada acción.
+
+## F2-25 · F-003 · El blob heredado se sellaba v4 sin migrar
+
+`migrateLegacyBlob` hacía `saveExpand(g); savePrune(g); g.saveVersion=SAVE_VERSION;` **sin
+llamar a `saveMigrate`, ni a `SAVE_STEPS`, ni a `saveValidateV4`**. Un save v1 quedaba
+etiquetado v4; al cargarlo, `saveShape` decía "al día" y se aplicaban **cero pasos**.
+`socCD`, `trainRec`, `mgStats` y `sagas` quedaban `undefined` en una partida que el juego da
+por correcta.
+
+Ahora pasa por `saveMigrate`, el mismo camino que usa `loadGame`. Y si devuelve `null` la
+partida era irrecuperable y **no se escribe**: sellarla era justo lo que convertía un save
+roto en uno "al día".

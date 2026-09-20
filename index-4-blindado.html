@@ -2157,6 +2157,14 @@ function cornerAdvice(){
    implementación que el juego usaba de verdad y el despacho se hace explícito.
    ========================================================================== */
 function finishFight(method, who){
+  /* D-007. Faltaba la guarda que SI tienen fightAct, tkoCheck y tqPasivas: una
+     segunda llamada sobrescribia f.result, volvia a consumir RNG —chance(.5)
+     para KO/TKO, o tres rnd() para la decision— y redibujaba. Es el mismo
+     agujero que D-001 y D-002 ya costaron en la via de cobro, y estaba tapado
+     solo por la disciplina de los llamadores.
+     Va ANTES del hook: sobre una pelea terminada no hay nada que anunciar, y
+     los suscriptores ya comprueban f.over por su cuenta. */
+  if(!G || !G.fight || G.fight.over) return false;
   var ctx = {method:method, who:who, handled:false};
   hookEmit('fight:finish:pre', ctx);
   if(ctx.handled) return false;
@@ -3171,10 +3179,17 @@ function eventAdmissible(e){
   if(String(e.id).indexOf('cl_')===0 && e.id!=='cl_dyn' && !e.h) return {ok:false, motivo:'evento dinámico sin manejador'};
   return {ok:true};
 }
-function queueEvent(e){
+/* ¿Hay sitio en la cola? Lo preguntan dos: queueEvent, para rechazar lo que le
+   llega, y fireEvent, para NO SORTEAR EN BALDE. Escrito una sola vez, porque
+   tenerlo repetido es justo lo que dejó el agujero de G-004 abierto durante
+   tanto tiempo: la guarda estaba en los llamadores, no en la función. */
+function queueHasRoom(){
   if(!G) return false;
   if(!Array.isArray(G.pending)) G.pending = [];
-  if(G.pending.length) return false;                  /* ya hay uno en pantalla */
+  return G.pending.length === 0;                      /* si hay uno, está en pantalla */
+}
+function queueEvent(e){
+  if(!queueHasRoom()) return false;
   var ad = eventAdmissible(e);
   if(!ad.ok){
     if(e && e.id && ad.motivo!=='carrera terminada' && ad.motivo!=='sin partida')
@@ -3185,7 +3200,20 @@ function queueEvent(e){
   return true;
 }
 function fireEvent(){
-  queueEvent(rollEvent());
+  /* G-004. Esto era `queueEvent(rollEvent())`, y JS evalúa el sorteo ANTES de
+     que queueEvent mire si hay sitio. Sortear no es gratis: escribe la veda de
+     26 semanas en eventHistory y `sel.x()` muta los temporales compartidos
+     —G.tmpOpp, G.tmpSpon, G.tmpAmt— que el evento YA EN PANTALLA va a leer
+     cuando el jugador elija una opción. O sea, dos daños: una veda quemada por
+     un evento que nadie llegó a ver, y el pendiente resolviéndose contra el
+     peleador equivocado.
+     Medido antes de arreglarlo: en 4 carreras x 300 semanas, 378 llamadas y 0
+     con la cola ocupada, porque los dos llamadores de hoy comprueban la cola
+     por su cuenta. Era un defecto LATENTE, y por eso el arreglo no mueve el
+     golden master. Lo que cambia es de quién es la regla: ahora vive aquí, y un
+     tercer llamador ya no puede equivocarse. */
+  if(!queueHasRoom()) return false;
+  return queueEvent(rollEvent());
 }
 /* ==========================================================================
    RESOLUCIÓN DE EVENTOS — IMPLEMENTACIÓN CANÓNICA ÚNICA
@@ -4581,7 +4609,13 @@ function doWeek(k){
   var msg = TRAIN[k].n+' — '+gainText(r.gain)+(r.inj? ' · '+r.inj : '');
   finishWeek(msg);
 }
-function skipWeek(){ finishWeek('Semana tranquila. El cuerpo agradece.'); G.player.fatigue=clamp(G.player.fatigue-12,0,100); }
+/* C-006. El descanso es el unico efecto de esta accion y se perdia al
+   recargar: medido, fatiga 48,58 en el save contra 36,58 en memoria. */
+function skipWeek(){
+  finishWeek('Semana tranquila. El cuerpo agradece.', function(){
+    G.player.fatigue=clamp(G.player.fatigue-12,0,100);
+  });
+}
 /* ==========================================================================
    CIERRE DE SEMANA — UN SOLO SITIO
    --------------------------------------------------------------------------
@@ -4601,8 +4635,14 @@ function closeWeek(opts){
   if(opts.offers && !G.nextFight && chance(.30)) makeOffers();
   if(opts.save !== false) saveGame(true);
 }
-function finishWeek(msg){
+function finishWeek(msg, aplicar){
   advanceWeek();
+  /* El efecto propio de la accion va AQUI: despues de avanzar la semana y
+     ANTES de cerrarla, porque cerrar guarda. skipWeek restaba su descanso
+     despues de finishWeek, o sea despues del guardado, y recargar lo evaporaba
+     (C-006). Adelantar la resta a antes de advanceWeek no vale: la semana
+     aplica su propia recuperacion y el orden cambia el resultado. */
+  if(typeof aplicar==='function') aplicar();
   closeWeek({events:true, offers:true});
   if(msg) toast(msg);
   go('hub');
@@ -4903,10 +4943,20 @@ function scrFight(){
 function hpCol(v){ return v>60? '#3fbf87' : (v>30? '#d9a441':'#e0574f'); }
 function scrFightResult(){
   var f=G.fight, res=f.result, p=G.player, o=F(f.opp);
-  var won=res.winner==='p';
-  var h='<div class="topbar"><div class="r1"><h2>'+(won?'VICTORIA':'DERROTA')+'</h2><span class="sm dim">'+weekDate()+'</span></div></div>';
-  h+='<div class="card '+(won?'gold':'hi')+'"><div class="center"><div class="big '+(won?'jade':'bad')+'">'+(won?'GANASTE':'PERDISTE')+'</div>'+
-   '<p class="sm">'+esc(fname(won?p:o))+' por '+res.methodEs+' · round '+res.round+'</p></div>';
+  /* D-010. Esto tenia dos estados, no tres: `won = res.winner==='p'` mandaba el
+     empate a la rama de derrota, asi que la pantalla decia DERROTA y PERDISTE
+     y ademas le atribuia la pelea al rival ("<rival> por empate unanime").
+     La capa de arriba antepone una tarjeta EMPATE correcta, de modo que el
+     jugador veia los dos mensajes contradictorios a la vez.
+     No es un caso raro: medido en 200 carreras x 300 semanas, 108 empates de
+     4779 peleas (2,26%) y 85 de las 200 carreras tienen al menos uno. */
+  var draw=res.winner==='d', won=res.winner==='p';
+  var titulo=draw?'EMPATE':(won?'VICTORIA':'DERROTA');
+  var veredicto=draw?'EMPATE':(won?'GANASTE':'PERDISTE');
+  var h='<div class="topbar"><div class="r1"><h2>'+titulo+'</h2><span class="sm dim">'+weekDate()+'</span></div></div>';
+  h+='<div class="card '+(won?'gold':'hi')+'"><div class="center"><div class="big '+(draw?'gold':(won?'jade':'bad'))+'">'+veredicto+'</div>'+
+   '<p class="sm">'+(draw? 'Por '+res.methodEs+' · round '+res.round
+                         : esc(fname(won?p:o))+' por '+res.methodEs+' · round '+res.round)+'</p></div>';
   if(res.method==='dec') h+='<p class="sm dim center">Tarjetas: '+f.cards.map(function(c){return c.p+'-'+c.o;}).join(' | ')+'</p>';
   h+='</div>';
   if(!G.paid){
@@ -13924,7 +13974,18 @@ function migrateLegacyBlob(){
         try{
           var g=JSON.parse(rec.data);
           if(!g || !g.player) return;
-          saveExpand(g); savePrune(g); g.saveVersion=SAVE_VERSION;
+          /* F-003. Esto era `saveExpand(g); savePrune(g); g.saveVersion=4;`:
+             sellaba la version SIN ejecutar ni un paso de migracion. Un save v1
+             del blob quedaba etiquetado v4, y al cargarlo saveShape decia "al
+             dia" y aplicaba CERO pasos: socCD, trainRec, mgStats y sagas se
+             quedaban undefined en una partida que el juego da por correcta.
+             Ahora pasa por saveMigrate, el mismo camino que usa loadGame, que
+             encadena SAVE_STEPS y valida con saveValidateV4. Si devuelve null
+             la partida era irrecuperable, y entonces NO se escribe: sellarla
+             era justo lo que convertia un save roto en uno "al dia". */
+          g=saveMigrate(saveExpand(g));
+          if(!g) return;
+          savePrune(g);
           var body=saveSerialize(g);
           /* La escritura se aisla del resto: un fallo aqui NO es una partida
              irrecuperable, es una partida buena que no cupo. Confundir los dos
