@@ -76,6 +76,36 @@ suite('cierres de intercambio (caracterizacion)', () => {
     eq(n.post, 0, 'TQ.apply emitio exchange:post, y hoy no lo hace');
   });
 
+  test('el reloj de TQ.apply se queda dentro de [30,52]', () => {
+    /* Una sola tirada no distingue ri(30,52) de ri(38,62): los rangos se
+       solapan y 44 cae en los dos. Verificado por mutacion: la primera version
+       de esta prueba sorteaba 25 peleas nuevas y le salia 44 las 25 veces,
+       porque con metaSeed fijo el flujo del RNG es identico al empezar la
+       pelea — eran 25 copias de una sola muestra, y el mutante pasaba.
+       Aqui se sortea DENTRO de una misma pelea, que es donde el RNG avanza de
+       verdad. Se repone la vida de los dos para que la pelea no termine, y se
+       descartan los intercambios que cierran el round, porque endRound
+       reinicia el reloj y la resta no mediria el coste. */
+    const { c } = peleaViva(901);
+    const t = Object.keys(c.TQ.MAP).map(id => c.TQ.node(id))
+      .find(x => x && x.fx && !x.fx.finish && !x.fx.sub);
+    ok(t, 'no hay ninguna tecnica sin finalizacion en el arbol');
+    const gastos = [];
+    for(let i = 0; i < 60 && c.G.fight && !c.G.fight.over; i++){
+      const f = c.G.fight, antes = f.clock, rondaAntes = f.round;
+      f.o.hp = 100; f.p.hp = 100;
+      c.TQ.apply(t, 'good', 0.8);
+      if(!c.G.fight || c.G.fight.over) break;
+      if(c.G.fight.round !== rondaAntes) continue;
+      gastos.push(antes - c.G.fight.clock);
+    }
+    ok(gastos.length >= 8, 'muy pocas muestras de reloj: ' + gastos.length);
+    const min = Math.min(...gastos), max = Math.max(...gastos);
+    ok(min >= 30, 'TQ.apply gasto ' + min + ', por debajo de 30: ' + gastos.join(' '));
+    ok(max <= 52, 'TQ.apply gasto ' + max + ', por encima de 52 — reloj de fightAct? ' +
+       gastos.join(' '));
+  });
+
   test('fightFinishResolve cierra el intercambio SIN emitir los hooks', () => {
     const { c, f } = peleaViva(804);
     const n = contarHooks(c);

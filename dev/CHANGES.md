@@ -767,7 +767,66 @@ nadie lo consulte para sortear es deuda de **fuentes de la verdad**, y le toca e
   cuatro capas**, siguen verdes contra la función única. Lo único que cambió en ellas es
   cómo se mide qué nivel resolvió el sorteo (antes: si el historial crecía; ahora:
   `CL.evNivel()`).
-- A/B con `sim.js --file` contra una copia congelada de antes de fundir: **en curso** al
-  cerrar el commit (200 carreras x 300 semanas por lado). Resultado abajo cuando termine.
+- A/B con `sim.js --file` contra una copia congelada de antes de fundir, 200 carreras x
+  300 semanas por lado. **No sólo equivalente: idéntico.**
+
+```
+n = 200 vs 200
+MEDIAS              antes        despues      delta      2*EE     veredicto
+peleas por carrera   23.9         23.9          0.0       0.3     equivalente
+edad final           28.0         28.0          0.0       0.4     equivalente
+popularidad          93.2         93.2          0.0       1.7     equivalente
+titulos               1.2          1.2          0.0       0.2     equivalente
+cash            1164939.4    1164939.4          0.0  170245.4     equivalente
+careerEarn      1303018.5    1303018.5          0.0  174469.3     equivalente
+
+PROPORCIONES        antes        despues   delta(pp)  ruido(2EE)  veredicto
+win rate            79.24        79.24        0.00       1.17     equivalente
+% KO                45.54        45.54        0.00       1.46     equivalente
+% sumision           0.11         0.11        0.00       0.10     equivalente
+% decision          54.36        54.36        0.00       1.46     equivalente
+% campeones         85.50        85.50        0.00       4.98     equivalente
+
+fallos de invariante: 0 -> 0
+carreras con huella identica: 200 de 200
+```
+
+  Es el resultado que la predicción exigía: si el nivel 3 no se alcanza, fundir las capas
+  que vivían en él no puede mover nada. Los deltas exactamente cero en las seis medias y
+  las cinco proporciones, y **las 200 huellas idénticas**, lo confirman por medición y no
+  por argumento.
 - Métricas de control: redefiniciones 43 → **42**, wrappers 42 → **40**, escrituras de
   scroll **3** (I1 intacto), `eval` 0, dependencias externas 0.
+
+---
+
+## F2-18 · Red de caracterización de los tres cierres de intercambio
+
+**Commits** `686d3c3` (red) + el de esta entrada (verificación por mutación).
+
+Preparación para consolidar combate. Seis pruebas en `dev/tests/08-intercambio.js` que
+conducen **a mano** los dos caminos que el autopiloto no pisa y fijan lo que hacen hoy.
+
+### Verificación por mutación — tres mutantes, tres capturas
+
+| mutante | qué cambia | prueba que cae |
+|---|---|---|
+| 1 | `TQ.apply` gasta `ri(38,62)` en vez de `ri(30,52)` | «los tres relojes son distintos» y «el reloj de `TQ.apply` se queda dentro de [30,52]» |
+| 2 | `TQ.apply` emite `exchange:pre/post` | «`TQ.apply` cierra el intercambio SIN emitir los hooks» |
+| 3 | `fightAct` llama a `resolveExchangeCore` y se salta los hooks | «`fightAct` emite `exchange:pre` y `exchange:post`» |
+
+### Una prueba que pasaba sin probar nada
+
+La primera versión de la prueba de reloj sorteaba **25 peleas nuevas** y comparaba el
+gasto contra `[30,52]`. Pasaba con el mutante 1 puesto. Al imprimir los números, las 25
+muestras eran **44, las 25 veces**: con `metaSeed` fijo el flujo del RNG es idéntico al
+empezar la pelea, así que eran 25 copias de una sola muestra — y 44 cae dentro de `[30,52]`
+y de `[38,62]` a la vez, porque los rangos se solapan.
+
+Reescrita para sortear **dentro de una misma pelea**, que es donde el RNG avanza de verdad
+(reponiendo la vida de los dos para que no termine, y descartando los intercambios que
+cierran el round, porque `endRound` reinicia el reloj y la resta no mediría el coste).
+Ahora da `44 38 49 40 52 44 57 48 46 49 55 55 48 56 60` con el mutante y **cae**.
+
+Es el mismo error que ya había aparecido en F2 con la prueba de save/load y con la de
+G-001: **una prueba verde no vale nada hasta que se la ve caer.**
