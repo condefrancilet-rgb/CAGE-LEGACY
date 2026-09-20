@@ -912,6 +912,10 @@ la primera lanza, la segunda corre igual.
   la prueba del jugador cayó: el sitio nuevo es el real.
 - Suite **100 → 107 verdes**. Golden master idéntico.
 - Métricas planas: 42 redefiniciones, 40 wrappers, 3 escrituras de scroll, `eval` 0, deps 0.
+- A/B con `sim.js --file`, 200 carreras x 300 semanas por brazo: **idéntico, no sólo
+  equivalente**. Deltas exactamente cero en las seis medias y las cinco proporciones,
+  0 fallos de invariante, y **200 de 200 huellas idénticas**. Era lo exigible: extraer un
+  recorrido sin cambiar el orden de nada no puede mover un bit, y así queda medido.
 
 ### Error propio, registrado para que no se repita
 

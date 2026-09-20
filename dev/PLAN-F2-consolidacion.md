@@ -141,3 +141,35 @@ el mismo proceso, con las mismas semillas, sin revertir el árbol de trabajo.
 - Arreglar el orden de los hooks de `week` → cambia comportamiento (F3/F4).
 - Unificar el bloque (`advancePeriod`) con la semana a semana (`doWeek`) → es balance
   (C-013), va a F14.
+
+
+---
+
+## Cierre de la cola estructural de F2
+
+| # | candidato | veredicto | dónde está el motivo |
+|---|---|---|---|
+| 0 | cierre de semana | **consolidado** (F2-15) | `closeWeek(opts)`, 6 llamadores |
+| 8 | `rollEvent` | **consolidado** (F2-16, F2-17) | 4 capas → 1, A/B 200/200 idénticas |
+| — | cierre de round | **consolidado** (F2-19) | `roundOver(f)`, 3 copias → 1 |
+| 2 | `savePrune` | **consolidado en parte** (F2-20) | sólo el recorrido: D-014 |
+| 4 | `fightFinishResolve`/`sparFinishResolve` | **no se toca** | descomposición sana, no duplicación |
+| 9 | `pruneWorld` | **no se toca** | D-013 · la fusión cambia qué luchadores existen → F4 |
+| 7 | `cardioStart`/`strStart`/`drillStart` | **no se toca** | D-015 · el camino vivo ya es una función |
+| — | cierre de intercambio | **no se extrae** | D-016 · lo compartido ya se extrajo |
+| 1 | `startCareer` | ya fundido | sin cadena |
+| 3 | `advanceWeek` | ya es una | lo que queda es F3/F4 |
+| 5 | entrenamiento | poco que hacer | — |
+| 6 | navegación / render | **F3** | toca `UI.screen`, 37 escrituras |
+
+**Cuatro de los nueve candidatos se descartaron midiendo**, no leyendo. En tres casos la
+medición cambió el veredicto que el plan daba por hecho:
+
+- los minijuegos parecían "3 capas con cuidado por GATE" y resultaron ser **una función
+  parametrizada con respaldo inalcanzable por construcción**;
+- el cierre de intercambio parecía duplicación y, una vez extraído `roundOver`, quedaron
+  **dos sentencias**;
+- `savePrune` parecía tener una capa muerta y resultó hacer **3400 redondeos por carrera**.
+
+Las cuatro deudas que esto deja están en `dev/DEUDAS-F4.md`, cada una con la medición que
+las descartó.

@@ -10803,7 +10803,22 @@ function tgScreen(mg){
 /* [consolidado en el núcleo v2: mg/entrenamiento] */
 
 
-/* ---------- reemplazo de las entradas de entrenamiento ---------- */
+/* ---------- reemplazo de las entradas de entrenamiento ----------
+   ESTAS TRES LINEAS SON EL CAMINO VIVO. Lo que quedo debajo -las bases de
+   cardioStart/strStart/drillStart y la capa 'arcade' que las parchea- pasa a
+   ser el RESPALDO que tgStart recibe como segundo argumento, y sigue ahi como
+   recuperacion de error, no como codigo muerto que se pueda borrar.
+   Medido, no supuesto: conduciendo los tres arranques a mano (el autopiloto no
+   pulsa botones de minijuego), 120 de 120 salieron por tgStart y 0 por el
+   respaldo. Y de forma determinista, no muestreada: tgStart cae al respaldo si
+   tgPick devuelve una clave sin TG_INFO o sin FX_GAMES, y las 25 claves de
+   TG_INFO tienen juego FX, con los tres pools alcanzando 5, 5 y 15 claves sin
+   ninguna descubierta. O sea que el respaldo es inalcanzable por construccion:
+   lo unico que puede dispararlo es que fxOpen falle en runtime.
+   Por eso NO se fusionan (D-015): abajo hay tres minijuegos distintos, no tres
+   copias del mismo, y tgStart(pool, fallback) ya es una sola funcion
+   parametrizada. Ojo si alguna vez se recorre el respaldo: la capa arcade
+   redibuja en cardio y en str, pero NO en drill. */
 var _tgCardioPrev=cardioStart, _tgStrPrev=strStart, _tgDrillPrev=drillStart;
 cardioStart=function(){ tgStart('cardio', _tgCardioPrev); };
 strStart   =function(){ tgStart('str',    _tgStrPrev); };
