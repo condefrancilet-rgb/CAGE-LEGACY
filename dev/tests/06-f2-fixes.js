@@ -683,3 +683,99 @@ suite('F2 · G-002 la puerta de drama vuelve a aplicarse', () => {
   });
 
 });
+
+suite('F2 · F-002 la copia de respaldo pre-migracion existe', () => {
+
+  /* Inyecta una fixture reetiquetada a una version antigua y la carga. */
+  function cargaVersion(seed, version){
+    const fs = require('node:fs'), path = require('node:path');
+    const cuerpo = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', '03-mitad-carrera.json'), 'utf8');
+    const obj = JSON.parse(cuerpo);
+    obj.saveVersion = version;
+    const raw = JSON.stringify(obj);
+
+    const h = H.boot({ seed });
+    const c = h.ctx;
+    const id = 's-mig-' + version;
+    c.localStorage.setItem(c.SAVE_ONE + id, raw);
+    const idx = c.saveIndex();
+    idx[id] = { name: 'fixture', rec: '0-0', div: '—', org: '—', when: '—',
+                cash: 0, v: version, at: Date.now(), kb: Math.round(raw.length / 1024) };
+    c.localStorage.setItem(c.SAVE_IDX, JSON.stringify(idx));
+    const ok = c.loadGame(id);
+    return { h, c, id, ok, raw };
+  }
+
+  test('cargar un save antiguo deja una copia intacta del original', () => {
+    const { c, id, ok, raw } = cargaVersion(101, 2);
+    ok2(ok, 'no se pudo cargar la fixture reetiquetada a v2');
+    const copia = c.localStorage.getItem(c.SAVE_BAK + id);
+    ok2(copia !== null, 'no se escribio la copia de respaldo antes de migrar');
+    eq(copia, raw, 'la copia de respaldo no es el original intacto');
+    /* y el slot si quedo reescrito en la version nueva */
+    const enDisco = JSON.parse(c.localStorage.getItem(c.SAVE_ONE + id));
+    eq(enDisco.saveVersion, c.SAVE_VERSION, 'el slot no quedo migrado');
+  });
+
+  test('cargar un save ya al dia no deja copia', () => {
+    /* No tiene sentido duplicar cada partida en cada carga. */
+    const { c, id, ok } = cargaVersion(102, 4);
+    ok2(ok, 'no se pudo cargar la fixture v4');
+    eq(c.localStorage.getItem(c.SAVE_BAK + id), null,
+       'se escribio una copia de respaldo sin haber migrado nada');
+  });
+
+  function ok2(cond, msg){ ok(cond, msg); }
+});
+
+suite('F2 · I-002 el campeon fantasma', () => {
+
+  function mundo(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 1928, style: 'mma', div: 'LW', age: 23 });
+    return { h, c: h.ctx };
+  }
+  const campeonDe = (c, org, div) => {
+    const id = c.G.champs[org] && c.G.champs[org][div];
+    return id ? c.G.fighters[id] : null;
+  };
+
+  test('un campeon que cambia de organizacion deja el cinturon vacante', () => {
+    const { c } = mundo(111);
+    const org = 'VAN', div = 'HW';
+    const ch = campeonDe(c, org, div);
+    ok(ch, 'no hay campeon de ' + org + '/' + div + ' para la prueba');
+    /* el ascenso de organizacion que hace yearTick: cambia f.org y no toca el cinturon */
+    ch.org = 'RFL';
+    c.rebuildRosters();
+    c.recalcRank(org, div);
+    eq(c.G.champs[org][div], null,
+       'el cinturon de ' + org + '/' + div + ' sigue en manos de alguien que ya no compite ahi');
+  });
+
+  test('un campeon en su propia organizacion conserva el cinturon', () => {
+    const { c } = mundo(112);
+    const org = 'VAN', div = 'LHW';
+    const ch = campeonDe(c, org, div);
+    ok(ch, 'no hay campeon de ' + org + '/' + div + ' para la prueba');
+    eq(ch.org, org, 'el campeon de la prueba no milita en su organizacion');
+    c.recalcRank(org, div);
+    eq(c.G.champs[org][div], ch.id, 'se vacio el cinturon de un campeon valido');
+  });
+
+  test('la division abandonada puede volver a coronar', () => {
+    /* El dano real de I-002: worldTick solo organiza pelea por titulo vacante
+       si G.champs[org][div] es falsy, asi que un cinturon fantasma congela la
+       division para siempre. */
+    const { c } = mundo(113);
+    const org = 'VAN', div = 'HW';
+    const ch = campeonDe(c, org, div);
+    ok(ch, 'no hay campeon para la prueba');
+    ch.org = 'TFC';
+    c.rebuildRosters();
+    c.recalcRank(org, div);
+    eq(c.G.champs[org][div], null, 'el cinturon quedo congelado');
+  });
+
+});

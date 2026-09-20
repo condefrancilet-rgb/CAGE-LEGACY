@@ -536,3 +536,52 @@ n=250, así que una tolerancia plana de 2 pp es más estrecha que la propia medi
 puede discriminar. Es la misma cautela que quedó anotada en F2-09.
 
 Golden master regenerado (las 5 trazas). Suite: **74 pruebas verdes**.
+
+---
+
+## F2-12 · La copia de respaldo pre-migración vuelve a existir (F-002)
+**Tipo** fix · **Severidad** ALTA · **Impacto jugable: NINGUNO** (verificado aislando el arreglo).
+
+**Qué pasaba.** `loadGame` (13055) guarda una copia intacta del slot antes de migrarlo,
+condicionada a `safeInt(parsed.saveVersion,1) !== SAVE_VERSION`. Pero
+`saveMigrate(saveExpand(parsed))` **devuelve el mismo objeto `parsed`** y le pone
+`saveVersion = SAVE_VERSION` antes de llegar a esa línea: la comparación era **siempre
+falsa** y la copia **no se escribía nunca**. Acto seguido `saveGame(true)` (13066) pisa el
+slot con la versión migrada, así que el original quedaba irrecuperable.
+`SAVE_BAK` tampoco se lee en ninguna parte: era código muerto por los dos extremos.
+
+**Evidencia — corrida en rojo:** `no se escribio la copia de respaldo antes de migrar`.
+
+**Qué se cambió.** Se usa `diag.v`, que ya se había calculado con `saveShape()` **antes** de
+mutar nada. Una línea. Ahora un save antiguo deja su copia intacta y uno ya al día no
+duplica nada (ambas cosas con prueba).
+
+**Impacto jugable nulo, verificado**: aplicando **sólo** este arreglo sobre la versión
+anterior, la golden trace `trace-101` da la huella **idéntica** (`21a947ad`).
+
+---
+
+## F2-13 · El campeón fantasma (I-002)
+**Tipo** fix · **Severidad** ALTA · **Equivalencia estadística ACEPTADA.**
+
+**Qué pasaba.** `recalcRank` (1207) validaba al campeón por `retired`, `active` y `div`,
+pero **no** comprobaba que siguiera militando en **esa** organización. `yearTick`
+(1386-1389) asciende de organización (`f.org = up`) sin vaciar el cinturón, así que el
+mismo peleador quedaba como campeón de la que abandonó y a la vez retador de la nueva.
+
+El daño no es cosmético: `worldTick` (1509) sólo organiza pelea por título vacante si
+`G.champs[org][div]` es falsy, de modo que **la división abandonada se congelaba para
+siempre** — cinturón que nadie puede disputar.
+
+**Evidencia — corrida en rojo:** tras mover al campeón de VAN/HW a otra organización y
+recalcular, `G.champs.VAN.HW` seguía siendo `f154`.
+
+**Qué se cambió.** Se añade `G.fighters[ch].org !== orgId` a la validación, junto a una
+guarda por si el id ya no existe. Mismo sitio, misma forma que el resto de condiciones.
+
+**Equivalencia estadística — 250 carreras × 150 semanas por lado:** todas las métricas
+dentro de tolerancia. **172 de 250 carreras quedan con la huella idéntica**, lo que encaja
+con lo que decía la auditoría: el caso es real pero de frecuencia natural baja (0
+ocurrencias espontáneas en 10 años en la semilla que se revisó). Fallos de invariante 0 → 0.
+
+Golden master regenerado. Suite: **79 pruebas verdes**.

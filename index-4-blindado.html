@@ -1204,7 +1204,14 @@ function recalcRank(orgId, div){
     return d!==0 ? d : (a<b? -1 : (a>b? 1 : 0));   /* desempate estable por id */
   });
   var ch = G.champs[orgId][div];
-  if(ch && (G.fighters[ch].retired || !G.fighters[ch].active || G.fighters[ch].div!==div)){
+  /* El campeon tiene que seguir militando en ESTA organizacion. Faltaba esa
+     comprobacion: yearTick asciende de organizacion (f.org = up) sin vaciar el
+     cinturon, asi que el mismo peleador quedaba como campeon de la que
+     abandono y a la vez retador de la nueva. El dano no es cosmetico: worldTick
+     solo organiza pelea por titulo vacante si G.champs[org][div] es falsy, de
+     modo que la division abandonada se congelaba para siempre. */
+  if(ch && (!G.fighters[ch] || G.fighters[ch].retired || !G.fighters[ch].active ||
+            G.fighters[ch].div!==div || G.fighters[ch].org!==orgId)){
     G.champs[orgId][div]=null; ch=null;
   }
   if(ch) arr = arr.filter(function(i){return i!==ch;});
@@ -13051,8 +13058,15 @@ function loadGame(id){
               (g._saveDamage.length>3? ' (y '+(g._saveDamage.length-3)+' más)':'')+'.');
     }
     /* Cargar reescribe el slot ya migrado. Si la migración fuese defectuosa se
-       perdería el original, así que se guarda una copia intacta ANTES. */
-    if(safeInt(parsed.saveVersion,1) !== SAVE_VERSION){
+       perdería el original, así que se guarda una copia intacta ANTES.
+       La condición leía `parsed.saveVersion`, pero saveMigrate() DEVUELVE EL
+       MISMO OBJETO `parsed` y le pone saveVersion = SAVE_VERSION antes de
+       llegar aquí: la comparación era siempre falsa y la copia no se escribía
+       nunca. Acto seguido saveGame(true) pisaba el slot con la versión migrada,
+       así que el original quedaba irrecuperable y la única red de seguridad de
+       la migración no existía. Se usa `diag.v`, que se calculó con saveShape()
+       ANTES de mutar nada. */
+    if(safeInt(diag && diag.v, 1) !== SAVE_VERSION){
       try{ localStorage.setItem(SAVE_BAK+id, raw); }catch(e4){ errLog('backup:'+id, e4); }
     }
     G=g; G.saveId=id;
