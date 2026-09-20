@@ -125,6 +125,18 @@ suite('cierres de intercambio (caracterizacion)', () => {
     eq(n.post, 0, 'fightFinishResolve emitio exchange:post, y hoy no lo hace');
   });
 
+  test('la regla de cierre de round esta escrita una sola vez', () => {
+    const fs = require('node:fs'), path = require('node:path');
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'index-4-blindado.html'), 'utf8');
+    /* La condicion literal no debe reaparecer: si vuelve a escribirse a mano
+       en algun cierre, cambiarla pedira otra vez varias ediciones. */
+    const aMano = src.match(/f\.ex\s*>=\s*f\.exPer\s*\|\|\s*f\.clock\s*<=\s*20/g) || [];
+    eq(aMano.length, 1, 'la regla de cierre de round aparece ' + aMano.length +
+       ' veces escrita a mano; deberia vivir solo dentro de roundOver()');
+    const usos = src.match(/roundOver\(/g) || [];
+    ok(usos.length >= 4, 'roundOver no lo consultan los tres cierres: ' + usos.length);
+  });
+
   test('los tres relojes son distintos entre si', () => {
     /* Esta prueba fija la DIVERGENCIA, que es el hallazgo: tres sitios que
        cierran lo mismo con tres constantes. Se mide sobre el texto del juego,

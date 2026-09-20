@@ -830,3 +830,31 @@ Ahora da `44 38 49 40 52 44 57 48 46 49 55 55 48 56 60` con el mutante y **cae**
 
 Es el mismo error que ya había aparecido en F2 con la prueba de save/load y con la de
 G-001: **una prueba verde no vale nada hasta que se la ve caer.**
+
+---
+
+## F2-19 · La regla de cierre de round vive en un solo sitio
+
+**Commit** de esta entrada · refactor, sin cambio de comportamiento.
+
+`f.ex >= f.exPer || f.clock<=20` estaba escrita **tres veces**, constante `20` incluida, en
+los tres sitios que cierran un intercambio (`fightAct` 1842, `fightFinishResolve` 6470,
+`TQ.apply` 20787). Cambiar cuándo termina un round pedía tres ediciones, y bastaba olvidar
+una para que un camino cerrara el round con otro criterio — el mismo patrón que obligó a
+arreglar `important` en tres constructores y la puerta de drama en dos filtros.
+
+Ahora la regla es `roundOver(f)` y los tres la consultan. Es una lectura pura de
+`f.ex`/`f.exPer`/`f.clock`, así que la extracción no mueve nada.
+
+**Lo que NO se unificó, a propósito.** El coste de reloj sigue siendo distinto en los tres
+(`ri(38,62)` un intercambio normal, `ri(30,52)` una técnica, `ri(24,46)` un minijuego de
+finalización). Puede ser deliberado: una técnica cuesta menos reloj que un intercambio
+completo. Igualarlos es **balance, no consolidación**, y va a F14. La divergencia queda
+fijada por prueba en `dev/tests/08-intercambio.js` para que no se cierre por accidente.
+
+Tampoco se tocó que dos de los tres caminos **no emitan** `exchange:pre/post`: hacerlos
+emitir haría correr el TKO por daño acumulado en técnicas y minijuegos, que es un **cambio
+de comportamiento** y necesita su propia evidencia.
+
+**Verificación.** Prueba nueva que falla si la condición vuelve a escribirse a mano en
+algún cierre. Suite completa verde.

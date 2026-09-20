@@ -1826,6 +1826,18 @@ function wpick(w){
    El orden de ejecución es el mismo que tenía la cadena de capas, y el early
    return por combate terminado se conserva intacto.
    ========================================================================== */
+/* ¿Este intercambio cierra el round? La regla estaba escrita igual en los TRES
+   sitios que cierran un intercambio (fightAct, TQ.apply y fightFinishResolve),
+   constante 20 incluida, así que cambiarla pedía tres ediciones y bastaba
+   olvidar una para que un camino cerrara el round con otro criterio.
+   Lo que NO se unifica aquí es el coste de reloj: hoy son tres distintos
+   —ri(38,62) un intercambio normal, ri(30,52) una técnica, ri(24,46) un
+   minijuego de finalización— y eso puede ser deliberado. Igualarlos es una
+   decisión de balance, no de estructura; queda fijado en
+   dev/tests/08-intercambio.js y anotado en la adenda F2 de dev/audit/D-combate.md. */
+function roundOver(f){
+  return f.ex >= f.exPer || f.clock <= 20;
+}
 function fightAct(key){
   var f = G.fight; if(!f || f.over) return;
   var base = hookFilter('act:translate', key, {key:key, fight:f});
@@ -1839,7 +1851,7 @@ function fightAct(key){
      ni se redibuja acá. 'act:post' se emite igualmente al final, porque la capa
      externa que se consolidó aquí también corría en ese caso. */
   if(!(f.p.hp<=0 || f.o.hp<=0)){
-    if(f.ex >= f.exPer || f.clock<=20){ endRound(); }
+    if(roundOver(f)){ endRound(); }
     render();
   }
   hookEmit('act:post', ctx);
@@ -6467,7 +6479,7 @@ fightFinishResolve=function(mg){
   if(chance(finishChance)){ finishFight(mg.kind,'p'); return; }
   f.ex++; f.clock-=ri(24,46); drain('p',mg.kind==='ko'?10:9);
   flog('Buscaste '+FIN_LABELS[mg.kind].toLowerCase()+' y no apareció la ventana.');
-  if(f.ex>=f.exPer || f.clock<=20) endRound();
+  if(roundOver(f)) endRound();
   render();
 };
 
@@ -20784,7 +20796,7 @@ TQ.apply = function(t, grade, q){
   if(f.o.hp<=0){ finishFight('ko','p'); return; }
   if(f.p.hp<=0){ finishFight('ko','o'); return; }
   drain('p',1.2); drain('o',1.2);
-  if(f.ex >= f.exPer || f.clock<=20){ endRound(); }
+  if(roundOver(f)){ endRound(); }
   if(typeof render==='function') render();
 };
 
