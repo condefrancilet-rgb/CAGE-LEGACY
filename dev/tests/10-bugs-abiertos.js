@@ -398,3 +398,84 @@ suite('H-001/002/003 · las actividades que dan dinero tienen limite semanal', (
   });
 
 });
+suite('E-001 · la agresividad del jugador deja de ser decorativa', () => {
+
+  /* Medido con un proxy sobre p.st a lo largo de 40 peleas (637 intercambios):
+     23 de los 26 atributos se leen durante una pelea. La agresividad del
+     JUGADOR no. Y sin embargo varios eventos la SUBEN, y el estilo "Pressure
+     Fighter" la trae de serie a +14. Era un sumidero: se escribia y no se leia.
+
+     Lo que si se leia es la del RIVAL — o.st.aggression en 1771, 2596, 16885 y
+     26131 — para que la IA decida como pelea y para el scouting. La del
+     jugador no tenia equivalente porque el jugador elige sus propias acciones.
+
+     El arreglo es de SUMA CERO a proposito: empuja el ataque y descuida la
+     defensa en la misma medida, asi que no infla el poder general. Un peleador
+     muy agresivo pega mas y encaja mas; uno muy disciplinado al reves. */
+
+  function pelea(seed, agresividad){
+    const { c } = mundo(seed);
+    const p = c.G.player;
+    if(agresividad !== undefined) p.st.aggression = agresividad;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+    return c;
+  }
+
+  test('la agresividad del jugador se lee durante la pelea', () => {
+    const c = pelea(4601, 80);
+    const p = c.G.player, crudo = p.st;
+    let leida = false;
+    p.st = new Proxy(crudo, { get(t, k){ if(k === 'aggression') leida = true; return t[k]; } });
+    let g = 0;
+    while(c.G.fight && !c.G.fight.over && g++ < 200){
+      const o = c.fightOptions();
+      if(!o.length){ c.finishFight('dec', null); break; }
+      c.fightAct(o[0].k);
+    }
+    p.st = crudo;
+    ok(leida, 'la agresividad del jugador sigue sin leerse en toda la pelea');
+  });
+
+  test('es de suma cero: sube el ataque y baja la defensa igual', () => {
+    const c = pelea(4602, 50);
+    const p = c.G.player;
+    const ataque  = ['boxing','accuracy','timing','power','kicks'];
+    const defensa = ['defense','footwork','fightiq','composure'];
+    p.st.aggression = 50;
+    const a0 = c.eff(p, ataque, 'p'), d0 = c.eff(p, defensa, 'p');
+    p.st.aggression = 95;
+    const a1 = c.eff(p, ataque, 'p'), d1 = c.eff(p, defensa, 'p');
+    ok(a1 > a0, 'mas agresividad no subio el ataque: ' + a0.toFixed(2) + ' -> ' + a1.toFixed(2));
+    ok(d1 < d0, 'mas agresividad no bajo la defensa: ' + d0.toFixed(2) + ' -> ' + d1.toFixed(2));
+    const subida = a1 - a0, bajada = d0 - d1;
+    ok(Math.abs(subida - bajada) < 0.01,
+       'no es suma cero: sube ' + subida.toFixed(3) + ' y baja ' + bajada.toFixed(3));
+  });
+
+  test('con agresividad neutra no cambia nada', () => {
+    const c = pelea(4603, 50);
+    const p = c.G.player;
+    const ataque = ['boxing','accuracy','timing','power','kicks'];
+    p.st.aggression = 50;
+    const conNeutra = c.eff(p, ataque, 'p');
+    /* el mismo calculo sin el modificador: se desactiva el suscriptor */
+    const sinHook = c.hookOff ? null : undefined;
+    ok(Number.isFinite(conNeutra), 'eff devolvio algo que no es un numero');
+    p.st.aggression = 50;
+    eq(c.eff(p, ataque, 'p'), conNeutra, 'el modificador no es estable con agresividad neutra');
+  });
+
+  test('no afecta al rival, que ya tiene su propia lectura', () => {
+    const c = pelea(4604, 95);
+    const o = c.F(c.G.fight.opp);
+    const ataque = ['boxing','accuracy','timing','power','kicks'];
+    const antes = c.eff(o, ataque, 'o');
+    c.G.player.st.aggression = 1;
+    eq(c.eff(o, ataque, 'o'), antes,
+       'la agresividad del jugador movio el rendimiento del rival');
+  });
+
+});

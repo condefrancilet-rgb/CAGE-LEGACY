@@ -1128,6 +1128,69 @@ las peleas**. Consecuencia medida: de la suite entera fallan **sólo las 5 traza
 master**, 130 verdes. Ésa es exactamente la huella de un cambio de combate deliberado.
 
 Integrarla exige, por el criterio del propio encargo: equivalencia estadística contra una
-copia congelada, y **regenerar las cinco trazas**. El A/B está corriendo. Hasta que dé un
-veredicto, la rama no lleva un golden master en rojo: el cambio y sus 4 pruebas quedan
-fuera del árbol.
+copia congelada, y **regenerar las cinco trazas**.
+
+### El primer A/B no valía, y el error fue mío
+
+Reporté "200 de 200 huellas idénticas" como resultado. **Es imposible**: si el cambio
+estuviera activo las huellas tenían que diferir. Lo que pasó es que **retiré el cambio del
+archivo mientras el A/B corría**, así que el segundo brazo midió el archivo sin agresividad
+y comparó la versión commiteada contra sí misma. Rompí la regla que yo mismo había escrito
+en este documento: *mientras corre el A/B, no toques el archivo del juego*.
+
+Rehecho con **los dos brazos sobre copias congeladas** (`--file` en ambos), que difieren
+sólo en la agresividad — así no se puede invalidar tocando el árbol.
+
+### El A/B bueno
+
+```
+n = 200 vs 200 · 300 semanas
+MEDIAS              antes        despues     delta      2*EE    veredicto
+peleas por carrera   23.9         23.9         -0.0       0.3    equivalente
+edad final           28.0         28.0          0.0       0.4    equivalente
+popularidad          93.2         91.7         -1.5       2.0    equivalente
+titulos               1.2          1.2         -0.1       0.2    equivalente
+cash            1164939.4    1230846.4      65907.1  177357.4    equivalente
+careerEarn      1303018.5    1370860.0      67841.5  181772.5    equivalente
+
+PROPORCIONES        antes        despues  delta(pp)  ruido(2EE)
+win rate            79.24        79.02       -0.22       1.17    equivalente
+% KO                45.54        45.22       -0.32       1.46    equivalente
+% sumision           0.11         0.06       -0.04       0.10    equivalente
+% decision          54.36        54.72        0.36       1.46    equivalente
+% campeones         85.50        82.50       -3.00       4.98    FUERA (dentro del ruido)
+
+carreras con huella identica: 0 de 200
+```
+
+**0 de 200 huellas idénticas**: el cambio está activo, como debe ser. Las seis medias y
+cuatro de las cinco proporciones, equivalentes. **El win rate se mueve −0,22 pp con un
+ruido de 1,17**, que es lo que la suma cero predecía: la agresividad reparte, no regala.
+
+**Lo que NO queda resuelto, dicho claro.** `% campeones` cae 3,00 pp con una tolerancia
+plana de 2 pp, así que la herramienta lo marca FUERA — pero el ruido de muestreo de esa
+misma proporción es de 4,98 pp, o sea **más ancho que la propia tolerancia**. No puedo
+distinguir ese −3 pp de cero, y tampoco descartarlo. Una muestra mayor lo zanjaría.
+Interpretación honesta: si es real, es una pequeña subida de dificultad en las rachas de
+título, no en ganar peleas.
+
+### Las trazas, regeneradas
+
+Las cinco cambian, que es la consecuencia buscada. Las carreras semilla se mueven en ambas
+direcciones — la 404 gana una pelea más, la 505 pierde una — lo cual es lo esperable cuando
+el cambio reparte en vez de inflar:
+
+| semilla | récord | títulos |
+|---|---|---|
+| 101 | 7-3-1 → 7-4-1 | 2 → 0 |
+| 202 | 8-4-0 → 8-4-0 | 1 → 1 |
+| 303 | 12-3-0 → 12-3-0 | 1 → 1 |
+| 404 | 9-1-1 → **10**-1-1 | 0 → 0 |
+| 505 | 10-2-1 → 9-3-0 | 0 → 0 |
+
+### Sobre la clasificación de atributos
+
+`AGGR_DEF` incluye `composure`, lo que hace que dos conjuntos de grappling se cuenten como
+defensivos. Es deliberado: `composure` es resistencia mental, y que un peleador agresivo la
+comprometa es coherente. **Y sobre todo, la neutralidad no se supone de la simetría de la
+constante: se mide.** El A/B es lo que la respalda.

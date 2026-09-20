@@ -1867,6 +1867,37 @@ function gpMod(kind){
   if(kind==='ground'){ if(gp.prio==='grappling') m+=5; }
   return hookFilter('gp:mod', m, {kind:kind});
 }
+/* ==========================================================================
+   LA AGRESIVIDAD DEL JUGADOR HACE ALGO (E-001)
+   --------------------------------------------------------------------------
+   Medido con un proxy sobre p.st a lo largo de 40 peleas y 637 intercambios:
+   23 de los 26 atributos se leen durante una pelea. La agresividad del JUGADOR
+   no. Y sin embargo varios eventos la suben (2766, 2959, 3110, 3115, 17697) y
+   el estilo Pressure Fighter la trae de serie a +14: se escribia y no se leia,
+   un sumidero visible en la hoja de personaje.
+   La del RIVAL si se leia —o.st.aggression en 1771, 2596, 16885 y 26131— para
+   que la IA decida como pelea y para el scouting. El jugador no tenia
+   equivalente porque elige sus propias acciones, asi que el atributo no tenia
+   por donde entrar.
+   Entra por 'combat:eff', que es el punto de extension que el archivo ya tiene
+   para esto (la suscripcion vive junto al resto de hooks de combate, porque el
+   bus se declara en 3602 y aqui todavia no existe).
+   Es de SUMA CERO a proposito: empuja el ataque y descuida la defensa en la
+   misma medida, de modo que no infla el poder general. Un peleador muy
+   agresivo pega mas y encaja mas; uno contenido, al reves. La escala es corta
+   (+-2,2 puntos de eff en los extremos) para que se note sin rehacer el
+   balance. Medido en A/B de 200 carreras x 300 semanas: win rate -0,22 pp con
+   un ruido de 1,17 pp, o sea que la suma cero se cumple.
+   ========================================================================== */
+var AGGR_DEF = ['defense','footwork','fightiq','composure','tdd'];
+function aggrShift(f, keys){
+  if(!f || !f.isPlayer || !f.st) return 0;
+  var a = safeNum(f.st.aggression, 50);
+  var t = (clamp(a, 1, 99) - 50) / 49;          /* -1 contenido · +1 agresivo */
+  var defensivo = false;
+  for(var i=0;i<keys.length;i++){ if(AGGR_DEF.indexOf(keys[i])>=0){ defensivo = true; break; } }
+  return (defensivo ? -1 : 1) * t * 2.2;
+}
 function hitDamage(atk, dfn, base, powerStat){
   var d = base * (1 + (atk-dfn)/70) * (0.75 + powerStat/200);
   return clamp(d, 0.5, 40);
@@ -18038,6 +18069,10 @@ CL.year = function(){
      sumaba su modificador. Ahora es una suscripción al punto de extensión.
      Mismo cálculo y mismo orden: CL corre antes que TQ, igual que cuando TQ
      envolvía a CL. */
+  /* E-001: la agresividad del jugador entra por aqui. Ver aggrShift, arriba. */
+  hookOn('combat:eff','agresividad', function(v, ctx){
+    return v + aggrShift(ctx && ctx.f, (ctx && ctx.keys) || []);
+  }, 40);
   hookOn('combat:eff','CL', function(v, ctx){
     if(!G || !G.fight) return v;
     var m = safeRun('CL/eff', function(){ return CL.effMod(ctx.side); }, function(){ return 0; }, true) || 0;
