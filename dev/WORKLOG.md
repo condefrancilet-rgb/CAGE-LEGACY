@@ -209,3 +209,90 @@ minijuego de finalización ni el árbol de técnicas. Un humano sí los recorre.
 Consecuencia: **el golden master no puede validar ese refactor**. Necesita primero una red
 de caracterización que conduzca esos dos puntos de entrada desde el harness, igual que hubo
 que forzar el mazo vacío para `rollEvent`.
+
+---
+
+# F2 — CERRADA
+
+## Las dos mitades
+
+**Mitad 1 — bugs (13).** Tabla arriba. De ellos, dos destruían datos: `F-001` borraba
+partidas al arrancar si no cabían, e `I-001` impedía que el jugador fuera campeón (carreras
+con título: 12,5% → 67,5%).
+
+**Mitad 2 — consolidación estructural.** Nueve candidatos en el plan. El resultado no fue el
+que el plan esperaba:
+
+| | candidato | veredicto |
+|---|---|---|
+| ✅ | cierre de semana | `closeWeek(opts)` — F2-15 |
+| ✅ | filtro de eventos | `eventCore()` + dos niveles — F2-16 |
+| ✅ | `rollEvent` | 4 capas → 1 función — F2-17 |
+| ✅ | cierre de round | `roundOver(f)`, 3 copias → 1 — F2-19 |
+| ✅ | `savePrune` | sólo el recorrido — F2-20 (D-014) |
+| ❌ | `fightFinishResolve` / `sparFinishResolve` | descomposición sana, no duplicación |
+| ❌ | `pruneWorld` | D-013 · la fusión cambia qué luchadores existen → F4 |
+| ❌ | `cardioStart`/`strStart`/`drillStart` | D-015 · el camino vivo ya es una función |
+| ❌ | cierre de intercambio | D-016 · lo compartido ya se extrajo |
+| → | navegación / render, `UI.screen`, cierre de minijuego | F3 |
+
+**Cuatro candidatos se descartaron midiendo, no leyendo.** Y en tres casos la medición
+contradijo lo que el plan daba por hecho.
+
+## Verificación final
+
+- **Suite: 107 verdes**, 0 fallos. Golden master idéntico en las **cuatro** trazas.
+- **Navegador: 28 verdes** en tres resoluciones, I1 intacto (400→400 en sitio, 400→0 al navegar).
+- **Dos A/B de 200 carreras x 300 semanas por brazo** (`rollEvent` y `savePrune`): los dos
+  salieron **idénticos, no sólo equivalentes** — deltas exactamente cero en las seis medias
+  y las cinco proporciones, 0 fallos de invariante, **200 de 200 huellas idénticas** en cada
+  uno.
+- Métricas de control, inicio → cierre de F2:
+
+| métrica | inicio | cierre | objetivo |
+|---|---|---|---|
+| nombres definidos >1 vez | 43 | **42** | bajar, no subir ✅ |
+| wrappers que capturan la previa | 42 | **40** | bajar, no subir ✅ |
+| escrituras de scroll | 3 | **3** | no tocar (I1) ✅ |
+| `eval` funcional | 0 | **0** | 0 ✅ |
+| dependencias externas | 0 | **0** | 0 ✅ |
+
+Las métricas se movieron poco **a propósito**: cuatro de los nueve candidatos resultaron no
+ser duplicación, y forzarlas a bajar habría significado fundir cosas que no debían fundirse.
+
+## El método, que es lo que hay que llevarse a F3
+
+1. **Mapear**: dónde vive cada copia, quién la llama, qué escribe en `G`.
+2. **Medir con una señal que no mienta**, antes de decidir nada.
+3. **Red de caracterización commiteada ANTES** de tocar el juego. Describe lo que hace hoy,
+   no lo que debería hacer.
+4. **Mutación**: romper a propósito cada regla protegida. Una prueba que no se vio caer no
+   vale nada.
+5. **Refactor mínimo**, en commit propio.
+6. **Verificación completa**: golden, suite, navegador, métricas, y A/B si toca lógica viva.
+7. **Diferencias aceptadas en una D-xxx**, y cuando se pueda, la medición puntual convertida
+   en prueba permanente (`CL.evNivel()`).
+
+## Las cuatro veces que el instrumento mintió antes que el código
+
+Están en `dev/DEUDAS-F4.md` con detalle. En corto:
+
+1. **Medir el estado final** de algo que corre en cada autoguardado da 0 y miente:
+   `savePrune` daba 0 redondeos al final y **3400** instrumentando cada llamada. Casi borro
+   código vivo.
+2. **`metaSeed` fijo** hace que "25 seeds" sean 25 copias de la misma muestra: la prueba de
+   reloj salía verde con el mutante puesto.
+3. **El autopiloto no pisa** el minijuego de finalización ni el árbol de técnicas: 1433
+   cierres por `fightAct` y 0 por los otros dos. Lo que el golden master no recorre, no lo
+   valida.
+4. **Los mutantes por línea de órdenes** los silencia el escapado del shell, y las pruebas
+   salen verdes sin mutante. Van en un script con los literales dentro.
+
+## Lo que queda abierto
+
+- `dev/DEUDAS-F4.md` — las cuatro deudas de fuentes de la verdad, cada una con la medición
+  que la descartó.
+- **Decisión de producto pendiente**: `G.retiredList` es estado de sólo escritura que viaja
+  en el save (A-012). O se le da un consumidor, o se retira con su migración.
+- Tag `fase-2-ok`: **sólo local**. El proxy git devuelve HTTP 403 para refs de tag (D-009).
+  El commit del gate es el que cierra esta sección.
