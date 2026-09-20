@@ -1037,3 +1037,32 @@ primera en la que el error apuntaba a un bug inexistente en vez de a ocultar uno
 **Riesgo residual, no corregido a propósito.** `s.lastFinWarn = now` se escribe antes de
 `CL.ask`: si `queueEvent` rechazara ese `cl_dyn`, se quemaría el enfriamiento y la economía
 no se aplicaría. Medido: 0 rechazos en 60 avisos. Sin evidencia no se toca.
+
+## F2-bis · Verificación de los cinco arreglos, y qué NO cubre el A/B
+
+**Suite 107 → 125 verdes.** Golden master idéntico en las cuatro trazas. Navegador 28/28
+en tres resoluciones con I1 intacto. Métricas planas: 42 redefiniciones, 40 wrappers, 3
+escrituras de scroll, `eval` 0, deps externas 0.
+
+**A/B con `sim.js --file`, 200 carreras x 300 semanas por brazo:** deltas exactamente cero
+en las seis medias y las cinco proporciones, 0 fallos de invariante, **200 de 200 huellas
+idénticas**.
+
+### Lo que ese A/B demuestra, y lo que no
+
+| arreglo | ¿lo recorre el A/B? | qué lo respalda |
+|---|---|---|
+| G-004 | **sí** | 378 llamadas medidas, 0 con la cola ocupada → latente, por eso idéntico |
+| D-007 | **sí** | los llamadores ya guardaban → latente, por eso idéntico |
+| D-010 | **no toca estado** | sólo dibuja; lo cubren las 4 pruebas de la pantalla |
+| **C-006** | **NO** | el autopiloto nunca llama a `skipWeek` |
+| **F-003** | **NO** | el autopiloto nunca llama a `migrateLegacyBlob` |
+
+**Las 200 huellas idénticas NO validan C-006 ni F-003**: esos dos caminos no se recorren en
+la simulación. Es el mismo límite del instrumento que ya apareció con el respaldo de
+`rollEvent` y con `TQ.apply`. Lo que los respalda son sus pruebas, que los conducen a mano:
+tres para C-006 (incluida la recarga real del save que escribió `skipWeek`) y dos para
+F-003 (una partida v1 metida en el blob y migrada).
+
+Dicho de otro modo: el A/B sirve aquí para demostrar que los arreglos **no rompieron nada
+de lo que la simulación sí recorre**, no para demostrar que los cinco funcionan.
