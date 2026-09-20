@@ -160,3 +160,69 @@ inalcanzable.
 
 **Revertir.** `git revert` del commit de fusión devuelve las cuatro capas. No hay estado
 guardado que dependa de esto: `CL.evNivel()` no vive en `G`.
+
+---
+
+## D-013 · `pruneWorld` NO se fusiona en F2: la fusión cambia qué luchadores existen
+
+**Contexto.** `pruneWorld` tiene 2 capas y, a diferencia de
+`fightFinishResolve`/`sparFinishResolve`, aquí **sí hay duplicación real**: dos conjuntos
+`keep` calculados con reglas distintas.
+
+| capa | línea | qué protege |
+|---|---|---|
+| base | 1421 | jugador, rivales de su `career` y `lastFights`, `nextFight`, `camp`, `fight`, ofertas |
+| externa | 18097 | lo que devuelve `CL.tracked()` |
+
+Y la externa **no evita el borrado: lo deshace**. Guarda los tracked antes, deja que la
+base los borre, y los vuelve a insertar después. Es el mismo antipatrón que C-002 y que los
+cierres de minijuego: el arreglo fue añadir una capa que repara, en vez de darle un dueño a
+la regla "a quién no se borra".
+
+**Por qué no se fusiona igual.** Fusionar los dos `keep` en uno calculado antes del borrado
+parece el movimiento obvio, pero **cambia qué luchadores sobreviven**:
+
+- El tope de población culpa a `ids.length - 300`. Hoy los tracked que no están en el
+  `keep` de la base **sí** entran en el sorteo de culling, se borran, y la capa externa los
+  reinserta — dejando la población otra vez por encima de 300. Si se fusionan, quedan
+  protegidos y **el culling se lleva a otros en su lugar**. El mundo queda compuesto de
+  forma distinta.
+- `G.retiredList` se filtra **dentro** de la base (1464), antes de que la externa restaure.
+  Medido en 3 carreras x 400 semanas (21 llamadas a `pruneWorld`, ~250 borrados cada una):
+  el camino de restauración dispara **2 veces en la seed 13 y 0 en las otras dos**, y cuando
+  dispara deja al luchador en `G.fighters` pero fuera de `retiredList`. Fusionar lo
+  arreglaría — y eso es un **arreglo**, no un refactor.
+
+**Decisión.** No se toca en F2. Es duplicación real, pero consolidarla es un cambio de
+comportamiento observable sobre la composición del mundo, y eso necesita su propia
+evidencia. Queda como candidato para **F4** (fuentes de la verdad), junto al dueño único
+del cierre de minijuego.
+
+**Cómo se vigila.** Nada todavía: no se escribió red porque no se tocó el código. Si se
+aborda en F4, la red tiene que fijar primero qué luchadores sobreviven a un `pruneWorld`
+con el mundo por encima de 300 y por encima de 340.
+
+---
+
+## D-014 · `savePrune` sí se consolida, pero sólo el recorrido
+
+**Contexto.** 2 capas: la base trunca listas de los NPC, la externa (`saveCompact`) redondea
+decimales. Medido instrumentando cada llamada real durante la carrera —medir el estado
+final da 0 y **miente**, porque `savePrune` corre en cada autoguardado y al terminar ya está
+todo podado—: **429 llamadas, 3400 campos redondeados, 60 `rel`, 979 arrays truncados, 187
+podas de `news`** (seed 13; seed 29 casi idéntica). **Las dos capas hacen trabajo real.**
+
+**Qué estaba escrito dos veces.** No las podas, que son distintas: el **recorrido** y la
+regla **"al jugador no se le toca nada"**. Esa regla es la que impide que guardar le
+destruya el historial — medido, un jugador de 250 semanas tiene `career`=22 y
+`lastFights`=12, y sin ella cada guardado se los dejaría en 12 y 6. Escrita dos veces,
+bastaba tocar una copia para perder datos del jugador en silencio.
+
+**Decisión.** Se extrae **sólo** `eachPrunableFighter(g, fn)`. Las dos pasadas siguen siendo
+dos: podan cosas distintas y cada una registra sus fallos con su propia etiqueta en
+`safeRun`, así que fundirlas en un solo bucle cambiaría el comportamiento del camino de
+error (hoy, si la primera lanza, la segunda corre igual).
+
+**Lo que NO se arregló.** `news` y `retiredList` no se podan si falta `g.fighters`, porque
+cuelgan del mismo guardia que el recorrido. Es una rareza latente, fijada por prueba para
+que una fusión no la corrija sin querer; arreglarla es cambio de comportamiento.

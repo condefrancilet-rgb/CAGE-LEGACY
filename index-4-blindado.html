@@ -12690,20 +12690,38 @@ function saveIndexWrite(d){
   try{ localStorage.setItem(SAVE_IDX, JSON.stringify(d)); return true; }catch(e){ return false; }
 }
 
-/* ---------- poda: lo que no hace falta reconstruir la carrera ---------- */
+/* ---------- poda: lo que no hace falta reconstruir la carrera ----------
+   Recorre los luchadores que la poda puede tocar. LA REGLA ES QUE AL JUGADOR
+   NO SE LE TOCA NADA, y vivía escrita dos veces: una aquí y otra en la pasada
+   de redondeo de más abajo, que se añadió como una capa encima. Es la regla
+   que impide que guardar le destruya el historial — medido, un jugador de 250
+   semanas tiene career=22 y lastFights=12, y sin ella cada guardado se los
+   dejaría en 12 y 6. Escrita dos veces, bastaba tocar una para perder datos
+   del jugador en silencio, así que ahora vive en un solo sitio.
+   Las dos pasadas siguen siendo dos: podan cosas distintas (truncar listas y
+   redondear decimales) y cada una registra sus fallos con su propia etiqueta
+   en safeRun. Lo que comparten es el recorrido, no la poda. */
+function eachPrunableFighter(g, fn){
+  if(!g || !g.fighters) return;
+  var pid = g.player && g.player.id;
+  for(var id in g.fighters){
+    if(!g.fighters.hasOwnProperty(id) || id===pid) continue;
+    fn(g.fighters[id], id);
+  }
+}
 function savePrune(g){
   safeRun('savePrune', function(){
     if(!g || !g.fighters) return;
-    var pid = g.player && g.player.id;
-    for(var id in g.fighters){
-      if(!g.fighters.hasOwnProperty(id)) continue;
-      var f=g.fighters[id];
-      if(id===pid) continue;                       /* al jugador no se le toca nada */
+    eachPrunableFighter(g, function(f){
       if(Array.isArray(f.lastFights) && f.lastFights.length>6) f.lastFights=f.lastFights.slice(-6);
       if(Array.isArray(f.mem) && f.mem.length>8) f.mem=f.mem.slice(0,8);
       if(Array.isArray(f.career) && f.career.length>12) f.career=f.career.slice(-12);
       if(f.bond && Array.isArray(f.bond.hist) && f.bond.hist.length>10) f.bond.hist=f.bond.hist.slice(0,10);
-    }
+    });
+    /* Estas dos cuelgan del mismo guardia que el recorrido: sin g.fighters no
+       se podan. Es una rareza, no un arreglo pendiente de esta consolidación;
+       cambiarla sería cambio de comportamiento. Fijada en
+       dev/tests/09-saveprune.js para que una fusión no la corrija sin querer. */
     if(Array.isArray(g.news) && g.news.length>40) g.news=g.news.slice(0,40);
     if(Array.isArray(g.retiredList) && g.retiredList.length>60) g.retiredList=g.retiredList.slice(-60);
   }, null, true);
@@ -14011,17 +14029,13 @@ var _qSavePrunePrev=savePrune;
 savePrune=function(g){
   g=_qSavePrunePrev(g);
   safeRun('saveCompact', function(){
-    if(!g || !g.fighters) return;
-    var pid=g.player && g.player.id;
-    for(var id in g.fighters){
-      if(!g.fighters.hasOwnProperty(id) || id===pid) continue;
-      var f=g.fighters[id];
+    eachPrunableFighter(g, function(f){
       ['pop','rep','fatigue','dmg','hype','weightNow','divAdapt'].forEach(function(k){
         if(typeof f[k]==='number' && isFinite(f[k])) f[k]=Math.round(f[k]*10)/10;
       });
       if(f.rel){ for(var rk in f.rel){ if(f.rel.hasOwnProperty(rk) && typeof f.rel[rk]==='number')
         f.rel[rk]=Math.round(f.rel[rk]); } }
-    }
+    });
   }, null, true);
   return g;
 };

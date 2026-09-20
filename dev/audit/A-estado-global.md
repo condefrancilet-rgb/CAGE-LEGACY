@@ -172,3 +172,34 @@ distintos (8 en `pruneWorld` 1427, 6 en `savePrune` 12611, 40 en la normalizaci�
 `story.feed` 62 · `fightHistory` 17 · `cl.once` 22.
 A-003 confirmado: `bestRank = 1` en 3/3 con el jugador en los puestos #2, #3 y #1 de una
 organización de tier 1 y con **0 títulos**.
+
+---
+
+## Adenda F2 · A-012 · `G.retiredList` es estado de sólo escritura
+
+Apareció midiendo `pruneWorld` para D-013. `G.retiredList` tiene **cinco apariciones en
+todo el archivo y ninguna es una lectura**:
+
+| línea | qué hace |
+|---|---|
+| 999 | se crea vacía en el estado inicial |
+| 1357 | `push({id, year})` cuando un luchador se retira |
+| 1464 | `pruneWorld` la filtra a los que siguen en `G.fighters` |
+| 12726 | `savePrune` la recorta a 60 |
+| 14023 | `saveCompact` le redondea los decimales |
+
+Nada la consume: no hay pantalla que la muestre, ni lógica que la consulte. Se mantiene,
+se poda, se normaliza y **se guarda en el save** sin que nadie la mire.
+
+**Consecuencias medidas.** Ninguna sobre el juego. Sí sobre el save y el coste: cada
+guardado recorre y normaliza una lista que no sirve, y la lista viaja en el archivo.
+
+**Por qué importa para D-013.** La inconsistencia que encontré en `pruneWorld` —un
+luchador que la capa externa restaura a `G.fighters` queda fuera de `retiredList`— **no
+tiene consecuencia observable hoy**, precisamente porque nadie lee la lista. Eso no cambia
+la decisión de no fusionar (el motivo real es que la fusión cambia qué luchadores sobreviven
+al tope de población), pero sí baja la urgencia.
+
+**Qué hacer con esto.** No borrarla en F2: está en el save y borrarla toca la forma del
+estado persistido (I3). Es una decisión de **F4**: o se le da un consumidor —una pantalla
+de retirados, que el juego no tiene— o se retira del estado con su migración.

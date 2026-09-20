@@ -858,3 +858,69 @@ de comportamiento** y necesita su propia evidencia.
 
 **Verificación.** Prueba nueva que falla si la condición vuelve a escribirse a mano en
 algún cierre. Suite completa verde.
+
+---
+
+## F2-20 · `savePrune`: el recorrido y la regla del jugador, en un solo sitio
+
+**Commits** `20f8130` (red) + el de esta entrada.
+
+### Medición previa, y una señal que mentía
+
+Primera medición: podar al final de una carrera de 250 semanas daba **0 campos redondeados
+y 0 arrays truncados** sobre 400 NPC. Conclusión aparente: la segunda capa es peso muerto.
+
+**Falso.** `savePrune` corre en **cada autoguardado**, así que al terminar la carrera ya
+está todo podado y medir el estado final no mide nada. Instrumentando cada llamada real
+durante la carrera:
+
+| | seed 13 | seed 29 |
+|---|---|---|
+| llamadas a `savePrune` | 429 | 421 |
+| campos redondeados | 3400 | 3389 |
+| `rel` redondeados | 60 | 50 |
+| arrays de NPC truncados | 979 | 977 |
+| podas de `news` | 187 | 194 |
+| podas de `retiredList` | 0 | 0 |
+
+**Las dos capas hacen trabajo real.** Ninguna es peso muerto.
+
+### Qué estaba duplicado, y qué no
+
+Las podas **no** están duplicadas: una trunca listas, la otra redondea decimales. Lo que
+estaba escrito dos veces es el **recorrido de `g.fighters`** y la regla **"al jugador no se
+le toca nada"**.
+
+Esa regla protege los datos del jugador: medido, un jugador de 250 semanas tiene
+`career`=22 y `lastFights`=12, y sin ella **cada guardado se los dejaría en 12 y 6**.
+Escrita dos veces, bastaba tocar una copia para perder historial del jugador en silencio.
+
+### El cambio
+
+Se extrae `eachPrunableFighter(g, fn)`. **Nada más.** Las dos pasadas siguen siendo dos:
+cada una registra sus fallos con su propia etiqueta en `safeRun` (`savePrune` y
+`saveCompact`), así que fundirlas en un solo bucle cambiaría el camino de error — hoy, si
+la primera lanza, la segunda corre igual.
+
+### Verificación
+
+- Red de 7 pruebas commiteada **antes** de tocar el juego (`dev/tests/09-saveprune.js`).
+- **Ocho mutantes, ocho capturas**: quitar el salto del jugador, `career` a 20, `news` a 90,
+  redondeo a dos decimales, `lastFights` truncado por el extremo contrario, `rel` a un
+  decimal, `retiredList` a 120, y devolver `null`.
+- Tras consolidar, se mutó **el punto único** (quitar `id===pid` de `eachPrunableFighter`) y
+  la prueba del jugador cayó: el sitio nuevo es el real.
+- Suite **100 → 107 verdes**. Golden master idéntico.
+- Métricas planas: 42 redefiniciones, 40 wrappers, 3 escrituras de scroll, `eval` 0, deps 0.
+
+### Error propio, registrado para que no se repita
+
+Los cinco primeros mutantes se lanzaron pasando los patrones como **argumentos de shell**, y
+el escapado se comió dos de ellos (`\*` y `\&\&`): el script abortó y las pruebas salieron
+en verde **sin que el mutante existiera**. Casi lo reporto como "capturado". Los mutantes
+van en un script Python con los literales dentro, nunca por la línea de órdenes.
+
+Es la cuarta vez en F2 que el instrumento miente antes que el código. Las otras tres:
+la prueba de save/load que exigía punto fijo en la primera vuelta, la de G-001 que pedía un
+evento imposible en una carrera nueva, y la de reloj que medía 25 copias de la misma
+muestra.
