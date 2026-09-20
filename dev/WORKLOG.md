@@ -1,31 +1,24 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F2 — Consolidación y corrección (9 de 14 bugs; B-001 a la espera de su evidencia).
+**Fase actual:** F2 — Consolidación y corrección. **Los 14 bugs de la lista están cerrados** (13 corregidos, C-002 reconducido a la parte estructural con justificación en D-011). Pendiente: la parte estructural.
 **Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
-**En curso: la validación de B-001.** El arreglo está aplicado y sus 5 pruebas verdes,
-pero cambia el orden de consumo del RNG, así que las 5 trazas del golden master cambian.
-Eso exige **equivalencia estadística**, no igualdad (regla de F2). Hay un A/B corriendo en
-segundo plano: `dev/sim.js --file` contra copias congeladas de antes y después, 600
-carreras × 150 semanas por lado, salidas en
-`…/scratchpad/eq-antes.json` y `…/scratchpad/eq-despues.json`, con `eq.done` como testigo.
-Criterio: medias dentro de 2 errores estándar, proporciones dentro de 2 pp.
-Si pasa → regenerar trazas, documentar en `CHANGES.md` y commitear. Si no pasa →
-investigar qué más cambió antes de dar el arreglo por bueno.
+**Abrir la parte estructural de F2**, planificada en `dev/PLAN-F2-consolidacion.md`.
+Empezar por el **punto 0: el cierre de semana** (viene de C-002). Está duplicado a mano en
+los nueve llamadores de `advanceWeek`, cada uno con un subconjunto distinto —la tabla está
+en `dev/DECISIONS.md`, D-011—. Extraer una función con contrato explícito y que cada
+llamador declare qué parte quiere. **Sí cambia comportamiento** en los llamadores a los que
+hoy les falta algo, así que necesita evidencia de simulación, no golden master idéntico.
 
-Después, los bugs que quedan de la lista de `dev/AUDIT.md`:
-**#10 D-002** (`applyPlayerFight` sin envolver: excepción a mitad deja estado parcial),
-**#11 G-002** (la puerta de drama está puenteada),
-**#12 C-002/3/4** (rutas que consumen semana sin publicar noticias; `advancePeriod` no
-guarda nunca y destruye las ofertas cada semana),
-**#13 I-002** (campeón fantasma al ascender de organización),
-**#14 F-002** (la copia de respaldo pre-migración nunca se escribe).
+Después, por orden del encargo: `startCareer` → `loadGame`/save → `advanceWeek` →
+combate → entrenamiento → navegación/render → minijuegos → eventos → progresión de rivales.
+El candidato más claro sigue siendo **`rollEvent`**: 4 capas, 3 constructores duplicados
+del mismo objeto, y dos reglas (`important` en G-001, puerta de drama en G-002) que hubo
+que arreglar en más de un sitio por culpa de los caminos de respaldo.
 
-Y después la **parte estructural de F2**, ya planificada en `dev/PLAN-F2-consolidacion.md`.
-El candidato más claro es `rollEvent`: 4 capas y 3 constructores duplicados del mismo
-objeto — lo destapó G-001, que hubo que arreglar tres veces.
+Al cerrar la consolidación: tag `fase-2-ok` (local; los tags no suben, D-009) y abrir F3.
 
 ## Comandos
 ```
@@ -133,3 +126,25 @@ node dev/make-baseline.js        regenera TODA la línea base
 - Sim en 4 workers: ≈ 33 ms/semana agregados. 1000 carreras × 150 semanas
   ≈ 1,4 h. Aceptable en segundo plano; si hace falta bajarlo, el objetivo es
   `normalizeWorldState` en cada autosave (F2+).
+
+## Resumen de F2 — bugs corregidos (13)
+
+| # | id | qué rompía | evidencia del efecto |
+|---|---|---|---|
+| 1 | F-001 | borraba partidas al arrancar si no cabían | impacto jugable nulo (aislado) |
+| 2 | I-001 | el jugador no podía ser campeón | carreras con título 12,5% → 67,5% |
+| 3 | D-003 | re-roll infinito del resultado | verificado en Chromium real |
+| 4 | D-001+D-006 | cobrar duplicaba récord, bolsa y semanas | golden master sin cambios |
+| 5 | A-001 | el contrato duraba la mitad | medianas sin mover |
+| 6 | G-001 | `important` no llegaba a la cola | efecto NO MEDIDO como significativo |
+| 7 | H-005 | patrocinios componían sin techo | ingreso a 7 años: mediana −61% |
+| 8 | C-001 | el bloque quemaba el campamento | `camp.i` 0→2, `sharp` 35→45 |
+| 9 | B-001 | dibujar consumía el RNG del mundo | **no equivalente**, documentado |
+| 10 | D-002 | resultado aplicado a medias | golden master sin cambios |
+| 11 | G-002 | la puerta de drama no se aplicaba | 4/328 → 0/321 · equivalencia aceptada |
+| 12 | F-002 | la copia pre-migración no existía | impacto jugable nulo (aislado) |
+| 13 | I-002 | campeón fantasma congelaba divisiones | equivalencia aceptada · 172/250 idénticas |
+
+**Suite: 82 pruebas verdes · navegador: 28 verdes · 0 fallos de invariante.**
+Métricas de control planas: 43 redefiniciones, 42 wrappers, 3 escrituras de scroll,
+0 dependencias externas, 0 `eval`.
