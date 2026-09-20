@@ -1008,3 +1008,32 @@ por correcta.
 Ahora pasa por `saveMigrate`, el mismo camino que usa `loadGame`. Y si devuelve `null` la
 partida era irrecuperable y **no se escribe**: sellarla era justo lo que convertía un save
 roto en uno "al día".
+
+## F2-26 · C-008 revisado: no reproduce, y un error de medición mío
+
+La auditoría daba C-008 como CONFIRMADO: la semana del aviso financiero no se cobra.
+**Medido, no es así.** La economía se **difiere**, no se salta: `CL.finWarn` tiene dos
+caminos y los dos la aplican — el de enfriamiento en el acto, el otro a través del
+manejador `cl_finwarn`, que cobra según la opción que elija el jugador.
+
+```
+1 carrera x 250 semanas, arrancando con 40 de caja
+  avisos financieros ................... 60
+  preguntaron al jugador (CL.ask) ...... 25
+  aplicaron por enfriamiento ........... 35
+  NI una NI otra (semana gratis real) ...  0
+  rechazos de queueEvent ................  0
+```
+
+**Mi primera sonda dijo 275 de 527 (52%) y era falsa.** Contaba "semana inerte" como *no
+encoló y la caja no cambió*. Pero `CL.overdraft` convierte el descubierto en deuda y
+devuelve la caja a 0, así que "la caja no cambió" es perfectamente compatible con que la
+economía **sí** se haya aplicado. Llegué a escribir ese 52% antes de comprobarlo. La señal
+válida es instrumentar `CL.ask` y `CL.overdraft`, que distinguen los dos caminos.
+
+Es la **quinta** vez en esta obra que el instrumento miente antes que el código, y la
+primera en la que el error apuntaba a un bug inexistente en vez de a ocultar uno real.
+
+**Riesgo residual, no corregido a propósito.** `s.lastFinWarn = now` se escribe antes de
+`CL.ask`: si `queueEvent` rechazara ese `cl_dyn`, se quemaría el enfriamiento y la economía
+no se aplicaría. Medido: 0 rechazos en 60 avisos. Sin evidencia no se toca.
