@@ -26466,24 +26466,52 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     if(p.pop<=20)return 'unknown';
     return 'respected';
   }
-  function eventAllowed(e){
+  /* ---------- el filtro de eventos, con sus dos niveles de exigencia -------
+     El selector sortea primero con el nivel estricto y, si le quedan menos de
+     cuatro candidatos, repite con el relajado. Los dos niveles comparten tres
+     reglas duras —carrera viva, coherencia de contexto y puerta de drama— que
+     hasta ahora estaban escritas por separado, una vez en esta función y otra
+     a mano dentro del selector. Por eso la puerta de drama (G-002) hubo que
+     arreglarla dos veces: tras corregir el nivel estricto se seguían colando
+     eventos de circo por el relajado. Ahora las tres viven en eventCore y el
+     nivel sólo elige cuánto afloja encima.
+     Lo que el nivel relajado afloja, y nada más:
+       · la veda de repetición pasa de EV_VEDA a EV_VEDA_CORTA;
+       · deja de cortar por categoría repetida.
+     EL ORDEN DE LAS COMPROBACIONES SE CONSERVA TAL CUAL ESTABA en cada nivel.
+     No es cosmético: tres condiciones del banco hacen inicialización perezosa
+     —x1_parking crea G.flags.seen, sg_callout y sg_invcamp crean su registro
+     de saga—, así que adelantar una comprobación barata delante de e.c() se
+     salta esa inicialización y cambia el estado que se guarda. Medido: llamar
+     a las 66 condiciones mueve la huella del estado en la primera pasada y ya
+     no en la segunda. */
+  var EV_VEDA = 26;        /* semanas de veda tras salir, nivel estricto */
+  var EV_VEDA_CORTA = 8;   /* la veda que deja en pie el nivel relajado  */
+  function eventCore(e){
     if(!G||!G.player||G.player.retired)return false;
-    if(recentEvent(e.id,26))return false;
     /* FASE 25: el filtro de contexto entra acá, que es el camino que el
        selector recorre de verdad. Antes sólo se consultaba en un respaldo. */
     if(!eventContextAllows(e.id))return false;
-    /* La puerta de drama vive AQUI, que es el camino que el selector recorre de
-       verdad. Estaba escrita solo en una capa anterior de rollEvent (22119), a
-       la que esta no llega salvo que su pool quede vacio, asi que no se
-       aplicaba: un novato en su tercera semana de campamento, sin una sola
-       pelea disputada y con popularidad 8, podia recibir un evento de circo.
-       Medido en 10 carreras x 120 semanas: 4 de 328 eventos del banco eran
-       drama con la puerta cerrada, todos sg_counterplan. */
+    /* La puerta de drama: un novato en su tercera semana de campamento, sin
+       una sola pelea disputada y con popularidad 8, podía recibir un evento de
+       circo. Medido en 10 carreras x 120 semanas: 4 de 328 eventos del banco
+       eran drama con la puerta cerrada, todos sg_counterplan. */
     if(e.drama && typeof CL!=='undefined' && CL.dramaOk && !CL.dramaOk())return false;
+    return true;
+  }
+  function eventAllowed(e){
+    if(!G||!G.player||G.player.retired)return false;
+    if(recentEvent(e.id,EV_VEDA))return false;
+    if(!eventCore(e))return false;
     var cat=eventCategory(e),s=story(),last=s.recentCats[0];
     if(last===cat&&s.recentCats.length>=2)return false;
     if(e.c&&!e.c())return false;
     return true;
+  }
+  function eventAllowedRelajado(e){
+    if(!eventCore(e))return false;
+    if(e.c&&!e.c())return false;
+    return !recentEvent(e.id,EV_VEDA_CORTA);
   }
   function eventWeight(e){
     var p=G.player,s=story(),cat=eventCategory(e),w=Math.max(.05,num(e.w,1));
@@ -26553,10 +26581,12 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
   var oldRoll=window.rollEvent;
   window.rollEvent=function(){
     if(!G||!G.player||G.player.retired)return null;
-    var s=story(),pool=EVENTS.filter(eventAllowed);
-    /* El respaldo relaja el enfriamiento, NO la coherencia: un campeón no puede
-       recibir un evento de aspirante ni siquiera porque falten candidatos. */
-    if(pool.length<4)pool=EVENTS.filter(function(e){if(!G||!G.player||G.player.retired)return false;if(!eventContextAllows(e.id))return false;if(e.drama&&typeof CL!=='undefined'&&CL.dramaOk&&!CL.dramaOk())return false;if(e.c&&!e.c())return false;return !recentEvent(e.id,8);});
+    /* filter() pasa (elemento, indice, array): los predicados se llaman con un
+       solo argumento a propósito, para que el indice no se cuele como opción. */
+    var s=story(),pool=EVENTS.filter(function(e){return eventAllowed(e);});
+    /* El nivel relajado afloja el enfriamiento, NO la coherencia: un campeón no
+       puede recibir un evento de aspirante ni siquiera porque falten candidatos. */
+    if(pool.length<4)pool=EVENTS.filter(function(e){return eventAllowedRelajado(e);});
     if(!pool.length)return oldRoll?oldRoll():null;
     var total=0,weights=pool.map(function(e){var w=eventWeight(e);total+=w;return w;});
     var r=rnd()*total,acc=0,sel=pool[0];
