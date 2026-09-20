@@ -226,3 +226,79 @@ error (hoy, si la primera lanza, la segunda corre igual).
 **Lo que NO se arregló.** `news` y `retiredList` no se podan si falta `g.fighters`, porque
 cuelgan del mismo guardia que el recorrido. Es una rareza latente, fijada por prueba para
 que una fusión no la corrija sin querer; arreglarla es cambio de comportamiento.
+
+---
+
+## D-015 · Los tres minijuegos de entrenamiento NO se fusionan: la capa viva ya es una sola función
+
+**Contexto.** `cardioStart`, `strStart` y `drillStart` tienen **3 capas** cada una y el
+plan las marcaba como candidato "con cuidado, porque GATE las envuelve".
+
+| capa | línea | qué hace |
+|---|---|---|
+| 1 base | 2473 / 2501 / 2526 | construye `G.mg = {type:'cardio'\|'str'\|'drill', ...}` |
+| 2 arcade | 6721 / 6727 / 6656 | llama a la base y le parchea campos (`targets`, `load`, `colorMap`) |
+| 3 TG | 10808-10810 | `tgStart('cardio', _tgCardioPrev)` — las anteriores pasan como **respaldo** |
+
+Más una cuarta sobre `tgStart` (22053) que sólo añade la guarda de doble toque (`mgBusy`).
+
+**La forma es la de `rollEvent`: las capas viejas son el camino de respaldo.** Y hay un
+discriminador limpio para medirlo — `tgStart` produce `G.mg.type==='train'`, el respaldo
+produce `'cardio'`, `'str'` o `'drill'`.
+
+**Medición.** Conduciendo los tres arranques a mano (el autopiloto no pulsa botones de
+minijuego), 40 mundos x 3 arranques: **120 de 120 por `tgStart`, 0 por el respaldo**.
+
+Y algo más fuerte que muestrear, porque el respaldo se dispara si `tgPick` devuelve una
+clave sin `TG_INFO` o sin `FX_GAMES`: se comprobaron **todas** las claves, no una muestra.
+`TG_INFO` tiene 25 claves y **las 25 tienen juego FX**; los tres pools alcanzan 5, 5 y 15
+claves y **ninguna queda sin cobertura**. El respaldo es **inalcanzable por construcción**;
+lo único que puede dispararlo es que `fxOpen` falle en runtime.
+
+**Decisión: no se fusionan.** Aplicando la pregunta del encargo —¿hay alguna regla escrita
+dos veces?— la respuesta en el camino vivo es **no**: `tgStart(pool, fallback)` ya es una
+sola función parametrizada, y las tres líneas 10808-10810 son tres llamadas con distinto
+argumento, no tres copias. Lo que hay debajo son tres minijuegos **distintos** conservados
+como recuperación de error, no tres copias del mismo.
+
+Fundirlos sería borrar un camino de recuperación, que es cambio de comportamiento, no
+consolidación.
+
+**Lo que sí se hace.** Anotar la alcanzabilidad **en el archivo**, como ya se hizo junto a
+`rollEvent` (línea 3100), para que el próximo lector no tenga que volver a medirlo y no
+confunda código de respaldo con código vivo.
+
+**Inconsistencia anotada, no tocada.** En la capa arcade, `cardioStart` y `strStart` llaman
+a `render()` y `drillStart` no. Vive en el camino inalcanzable, así que no tiene efecto hoy;
+si alguna vez se recorre, el drill no redibuja.
+
+---
+
+## D-016 · El cierre de intercambio no se extrae: lo compartido ya se extrajo
+
+**Contexto.** Punto 4 de la cola (marcado opcional): "cierre de intercambio en un solo
+sitio, con el coste de reloj como parámetro".
+
+**Qué queda compartido, después de F2-19.** La regla que de verdad estaba escrita tres
+veces era `f.ex >= f.exPer || f.clock<=20`, y ya vive en `roundOver(f)`. Lo que queda común
+a los tres cierres son **dos sentencias**: `f.ex++` y el descuento de reloj — y el descuento
+usa tres constantes distintas que, por decisión explícita, **no se igualan** (es balance,
+F14).
+
+**Lo que NO es común.** Todo lo demás difiere, y no por descuido:
+
+| | `fightAct` | `fightFinishResolve` | `TQ.apply` |
+|---|---|---|---|
+| KO | si alguien cae, **ni cierra round ni redibuja** | **no lo comprueba** | `finishFight` y sale |
+| drain | dentro de `resolveExchange` | `drain('p', 10\|9)` | `drain` 1,2 a ambos |
+| render | dentro del guardia de KO | siempre | `if(typeof render==='function')` |
+| hooks | `exchange:pre/post` + `act:post` | ninguno | ninguno |
+
+**Decisión: no se extrae.** Un `closeExchange(lo, hi)` capturaría dos sentencias triviales y
+dejaría tres colas distintas en los llamadores. Eso es renombrar, no consolidar — la misma
+prueba que dejó fuera a `fightFinishResolve`/`sparFinishResolve` (precedente del encargo).
+
+**Comprobado de paso, no arreglado.** Que `fightFinishResolve` no compruebe KO es inocuo:
+en ese camino nada baja la vida. Lo único que toca es `drain`, y `drain` sólo modifica
+`stam` —`G.fight[side].stam = clamp(...)`—, nunca `hp`. Queda dicho para que nadie lo
+"arregle" creyendo que es un hueco.
