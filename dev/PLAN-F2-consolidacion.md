@@ -82,7 +82,23 @@ desconocido. `renderNav` 2 capas (`_legRenderNavPrev`). `scrHub`, `scrMG`, `scrG
 `scrContracts`, `scrEnding`, `scrTrain`: 2 capas cada una, todas con el mismo molde
 `_prevX`. **Es el bloque con más wrappers y el más mecánico de fundir.**
 
-### 7. Minijuegos
+### 7. Minijuegos — **el hallazgo no era el que el plan esperaba**
+
+Medido al ir a por `fightFinishResolve` / `sparFinishResolve`: **`G.mg` tiene 30
+escritores** (11 abridores con forma propia, sin constructor compartido, y el resto
+cierres), y **cerrar un minijuego está escrito en seis sitios con tres respuestas
+distintas** a "¿a qué pantalla se vuelve?" (adenda F2 de `dev/audit/B-navegacion-render.md`).
+Es la misma forma que C-002. Y explica la limpieza defensiva de la capa FX: como cerrar no
+lo posee nadie, el arreglo fue **añadir un séptimo cierre** en vez de darle dueño.
+
+`fightFinishResolve` y `sparFinishResolve`, en cambio, **no son duplicación**: dos
+responsabilidades distintas con delegación explícita, ninguna regla escrita dos veces.
+Fundirlas sería renombrar. Además el `return` de la capa interna no salta el saneamiento de
+la externa, así que un merge descuidado cambia comportamiento.
+
+El cierre de minijuego sí hay que consolidarlo, pero toca `UI.screen`: es **F3**.
+
+### 7b. Las tres capas de `cardioStart`/`strStart`/`drillStart`
 `cardioStart`, `strStart`, `drillStart` tienen **3 capas** cada una y las tres están
 envueltas por GATE en runtime (`redef-map` las marca "no coincide con ninguna definición
 del archivo"). Requiere cuidado: hay que fundir sin romper la envoltura de GATE.
