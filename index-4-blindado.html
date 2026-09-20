@@ -13655,7 +13655,7 @@ hookOn('screen:title','ldScrTitlePrev', function(h){
    archivo; ahora sólo se DECLARA, y GATE.install() lo aplica al final del
    archivo, cuando todas estas funciones ya existen de verdad.
    advanceWeek NO entra: se dispara muchas veces por acción. */
-['resolveEvent','confirmFight','acceptFight','negoClose','negoAsk','startCamp','retire','mgClose',
+['resolveEvent','confirmFight','acceptFight','negoClose','negoAsk','startCamp','retire','mgClose','advancePeriod',
  'socInvite','socAdvice','chatPick','allyForm','allySide','gymVisit','gymJoin','watchFight','travelWith',
  'podPick','pressPick','sparPick','weighAct','recPick','gpConfirm','askManagerRaise','changeWeightClass',
  'tgResolve','fxResolveMini','buyItem'
@@ -26104,7 +26104,16 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
         }
       }
       if(sum.stop==='inj'){sum.left=weeks-i-1;break;}
-      if(!G.nextFight&&!p.inj){makeOffers();var importantOffer=G.offers.filter(function(o){return o.type==='fight'&&(o.title||o.shortNotice||o.clTag==='revancha');});if(importantOffer.length&&chance(.35)){sum.stop='offers';sum.left=weeks-i-1;break;}}
+      if(!G.nextFight&&!p.inj){
+        /* makeOffers() hace G.offers=[] antes de repoblar, asi que llamarlo
+           cada semana del bloque borraba las ofertas que el jugador estuviera
+           evaluando. Solo se generan si no hay ninguna de pelea sobre la mesa,
+           que es lo que hace finishWeek (con probabilidad, ademas). */
+        var hayOfertas=G.offers.some(function(o){return o.type==='fight';});
+        if(!hayOfertas) makeOffers();
+        var importantOffer=G.offers.filter(function(o){return o.type==='fight'&&(o.title||o.shortNotice||o.clTag==='revancha');});
+        if(importantOffer.length&&chance(.35)){sum.stop='offers';sum.left=weeks-i-1;break;}
+      }
       if(G.nextFight&&G.nextFight.weeks<=8){sum.stop='camp';sum.left=weeks-i-1;break;}
     }
     G.simRunning=false;sum.money=G.cash-sum.money0;G.period=sum;render();

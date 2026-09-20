@@ -585,3 +585,29 @@ con lo que decía la auditoría: el caso es real pero de frecuencia natural baja
 ocurrencias espontáneas en 10 años en la semilla que se revisó). Fallos de invariante 0 → 0.
 
 Golden master regenerado. Suite: **79 pruebas verdes**.
+
+---
+
+## F2-14 · El avance en bloque guarda y no destruye las ofertas (C-003, C-004)
+**Tipo** fix · **Severidad** ALTA · **Impacto en las trazas: ninguno** (el autopiloto avanza
+con `doWeek`, no con `advancePeriod`).
+
+**C-004 — el bloque borraba las ofertas cada semana.** `advancePeriod` (26107) llamaba a
+`makeOffers()` **sin condición** en cada iteración, y `makeOffers` hace `G.offers = []`
+antes de repoblar. Cualquier oferta que el jugador estuviera evaluando desaparecía.
+Comparar con `finishWeek` (4525), que lo hace con `chance(.30)` y sólo si no hay pelea
+firmada.
+*Evidencia en rojo:* tras un bloque de 6 semanas se perdieron las ofertas `f212` y `f215`.
+*Arreglo:* sólo se generan si no hay ninguna oferta de pelea sobre la mesa. El bloque sigue
+deteniéndose ante una oferta importante (probado).
+
+**C-003 — el bloque no guardaba nunca.** `advancePeriod` aparecía en la lista de *guard* de
+GATE pero **no** en la de *autosave* (13658). Un bloque de 52 semanas no dejaba ni un punto
+de guardado: cerrar la pestaña a mitad perdía el año entero.
+*Evidencia en rojo:* `el bloque avanzo 7 semanas sin guardar ni una vez`.
+*Arreglo:* `advancePeriod` entra en la lista de autoguardado, junto a las otras 27
+funciones que ya la usan. No se añade lógica nueva: se declara el blindaje que le faltaba.
+
+Suite: **82 pruebas verdes**. Golden master sin cambios.
+
+**C-002 queda abierto a propósito** — ver `dev/DECISIONS.md`, D-011.

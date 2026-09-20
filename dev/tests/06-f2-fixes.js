@@ -779,3 +779,51 @@ suite('F2 · I-002 el campeon fantasma', () => {
   });
 
 });
+
+suite('F2 · C-003/C-004 el avance en bloque guarda y no destruye las ofertas', () => {
+
+  function listo(seed){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: 1590, style: 'mma', div: 'LW', age: 23 });
+    const c = h.ctx;
+    /* firmar contrato para que haya ofertas de pelea */
+    const co = c.G.offers.find(o => o.type === 'contract' && c.G.orgs[o.org]);
+    if(co){ c.negoStart(co); c.negoClose(); c.G.mg = null; c.UI.screen = 'hub'; }
+    return { h, c };
+  }
+
+  test('C-004: un bloque no borra las ofertas que el jugador esta evaluando', () => {
+    const { c } = listo(121);
+    c.makeOffers();
+    const antes = c.G.offers.filter(o => o.type === 'fight').map(o => o.oppId).sort();
+    ok(antes.length > 0, 'no se generaron ofertas de pelea para la prueba');
+
+    c.advancePeriod(6);
+    const despues = c.G.offers.filter(o => o.type === 'fight').map(o => o.oppId).sort();
+    /* pueden AÑADIRSE ofertas nuevas, pero las que habia no pueden desaparecer */
+    const perdidas = antes.filter(id => despues.indexOf(id) < 0);
+    eq(perdidas, [], 'el bloque borro ofertas que el jugador tenia sobre la mesa');
+  });
+
+  test('C-003: un bloque deja al menos un punto de guardado', () => {
+    const { c } = listo(122);
+    let guardados = 0;
+    const orig = c.saveGame;
+    c.saveGame = function(...a){ guardados++; return orig.apply(this, a); };
+    c.advancePeriod(10);
+    ok(guardados > 0, 'el bloque avanzo ' + c.G.period.weeks + ' semanas sin guardar ni una vez');
+  });
+
+  test('el bloque sigue deteniendose ante una oferta importante', () => {
+    /* La correccion no puede quitarle al bloque su razon de parar. */
+    const { c } = listo(123);
+    let paradas = 0;
+    for(let i = 0; i < 12 && !c.G.player.retired; i++){
+      c.advancePeriod(26);
+      if(c.G.period && c.G.period.stop) paradas++;
+      if(c.G.pending.length) c.resolveEvent(0);
+    }
+    ok(paradas > 0, 'el bloque dejo de detenerse por completo');
+  });
+
+});

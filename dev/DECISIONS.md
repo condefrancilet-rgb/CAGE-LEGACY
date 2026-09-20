@@ -91,3 +91,33 @@ trabajo para cada medición es lento y propenso a dejar restos.
 mismo proceso con las mismas semillas.
 **Motivo.** Es lo que permitió demostrar que H-005 **no** causaba la cola de dinero, en vez
 de suponerlo. El juego no se entera: es una opción de lectura del arnés.
+
+## D-011 · C-002 no se parchea: necesita la consolidación del cierre de semana
+**Contexto.** `mgClose` (4766) y `recPick` (2759) consumen una semana sin volcar
+`G.weekLog` al feed y sin llamar a `makeOffers`. Medido: con `recPick` ×3, tres semanas
+avanzadas y **0 noticias publicadas**.
+
+**Por qué no se corrige como los otros.** La causa no es una línea olvidada: es que el
+cierre de semana —publicar noticias, sortear evento, generar ofertas, guardar— está
+**duplicado a mano** en cada llamador de `advanceWeek`. Hay nueve, y cada uno hace un
+subconjunto distinto:
+
+| llamador | publica noticias | fireEvent | makeOffers | saveGame |
+|---|---|---|---|---|
+| `finishWeek` | sí | 42% | 30% | sí |
+| `mgClose` | **no** | 42% | **no** | sí |
+| `recPick` | **no** | **no** | **no** | sí (GATE) |
+| `confirmFight` | **no** | **no** | **no** | sí |
+| `gymVisit`/`watchFight`/`travelWith` | **no** | **no** | **no** | sí |
+| `advancePeriod` | no (recoge en `sum.news`) | 12% | ahora condicional | sí (GATE, F2-14) |
+
+Añadir las llamadas que faltan a `mgClose` y `recPick` sería **más duplicación**, que es
+justo el antipatrón que el encargo prohíbe. Lo correcto es extraer el cierre de semana a
+una función con contrato explícito y que cada llamador declare qué parte quiere.
+
+**Elección.** C-002 pasa a ser el **primer punto de la parte estructural de F2**
+(`dev/PLAN-F2-consolidacion.md`), no un parche más. Se documenta aquí para que no se
+pierda: hoy terminar un minijuego de entrenamiento nunca genera ofertas y nunca publica
+las noticias de esa semana.
+
+**Revertir.** No hay nada que revertir: el comportamiento actual queda intacto.
