@@ -318,3 +318,83 @@ suite('F-003 · el blob heredado se migra de verdad, no se sella', () => {
   });
 
 });
+
+suite('H-001/002/003 · las actividades que dan dinero tienen limite semanal', () => {
+
+  /* fameStart no tenia ninguna puerta: ni coste, ni enfriamiento, ni consumo de
+     semana, ni comprobacion de ocupado. Medido conduciendolas a mano (el
+     autopiloto no pulsa botones de minijuego), arrancando con 50.000:
+
+       invest x12 (q=0.85) -> 137.570  (+87.570) y +2.160/semana PARA SIEMPRE
+       stream x10 (q=0.85) ->  91.700  (+41.700)
+       photo  x10 (q=0.85) -> 124.500  (+74.500)
+
+     Todo en la MISMA semana. El defecto no es que el retorno sea generoso: es
+     que no hay limite de repeticiones, asi que el dinero no tiene techo.
+
+     Correccion a la auditoria: H-001 decia "no se arriesga capital". No es
+     exacto — con q baja el multiplicador (q-0.45)*2.2 es NEGATIVO y se pierde
+     dinero. Lo que no tenia techo era la repeticion. */
+
+  function clics(c, juego, n, q){
+    const antes = c.G.cash;
+    for(let i = 0; i < n; i++){
+      const mg = { type:'fame', game:juego, name:juego, live:true, done:false, log:[] };
+      c.G.mg = mg;
+      c.fameResolve(mg, { quality:q, tips:0 });
+    }
+    return c.G.cash - antes;
+  }
+
+  ['invest','stream','photo'].forEach(juego => {
+    test('"' + juego + '" paga una vez por semana, no doce', () => {
+      const { c } = mundo(4500 + juego.length);
+      c.G.cash = 50000;
+      const unoSolo = clics(c, juego, 1, 0.85);
+      const nueveMas = clics(c, juego, 9, 0.85);
+      ok(unoSolo !== 0, 'la primera vez no pago nada: la prueba no mide lo que cree');
+      eq(nueveMas, 0,
+         'nueve repeticiones mas en la misma semana pagaron ' + nueveMas +
+         ': la actividad no tiene limite semanal');
+    });
+  });
+
+  test('a la semana siguiente vuelve a estar disponible', () => {
+    const { c } = mundo(4510);
+    c.G.cash = 50000;
+    const primera = clics(c, 'photo', 1, 0.85);
+    ok(primera !== 0, 'la primera no pago');
+    eq(clics(c, 'photo', 1, 0.85), 0, 'la segunda de la misma semana pago');
+    c.G.week = c.G.week + 1;
+    ok(clics(c, 'photo', 1, 0.85) !== 0,
+       'a la semana siguiente sigue bloqueada: el limite no se libera');
+  });
+
+  test('el ingreso pasivo de invest tiene techo', () => {
+    const { c } = mundo(4511);
+    c.G.cash = 50000;
+    c.G.flags.bizIncome = 0;
+    for(let semana = 0; semana < 60; semana++){
+      clics(c, 'invest', 1, 0.9);
+      c.G.week = c.G.week + 1;
+    }
+    const biz = Number(c.G.flags.bizIncome) || 0;
+    ok(biz > 0, 'invest no genero ningun ingreso pasivo: la prueba no mide nada');
+    ok(biz <= 1800,
+       'el ingreso pasivo llego a ' + biz + '/semana sin techo tras 60 semanas invirtiendo');
+  });
+
+  test('las actividades que NO dan dinero siguen repetibles', () => {
+    /* walkout y reel dan popularidad, que ya esta acotada por su tope. No se
+       tocan: el limite es para lo que no tiene techo. */
+    const { c } = mundo(4512);
+    c.G.player.pop = 10;
+    const antes = c.G.player.pop;
+    for(let i = 0; i < 3; i++){
+      const mg = { type:'fame', game:'walkout', name:'walkout', live:true, done:false, log:[] };
+      c.G.mg = mg; c.fameResolve(mg, { quality:0.8 });
+    }
+    ok(c.G.player.pop > antes, 'walkout dejo de dar popularidad al repetirlo');
+  });
+
+});

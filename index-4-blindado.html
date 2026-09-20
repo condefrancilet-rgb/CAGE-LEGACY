@@ -14567,9 +14567,43 @@ var FAME_INFO={
   weekplan:{n:'Organizar la semana', cat:'plan'},
   titlerun:{n:'Camino al título', cat:'plan'}
 };
+/* ==========================================================================
+   LAS ACTIVIDADES QUE DAN DINERO TIENEN LIMITE SEMANAL (H-001/002/003)
+   --------------------------------------------------------------------------
+   fameStart no tenia NINGUNA puerta: ni coste, ni enfriamiento, ni consumo de
+   semana, ni comprobacion de ocupado. Medido conduciendolas a mano, con
+   50.000 de caja y todo en la MISMA semana:
+     invest x12 (q=0,85) -> 137.570  (+87.570) y +2.160/semana para siempre
+     stream x10 (q=0,85) ->  91.700  (+41.700)
+     photo  x10 (q=0,85) -> 124.500  (+74.500)
+   El defecto no es que el retorno sea generoso: es que NO HAY LIMITE DE
+   REPETICIONES, asi que el dinero no tiene techo.
+   Matiz, porque la auditoria lo decia al reves: en 'invest' el capital SI se
+   arriesga — con q baja, (q-0,45)*2,2 es negativo y se pierde dinero. Lo que
+   no tenia techo era repetirlo.
+   Solo se limitan las tres que dan dinero. Las que dan atributos o
+   popularidad se dejan repetibles a proposito: sus recompensas ya estan
+   acotadas por el tope de los atributos y por el de pop. */
+var FAME_DINERO = ['invest','stream','photo'];
+var BIZ_INCOME_MAX = 1800;   /* diez inversiones buenas: el pasivo deja de crecer */
+function fameWeekStamp(){ return clN(G.year)*52 + clN(G.week); }
+function fameMoneyDone(key){
+  if(FAME_DINERO.indexOf(key) < 0) return false;
+  var f = G && G.flags && G.flags.fameWeek;
+  if(!f || typeof f!=='object' || f.at !== fameWeekStamp()) return false;
+  return !!f[key];
+}
+function fameMoneyMark(key){
+  if(FAME_DINERO.indexOf(key) < 0) return;
+  if(!G.flags) G.flags = {};
+  var f = G.flags.fameWeek;
+  if(!f || typeof f!=='object' || f.at !== fameWeekStamp()) f = G.flags.fameWeek = {at:fameWeekStamp()};
+  f[key] = 1;
+}
 function fameStart(key){
   safeRun('fameStart', function(){
     if(!FX_GAMES[key] || !FAME_INFO[key]) return;
+    if(fameMoneyDone(key)){ toast('Esa actividad ya la hiciste esta semana.'); return; }
     if(FX.running) fxClose(true);
     var mg={type:'fame', game:key, name:FAME_INFO[key].n, live:true, done:false, log:[]};
     G.mg=mg; UI.screen='mg';
@@ -14592,6 +14626,8 @@ function fameResolve(mg,res){
       if(q>=0.85){ p.st.confidence=cap(p.st.confidence+3); out.push('confianza'); }
       out.unshift('+'+hype+' popularidad');
     } else if(mg.game==='photo'){
+      if(fameMoneyDone('photo')) return;          /* una por semana (H-003) */
+      fameMoneyMark('photo');
       var pop=Math.round(1+q*6), pay=Math.round(1500+q*7000);
       p.pop=clamp(safeNum(p.pop,10)+pop,1,100);
       G.cash=safeNum(G.cash,0)+pay;
@@ -15147,6 +15183,8 @@ fameResolve=function(mg,res){
       if(q>=0.85) p.st.recovery=cap(p.st.recovery+1);
       out.push('-'+fat+' fatiga', '-'+dmg+' daño');
     } else if(mg.game==='stream'){
+      if(fameMoneyDone('stream')) return;         /* una por semana (H-002) */
+      fameMoneyMark('stream');
       var pop=Math.round(1+q*8), tips=safeInt(res&&res.tips,0);
       var pay=Math.round(600+q*4200+tips*350);
       p.pop=clamp(safeNum(p.pop,10)+pop,1,100);
@@ -15154,11 +15192,15 @@ fameResolve=function(mg,res){
       if(q<0.35){ p.rep=clamp(safeNum(p.rep,45)-1.5,1,100); out.push('te agarraron mal parado'); }
       out.unshift('+'+pop+' popularidad', money(pay));
     } else {
+      if(fameMoneyDone('invest')) return;         /* una por semana (H-001) */
+      fameMoneyMark('invest');
       var mult=(q-0.45)*2.2;
       var invested=Math.round(clamp(safeNum(G.cash,0)*0.10,800,25000));
       var ret=Math.round(invested*mult);
       G.cash=safeNum(G.cash,0)+ret;
-      G.flags.bizIncome=Math.max(0,safeInt(G.flags.bizIncome,0)+(q>=0.7?180:0));
+      /* El ingreso pasivo se acumulaba +180 por clic SIN TOPE: 60 semanas
+         invirtiendo daban 10.800/semana para siempre. Ahora tiene techo. */
+      G.flags.bizIncome=clamp(safeInt(G.flags.bizIncome,0)+(q>=0.7?180:0), 0, BIZ_INCOME_MAX);
       out.push(ret>=0? 'ganaste '+money(ret) : 'perdiste '+money(-ret));
       if(q>=0.7) out.push('+'+180+'/semana de ingreso pasivo');
     }

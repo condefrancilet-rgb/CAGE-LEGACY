@@ -1066,3 +1066,68 @@ F-003 (una partida v1 metida en el blob y migrada).
 
 Dicho de otro modo: el A/B sirve aquí para demostrar que los arreglos **no rompieron nada
 de lo que la simulación sí recorre**, no para demostrar que los cinco funcionan.
+
+---
+
+# F3-bis · Bugs y deuda técnica, tanda abierta
+
+## F3-01 · H-001/002/003 · Las actividades que dan dinero no tenían techo
+
+`fameStart` no tenía **ninguna** puerta: ni coste, ni enfriamiento, ni consumo de semana,
+ni comprobación de ocupado. Las tres actividades que pagan se podían repetir sin límite en
+la misma semana.
+
+**Medido, conduciéndolas a mano** (el autopiloto no pulsa botones de minijuego), con 50.000
+de caja y todo dentro de la misma semana:
+
+| actividad | clics | caja | efecto extra |
+|---|---|---|---|
+| `invest` | 12 | 50.000 → **137.570** | **+2.160/semana para siempre** |
+| `stream` | 10 | 50.000 → 91.700 | — |
+| `photo` | 10 | 50.000 → 124.500 | — |
+
+**Corrección a la auditoría.** H-001 afirmaba *"`invested` nunca se resta de `G.cash`: no se
+arriesga capital"*. No es exacto: `ret = invested * (q-0.45)*2.2`, y con `q` baja ese
+multiplicador es **negativo** — el capital sí se pierde. El defecto real no es que el
+retorno sea generoso, es que **no había límite de repeticiones**, así que el dinero no
+tenía techo.
+
+**Arreglo.** Una por semana cada una (`FAME_DINERO`), y techo al ingreso pasivo
+(`BIZ_INCOME_MAX = 1800`, diez inversiones buenas). Medido antes: 60 semanas invirtiendo
+daban **10.800/semana** perpetuos.
+
+**Lo que NO se limitó, a propósito.** `walkout`, `reel`, `weekplan`, `reactwall`, `vrspar`
+y `cryoflow` siguen repetibles: dan atributos o popularidad, y ambos ya tienen tope propio.
+El límite es para lo que no lo tenía.
+
+**Estado nuevo en el save:** `G.flags.fameWeek = {at, invest, stream, photo}`. Es aditivo;
+una partida vieja simplemente no lo trae y la guarda lo trata como "no hecho".
+
+## F3-02 · E-001 · La agresividad del jugador, APARCADA pendiente de evidencia
+
+**Estado: escrita, probada y NO integrada.** Vive fuera del árbol hasta que el A/B decida.
+
+**El hallazgo, medido.** Con un proxy sobre `p.st` a lo largo de 40 peleas y 637
+intercambios: **23 de los 26 atributos se leen durante una pelea. La agresividad del
+JUGADOR no.** Y sin embargo varios eventos la suben (2766, 2959, 3110, 3115, 17697) y el
+estilo *Pressure Fighter* la trae de serie a +14. Se escribía y no se leía: un sumidero
+visible en la hoja de personaje.
+
+Lo que sí se leía es la del **rival** —`o.st.aggression` en 1771, 2596, 16885 y 26131— para
+que la IA decida cómo pelea y para el scouting. El jugador no tenía equivalente porque
+elige sus propias acciones, así que el atributo no tenía por dónde entrar.
+
+**Corrección a mi propia medición.** La primera sonda fue **una sola pelea** y concluyó que
+4 atributos no se leían nunca. Ampliada a 40 peleas bajó a 3, y de ésos `discipline` y
+`recovery` sí se usan fuera del combate (decaimiento del entrenamiento, riesgo de lesión,
+recuperación semanal). El único realmente muerto era `aggression`.
+
+**Por qué está aparcada.** El cambio entra por `combat:eff` y es de suma cero —empuja el
+ataque y descuida la defensa en la misma medida, escala corta de ±2,2—, pero **toca todas
+las peleas**. Consecuencia medida: de la suite entera fallan **sólo las 5 trazas del golden
+master**, 130 verdes. Ésa es exactamente la huella de un cambio de combate deliberado.
+
+Integrarla exige, por el criterio del propio encargo: equivalencia estadística contra una
+copia congelada, y **regenerar las cinco trazas**. El A/B está corriendo. Hasta que dé un
+veredicto, la rama no lleva un golden master en rojo: el cambio y sus 4 pruebas quedan
+fuera del árbol.
