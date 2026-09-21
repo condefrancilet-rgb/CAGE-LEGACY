@@ -87,16 +87,71 @@ suite('E2 · navegacion: lo que hace hoy', () => {
 
   /* ---- trinquete: estas dos fijan el mapa para que no empeore ---- */
 
-  test('trinquete: no aumentan las escrituras directas de UI.screen', () => {
+  /* ---- trinquetes: el mapa solo puede mejorar ----
+     Linea base al empezar E2: 51 escrituras de UI.screen y 30 de G.mg.
+     Tras dar dueño a la navegacion de minijuegos (mgOpen): 32 y 31.
+     G.mg sube en uno a proposito, porque el dueño es el mismo un escritor;
+     lo que importa es que no crezcan los de FUERA. */
+
+  test('trinquete: las escrituras de UI.screen no vuelven a subir', () => {
     const src = FUENTE();
     const todas = (src.match(/UI\.screen\s*=[^=]/g) || []).length;
-    ok(todas <= 51, 'las escrituras de UI.screen subieron a ' + todas + ' (linea base 51)');
+    ok(todas <= 27, 'las escrituras de UI.screen subieron a ' + todas + ' (tope 27, base 51)');
   });
 
-  test('trinquete: no aumentan los escritores de G.mg', () => {
+  test('trinquete: los escritores de G.mg no vuelven a subir', () => {
     const src = FUENTE();
     const todos = (src.match(/G\.mg\s*=[^=]/g) || []).length;
-    ok(todos <= 30, 'los escritores de G.mg subieron a ' + todos + ' (linea base 30)');
+    ok(todos <= 26, 'los escritores de G.mg subieron a ' + todos + ' (tope 26, base 30)');
+  });
+
+  test('mgExit es el unico que cierra un minijuego decidiendo pantalla', () => {
+    const src = FUENTE();
+    ok(/function mgExit\(/.test(src), 'no existe mgExit');
+    /* El par "cerrar y elegir pantalla" no debe quedar suelto. Se excluye el
+       router de emergencia de render (17953): ese no cierra un minijuego, sino
+       que recupera de un fallo de dibujo reseteando a un lugar seguro. Es otro
+       dueño y otro problema. */
+    const sueltos = (src.match(/G\.mg\s*=\s*null;\s*UI\.screen/g) || [])
+      .filter(x => !/\n\s{6}UI\.screen/.test(x)).length;
+    eq(sueltos, 0, 'quedan ' + sueltos + ' cierres que eligen pantalla por su cuenta');
+  });
+
+  test('mgExit conserva los tres destinos, no los unifica', () => {
+    const { c } = mundo(5007);
+    /* 'train' */
+    c.cardioStart(); ok(c.G.mg, 'no abrio');
+    c.mgExit('train', false);
+    eq(c.UI.screen, 'train', "mgExit('train') no llevo a train");
+    /* 'hub' incondicional */
+    c.cardioStart(); c.mgExit('hub', false);
+    eq(c.UI.screen, 'hub', "mgExit('hub') no llevo al hub");
+    /* 'auto' sin pelea viva -> hub */
+    c.G.fight = null;
+    c.cardioStart(); c.mgExit('auto', false);
+    eq(c.UI.screen, 'hub', "mgExit('auto') sin pelea deberia ir al hub");
+    eq(c.G.mg, null, 'mgExit no cerro el minijuego');
+  });
+
+  test("mgExit('auto') va a la pelea si hay una viva", () => {
+    const { c } = mundo(5008);
+    const p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+    ok(c.G.fight && !c.G.fight.over, 'no hay pelea viva');
+    c.G.mg = { type:'cardio' };
+    c.mgExit('auto', false);
+    eq(c.UI.screen, 'fight', "mgExit('auto') con pelea viva deberia volver a la pelea");
+  });
+
+  test('mgOpen existe y es quien lleva a la pantalla de minijuego', () => {
+    const src = FUENTE();
+    ok(/function mgOpen\(/.test(src), 'no existe mgOpen');
+    /* fuera de mgOpen no debe quedar ningun UI.screen='mg' */
+    const sueltas = (src.match(/UI\.screen\s*=\s*'mg'/g) || []).length;
+    eq(sueltas, 1, 'quedan ' + sueltas + " sitios con UI.screen='mg'; solo debe estar el de mgOpen");
   });
 
 });

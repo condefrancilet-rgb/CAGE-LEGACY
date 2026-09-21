@@ -2389,7 +2389,7 @@ function mgSlotBusy(){ return !!(G && G.mg && !G.mg.done); }
 function sparStart(){
   if(mgSlotBusy()) return;
   G.mg = {type:'spar', step:0, sits:shuffle(SPAR_SIT.slice()).slice(0,5), score:0, log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function sparPick(i){
   var mg=G.mg;
@@ -2463,7 +2463,7 @@ function finishMiniStart(kind,returnTo,diff,parent){
   } else {
     mg.rounds=3; mg.level=50;
   }
-  G.mg=mg; UI.screen='mg'; render();
+  G.mg=mg; mgOpen();
   hookEmit('mini:start', ctx);
 }
 function finishTap(i){
@@ -2516,7 +2516,7 @@ var fightFinishResolve = null;   /* lo asigna su modulo, mas abajo */
 /* =============== MINIJUEGO 2: CARDIO =============== */
 function cardioStart(){
   G.mg={type:'cardio',step:0,blocks:5,int:[],hr:60,perf:0,burn:0,log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function cardioPick(pct){
   var mg=G.mg,p=G.player;
@@ -2544,7 +2544,7 @@ function cardioEnd(){
 /* =============== MINIJUEGO 3: FUERZA =============== */
 function strStart(){
   G.mg={type:'str',step:0,sets:5,load:70,done:false,reps:0,fail:0,log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function strPick(delta){
   var mg=G.mg,p=G.player;
@@ -2574,7 +2574,7 @@ function drillStart(){
   var shuffled=shuffle(cols.slice()); var colors={};
   DRILL_MOVES.forEach(function(m,i){ colors[m]=shuffled[i%shuffled.length]; });
   G.mg={type:'drill',seq:seq,input:[],phase:'show',done:false,log:[],colors:colors};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function drillGo(){
   var mg=G.mg;
@@ -2614,7 +2614,7 @@ function scoutReport(o){
 }
 function gpStart(){
   G.mg={type:'gp',dist:null,pace:null,prio:null,def:null,done:false,council:false,consensus:null};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function gpSet(k,v){ G.mg[k]=v; render(); }
 /* La reunion de esquina base quedo inalcanzable: la version con compatibilidad de entrenadores la reemplazo sin llamarla. */
@@ -2664,7 +2664,7 @@ function weighStart(){
   if(mgSlotBusy()) return;
   var p=G.player, lim=DIVS[p.div].lb;
   G.mg={type:'weigh',step:0,w:p.weightNow,lim:lim,pen:0,log:[],done:false};
-  UI.screen='mg'; render();
+  mgOpen();
   hookEmit('weigh:start', {});
 }
 /* Cada accion del pesaje: la base la aplica, los modulos ajustan despues. */
@@ -2762,7 +2762,7 @@ function pressStart(){
   var qs = hookFilter('press:questions', shuffle(PRESSQ.slice()).slice(0,4), {});
   G.mg={type:'press',step:0,qs:qs,pop:0,heat:0,resp:0,log:[],done:false};
   hookEmit('press:start', {});
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function pressPick(i){
   /* FIX RAÍZ del "Cannot read properties of undefined (reading 'o')":
@@ -2811,7 +2811,7 @@ function pressEnd(){
 function recStart(){
   if(mgSlotBusy()) return;
   G.mg={type:'rec',step:0,weeks:0,done:false,log:[],picked:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function recPick(k){
   var mg=G.mg,p=G.player;
@@ -2841,7 +2841,7 @@ function negoStart(offer){
   if(mgSlotBusy()) return;
   G.mg={type:'nego',offer:offer,round:0,ask:{purse:offer.purse,bonus:offer.bonus||0,fights:offer.fights||4,excl:true},
     mood:60,done:false,log:[],closed:false};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function negoAsk(k,v){
   var mg=G.mg, m=mgrById(G.mgId), p=G.player;
@@ -4149,6 +4149,47 @@ function go(s,sub){
   UI.screen=ctx.to; UI.sub=ctx.sub;
   if(window.scrollTo) window.scrollTo(0,0);
   render();
+}
+
+/* ==========================================================================
+   DUEÑO UNICO DE IR A LA PANTALLA DE MINIJUEGO (E2)
+   --------------------------------------------------------------------------
+   El par `mgOpen();` estaba escrito DIECIOCHO veces, una por
+   cada minijuego, y era el grupo mas grande de las 36 escrituras directas de
+   UI.screen que esquivaban a go().
+   Aqui se unifica solo la NAVEGACION. Como cada sitio arma su G.mg de forma
+   distinta -son once formas distintas- ese objeto se sigue construyendo en su
+   sitio: darle dueño unico a G.mg es otro problema y otro paso.
+   `mg` sin pasar (undefined) significa "no toques G.mg, solo navega".
+   `dibujar:false` es para los dos sitios que abren un overlay FX y redibujan
+   ellos despues, no antes. */
+function mgOpen(mg, dibujar){
+  if(mg !== undefined) G.mg = mg;
+  UI.screen = 'mg';
+  if(dibujar !== false) render();
+  return G.mg;
+}
+
+/* ==========================================================================
+   DUEÑO UNICO DE CERRAR UN MINIJUEGO (E2)
+   --------------------------------------------------------------------------
+   Cerrar estaba escrito en seis sitios y cada uno decidia su destino por su
+   cuenta, con TRES respuestas distintas:
+     · 'fight' u 'hub' segun si hay una pelea viva   (8519, 11177)
+     · 'train'                                        (11174)
+     · 'hub' incondicional                            (14697, 14744, 15295)
+   EL DESTINO NO SE UNIFICA AQUI: hacerlo es cambio de comportamiento y se
+   evalua en E5 con su propia evidencia. Lo que se unifica es QUIEN cierra y
+   la regla condicional, que pasa a existir en un solo sitio bajo el nombre
+   'auto'. Cada llamador declara el destino que ya tenia. */
+function mgExit(destino, dibujar){
+  G.mg = null;
+  if(destino){
+    UI.screen = (destino === 'auto')
+      ? ((G && G.fight && !G.fight.over) ? 'fight' : 'hub')
+      : destino;
+  }
+  if(dibujar) render();
 }
 
 function bar(v,max,cls){
@@ -8497,7 +8538,7 @@ function fxResolveMini(mg,res){
   try{ finishMiniContinue(); }
   catch(e){
     try{ toast('Error al resolver: '+e.message); }catch(x){ errLog('L7335', x); }
-    G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)?'fight':'hub'; render();
+    mgExit('auto', true);
   }
 }
 
@@ -8558,9 +8599,10 @@ fightFinishResolve=function(mg){
   }
   _fxFightFinishResolvePrev(mg);
   if(G.fight && !G.fight.over){
-    G.mg=null;
-    if(UI.screen==='mg'){ UI.screen='fight'; }
-    render();
+    /* E2: la limpieza defensiva de la capa FX pasa por el dueño. Conserva su
+       regla tal cual: solo saca de la pantalla de minijuego SI se estaba en
+       ella; si no, cierra y redibuja sin mover de sitio. */
+    mgExit(UI.screen==='mg' ? 'fight' : null, true);
   }else{
     G.mg=null;
   }
@@ -8571,7 +8613,7 @@ var _fxSparFinishResolvePrev=sparFinishResolve;
 sparFinishResolve=function(mg){
   _fxSparFinishResolvePrev(mg);
   if(G.mg && G.mg.type==='finish'){ G.mg=mg.parent||null; }
-  UI.screen='mg'; render();
+  mgOpen();
 };
 
 /* Si se abandona una pelea/partida con un minijuego abierto, limpiar el overlay. */
@@ -10822,7 +10864,7 @@ function tgStart(pool, fallback){
   if(!info || !FX_GAMES[key]){ if(fallback) fallback(); return; }
   var mg={type:'train', game:key, pool:pool, cat:info.cat, tk:info.tk, name:info.n,
           live:true, done:false, log:[], weekApplied:false};
-  G.mg=mg; UI.screen='mg';
+  G.mg=mg; mgOpen(undefined, false);
   var ok=fxOpen(key, info.cat, mg, function(res){ tgResolve(mg,res); });
   if(!ok){ G.mg=null; if(fallback) fallback(); return; }
   render();
@@ -10855,7 +10897,7 @@ function tgResolve(mg,res){
   mg.result = mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+gainText(mg.gain);
   if(mg.inj) mg.result += ' Te lastimaste: '+mg.inj;
   mg.log.unshift(mg.label+' · ★'+mg.perfects+' ✓'+mg.hitsN+' ✗'+mg.missesN);
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function tgRetry(){
   var mg=G&&G.mg; if(!mg||mg.type!=='train'||!mg.live) return;
@@ -11152,10 +11194,10 @@ fxLoop=function(ts){
     try{ fxClose(true); }catch(x){ errLog('L9912', x); }
     errNote('El ejercicio se interrumpió. Volvés al gimnasio sin perder la semana.');
     try{
-      if(mg && mg.type==='train'){ G.mg=null; UI.screen='train'; }
+      if(mg && mg.type==='train'){ mgExit('train', false); }
       else if(mg && mg.type==='finish'){ mg.live=false; mg.done=true; mg.quality=0.3;
         mg.result='El intento se interrumpió.'; safeRun('finishRecovery',function(){ finishMiniContinue(); },null,true); }
-      else { G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)?'fight':'hub'; }
+      else { mgExit('auto', false); }
       render();
     }catch(x){ errRecord('minijuego:recovery',x); }
   }
@@ -11942,7 +11984,7 @@ function chatStart(){
     /* se consume recién cuando hay conversación real: abrir un grupo vacío no cuesta */
     if(!socSpend('chat','chat',{weight:SOC_W.NORMAL, cat:'grupo'})){ toast('⛔ '+(socWhyBlocked('chat',{cat:'grupo'})||'No podés ahora.')); return; }
     G.mg={type:'chat', step:0, msgs:msgs, log:[], done:false, pop:0, rep:0};
-    UI.screen='mg'; render();
+    mgOpen();
   });
 }
 function chatPick(i){
@@ -13646,7 +13688,7 @@ function podcastStart(kind){
     var soPod={weight:SOC_W.MAYOR, actor:host?host.id:null, cat:'prensa'};
     if(!socSpend('pod:'+kind,'pod',soPod)){ toast('⛔ '+(socWhyBlocked('pod:'+kind,soPod)||'No podés ahora.')); return; }
     G.mg={type:'pod',kind:kind,step:0,qs:qs,hostId:host?host.id:null,pop:0,heat:0,resp:0,log:[],done:false};
-    UI.screen='mg'; render();
+    mgOpen();
   });
 }
 var POD_OPTS=[
@@ -14673,9 +14715,9 @@ function fameStart(key){
     if(fameMoneyDone(key)){ toast('Esa actividad ya la hiciste esta semana.'); return; }
     if(FX.running) fxClose(true);
     var mg={type:'fame', game:key, name:FAME_INFO[key].n, live:true, done:false, log:[]};
-    G.mg=mg; UI.screen='mg';
+    G.mg=mg; mgOpen(undefined, false);
     var ok=fxOpen(key, FAME_INFO[key].cat, mg, function(res){ fameResolve(mg,res); });
-    if(!ok){ G.mg=null; UI.screen='hub'; errNote('No se pudo abrir la actividad.'); }
+    if(!ok){ mgExit('hub', false); errNote('No se pudo abrir la actividad.'); }
     render();
   });
 }
@@ -14721,8 +14763,8 @@ function fameResolve(mg,res){
       out.push(q>=0.85?'llegás en tu mejor momento':'preparación sumada');
     }
     mg.result=mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+out.join(' · ')+'.';
-    UI.screen='mg'; saveGame(true); render();
-  }, function(){ if(G&&G.mg){ G.mg=null; UI.screen='hub'; render(); } }, true);
+    mgOpen(undefined, false); saveGame(true); render();
+  }, function(){ if(G&&G.mg){ mgExit('hub', true); } }, true);
 }
 function fameRetry(){
   var mg=G&&G.mg; if(!mg||mg.type!=='fame'||!mg.live) return;
@@ -15272,8 +15314,8 @@ fameResolve=function(mg,res){
       if(q>=0.7) out.push('+'+180+'/semana de ingreso pasivo');
     }
     mg.result=mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+out.join(' · ')+'.';
-    UI.screen='mg'; saveGame(true); render();
-  }, function(){ if(G&&G.mg){ G.mg=null; UI.screen='hub'; render(); } }, true);
+    mgOpen(undefined, false); saveGame(true); render();
+  }, function(){ if(G&&G.mg){ mgExit('hub', true); } }, true);
 };
 /* El motor debe devolver las donaciones del stream. */
 var _shopFxFinishPrev=fxFinish;

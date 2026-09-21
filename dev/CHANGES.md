@@ -1422,3 +1422,70 @@ escrito. Es la séptima vez en esta obra que el instrumento miente antes que el 
 los 6 cierres de minijuego con sus 3 destinos y los 30 escritores de `G.mg`; red de
 caracterización antes de tocar; `goTo(pantalla)` como único escritor de `UI.screen` y único
 que decide el scroll (I1).
+
+---
+
+# E2 — NAVEGACIÓN CON DUEÑO ÚNICO (en curso)
+
+## Lo que el mapeo cambió del plan
+
+**`go(s, sub)` ya existía** y es la función canónica: emite `nav`, descarta una pelea
+terminada salvo hacia `fight`/`fightresult`/`mg`, escribe `UI.screen` y `UI.sub`, hace
+scroll y redibuja. El trabajo de E2 **no era crearla**, sino que las escrituras directas
+dejaran de esquivarla.
+
+Reparto real de las 51 escrituras de `UI.screen`:
+
+| dónde | cuántas |
+|---|---|
+| dentro de cadenas HTML (botones "Volver al inicio") | 12 |
+| código real | 36 |
+| …de esas, `UI.screen='mg'` (abrir minijuego) | **18** |
+
+## Dos dueños nuevos
+
+**`mgOpen(mg, dibujar)`** — absorbe las 18 copias de `UI.screen='mg'; render();`.
+Unifica **sólo la navegación**: cada sitio sigue armando su `G.mg`, porque hay **once
+formas distintas** de construirlo y mezclarlo habría hecho el cambio imposible de
+verificar. `mg` sin pasar significa "no toques `G.mg`, sólo navega".
+
+**`mgExit(destino, dibujar)`** — absorbe los 6 cierres. **Los tres destinos se conservan**,
+no se unifican: `'train'`, `'hub'` incondicional, y `'auto'` para la regla `fight`/`hub`
+según haya pelea viva, que ahora existe en un solo sitio. Unificarlos es cambio de
+comportamiento y se evalúa en E5, como pide el encargo.
+
+## Métricas, antes → después
+
+| métrica | base | ahora |
+|---|---|---|
+| escrituras de `UI.screen` | 51 | **27** |
+| escritores de `G.mg` | 30 | **26** |
+| escrituras de scroll | 3 | **3** |
+
+## Dos decisiones propias
+
+- **La limpieza defensiva de FX pasa por el dueño pero conserva su regla** (sólo saca de la
+  pantalla de minijuego si se estaba en ella). **No se retiró**: el encargo pide retirarla
+  sólo con prueba de que el dueño cubre el fallo de la finalización, y eso no está
+  demostrado todavía.
+- **El router de emergencia de `render` (17953) queda fuera.** Hace `G.mg=null;
+  UI.screen=...`, pero no cierra un minijuego: recupera de un fallo de dibujo llevando a un
+  lugar seguro. Es otro dueño y otro problema; queda documentado dentro de la prueba para
+  que nadie lo confunda con un cierre suelto.
+
+## Verificación
+
+- Red de caracterización commiteada **antes** de tocar el juego (`761859a`), con **4
+  mutantes y 4 capturas**: `go()` sin descartar la pelea terminada, descartándola también
+  hacia `mg`, sin emitir `nav`, y `mgClose(false)` sin navegar. Tras mutar, `git diff`
+  vacío.
+- **Suite 147 → 162 verdes**, golden master idéntico.
+- **Navegador 28 verdes**, I1 intacto en las tres resoluciones (400→400 en sitio, 400→0 al
+  navegar).
+
+## Siguiente paso exacto
+
+Migrar las **12 escrituras de `UI.screen` que viven dentro de cadenas HTML** (los botones
+"Volver al inicio", todos a `'title'`) y revisar las **15 restantes** de código, decidiendo
+para cada una si es navegación (va a `go`) o recuperación (dueño propio). Después, cerrar
+E2 con su criterio de salida y pasar a E3.
