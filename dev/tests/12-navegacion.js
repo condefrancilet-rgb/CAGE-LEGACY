@@ -96,7 +96,47 @@ suite('E2 · navegacion: lo que hace hoy', () => {
   test('trinquete: las escrituras de UI.screen no vuelven a subir', () => {
     const src = FUENTE();
     const todas = (src.match(/UI\.screen\s*=[^=]/g) || []).length;
-    ok(todas <= 27, 'las escrituras de UI.screen subieron a ' + todas + ' (tope 27, base 51)');
+    ok(todas <= 8, 'las escrituras de UI.screen subieron a ' + todas + ' (tope 8, base 51)');
+  });
+
+  test('las 8 escrituras que quedan tienen dueño o motivo', () => {
+    /* No son escrituras sueltas: son los cuatro dueños, el router de
+       emergencia de render, el manejador de error de cargar una partida y un
+       autotest que barre pantallas. Cada una esta contada. */
+    const src = FUENTE();
+    const cuenta = (re) => (src.match(re) || []).length;
+    eq(cuenta(/function go\(/), 1, 'go() dejo de ser unico');
+    eq(cuenta(/function mgOpen\(/), 1, 'mgOpen dejo de ser unico');
+    eq(cuenta(/function mgExit\(/), 1, 'mgExit dejo de ser unico');
+    eq(cuenta(/function fightScreen\(/), 1, 'fightScreen dejo de ser unico');
+    /* ninguna navegacion suelta con render() pegado detras */
+    const sueltas = cuenta(/UI\.screen\s*=\s*'[a-z]+';\s*render\(\)/g);
+    eq(sueltas, 0, 'quedan ' + sueltas + " escrituras del tipo UI.screen='x'; render()");
+  });
+
+  test('los botones de volver navegan por go(), no a mano', () => {
+    const src = FUENTE();
+    const aMano = (src.match(/onclick="UI\.screen/g) || []).length;
+    eq(aMano, 0, 'quedan ' + aMano + ' botones que escriben UI.screen desde el HTML');
+  });
+
+  test('fightScreen no emite nav: la excepcion es deliberada', () => {
+    /* Hace falta una pelea VIVA: sin ella, la tabla de pantallas devuelve null
+       para 'fight' y render rebota al hub. Eso es correcto, y mi primera
+       version de esta prueba lo tomaba por un fallo de fightScreen. */
+    const { c } = mundo(5009);
+    const p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+    ok(c.G.fight && !c.G.fight.over, 'no hay pelea viva');
+    let nav = 0;
+    c.hookOn('nav', 'medicion', function(){ nav++; }, 99);
+    c.UI.screen = 'hub';
+    c.fightScreen('fight');
+    eq(c.UI.screen, 'fight', 'fightScreen no cambio de pantalla');
+    eq(nav, 0, 'fightScreen emitio nav: eso cerraria el minijuego de finalizacion');
   });
 
   test('trinquete: los escritores de G.mg no vuelven a subir', () => {

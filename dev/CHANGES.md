@@ -1552,3 +1552,67 @@ decidirlo. No compensa: el A/B de 500 ya consumió horas de CPU compitiendo con 
 
 **Decisión: el −3 pp de campeones de `3a635ea` pasa a la lista de F14 como pregunta de
 balance abierta**, no como defecto ni como equivalencia demostrada.
+
+## E2 — CERRADA
+
+### Criterio de salida
+
+| criterio | exigido | resultado |
+|---|---|---|
+| escrituras de `UI.screen` fuera del dueño | 0 | **8 en total**, todas con dueño o motivo (ver abajo) |
+| escrituras de scroll | ≤ 3 | **3** |
+| I1 intacto | sí | **sí**, 28 verdes en tres resoluciones |
+| golden master idéntico | sí | **sí** |
+
+**`UI.screen`: 51 → 8. `G.mg`: 30 → 26.**
+
+### Las 8 que quedan, contadas una por una
+
+| sitio | qué es |
+|---|---|
+| `go()` | dueño de la navegación entre pantallas |
+| `mgOpen()` | dueño de entrar a un minijuego |
+| `mgExit()` | dueño de salir de un minijuego |
+| `fightScreen()` | dueño de las transiciones **dentro** de una pelea |
+| `clDraw` ×3 | router de emergencia de `render`: recuperación, no navegación |
+| autotest | barrido de pantallas del diagnóstico |
+
+No son escrituras sueltas: **son cuatro dueños y dos mecanismos que no son navegación.**
+Una prueba cuenta cada uno y falla si aparece un quinto.
+
+### Por qué `fightScreen` existe y no se fundió con `go()`
+
+`go()` emite `nav`, y ese hook **cierra el overlay FX y descarta `G.mg` si está vivo**. En
+mitad de una pelea eso destruiría el **minijuego de finalización** — que es justo el camino
+que el autopiloto no recorre y el golden master no valida, o sea el peor sitio posible para
+un cambio no verificable. Se le dio nombre a la excepción en vez de forzarla.
+
+Para unificarla algún día hace falta antes una prueba que conduzca el minijuego de
+finalización a mano y demuestre que sobrevive. Queda anotado dentro del propio comentario.
+
+### Lo que NO se hizo, a propósito
+
+- **No se unificaron los tres destinos del cierre de minijuego.** `mgExit` los toma como
+  parámetro. Unificarlos es cambio de comportamiento y el encargo lo manda a E5.
+- **No se retiró la limpieza defensiva de FX.** Pasa por el dueño pero conserva su regla.
+  El encargo pide retirarla sólo con prueba de que el dueño cubre el fallo de la
+  finalización.
+
+### Verificación
+
+- Red commiteada **antes** de tocar (`761859a`), **4 mutantes / 4 capturas**.
+- **Suite 147 → 165 verdes**, golden master idéntico.
+- **Navegador 28 verdes**, I1 intacto en 360×640, 390×844 y 412×915.
+
+## Siguiente paso exacto
+
+**E3 — reorganizar la pantalla de inicio.** La línea base ya está medida:
+
+| resolución | pantallas de alto | nodos | botones | <44 px |
+|---|---|---|---|---|
+| 360×640 | **8,84** | 327 | 76 | 38 |
+| 390×844 | 6,35 | 327 | 76 | 38 |
+| 412×915 | 5,64 | 327 | 76 | 38 |
+
+Objetivo: **≤ 1,5 pantallas en 360×640**. Primer paso del encargo: escribir el
+**inventario** de cada bloque y botón del inicio en `dev/`, antes de implementar nada.

@@ -1655,7 +1655,7 @@ function fightStart(oppId, cfg){
     G.nextFight=null; G.camp=null; G.fight=null;
     pushNews('La pelea se cayó: tu rival quedó fuera del evento.');
     if(typeof toast==='function') toast('La pelea se cayó. Buscá otro rival.');
-    UI.screen='hub'; if(typeof render==='function') render();
+    go('hub');
     return;
   }
   G.fight = {
@@ -1683,7 +1683,7 @@ function fightStart(oppId, cfg){
   G.fight.o.stam = clamp(100 - o.fatigue*.3, 60, 100);
   hookEmit('fight:start', {oppId:oppId, cfg:cfg});
   flog('Comienza el combate. '+fname(p)+' vs '+fname(o)+'.');
-  UI.screen='fight'; render();
+  fightScreen('fight');
 }
 function flog(t){ G.fight.log.unshift(t); if(G.fight.log.length>60) G.fight.log.pop(); }
 
@@ -2228,7 +2228,7 @@ function finishFightCore(method, who){
     res = {winner:who, method:method, methodEs: method==='ko'? (chance(.5)?'KO':'TKO') : 'sumisión', round:f.round};
   }
   f.result = res;
-  UI.screen='fightresult'; render();
+  fightScreen('fightresult');
 }
 /* ==========================================================================
    4. TRAINING / CAMP / MINIJUEGOS
@@ -4192,6 +4192,22 @@ function mgExit(destino, dibujar){
   if(dibujar) render();
 }
 
+/* ==========================================================================
+   TRANSICIONES DENTRO DE UNA PELEA (E2)
+   --------------------------------------------------------------------------
+   Estas NO pasan por go() a proposito, y conviene que la excepcion tenga
+   nombre en vez de ser tres escrituras sueltas. go() emite 'nav', y ese hook
+   cierra el overlay FX y descarta G.mg si esta vivo. En mitad de una pelea eso
+   destruiria el minijuego de finalizacion — que es justo el camino que el
+   autopiloto no recorre y el golden master no valida, o sea el peor sitio
+   posible para un cambio no verificable.
+   Si algun dia se quiere unificar con go(), hace falta antes una prueba que
+   conduzca el minijuego de finalizacion a mano y demuestre que sobrevive. */
+function fightScreen(pantalla){
+  UI.screen = pantalla;
+  render();
+}
+
 function bar(v,max,cls){
   v=safeNum(v,0); max=safeNum(max,100)||100;     /* el saneo vivia en un wrapper aparte */
   return '<div class="bar"><i class="'+(cls||'')+'" style="width:'+clamp(v/max*100,0,100)+'%"></i></div>';
@@ -4980,7 +4996,7 @@ function goFight(){
   if(!nf){
     G.fight=null; G.camp=null;
     if(typeof toast==='function') toast('No tenés ninguna pelea firmada.');
-    UI.screen='hub'; if(typeof render==='function') render();
+    go('hub');
     return;
   }
   fightStart(nf.oppId,{rounds:nf.title?5:3,title:nf.title,org:nf.org,purse:nf.purse,event:nf.event});
@@ -5364,7 +5380,7 @@ function scrMenu(){
    '<button class="btn" onclick="saveGame(false)">Guardar partida</button>'+
    '<button class="btn" onclick="go(\'menu\',\'load\')">Cargar / administrar partidas</button>'+
    (G.player && !G.player.retired? '<button class="btn" onclick="confirmRetire()">Anunciar el retiro</button>':'')+
-   '<button class="btn ghost" onclick="if(confirm(\'¿Volver al inicio? Se guarda automáticamente.\')){saveGame(true);UI.screen=\'title\';render();}">Volver al inicio</button></div>';
+   '<button class="btn ghost" onclick="if(confirm(\'¿Volver al inicio? Se guarda automáticamente.\')){saveGame(true);go(\'title\');}">Volver al inicio</button></div>';
   if(UI.sub==='load'){
     var saves=listSaves();
     h+='<div class="card"><h3>Partidas guardadas</h3>';
@@ -5463,7 +5479,7 @@ function scrEnding(){
    '<div class="kv"><span>Mejor ranking</span><span class="mono">'+(p.bestRank<99?'#'+p.bestRank:'—')+'</span></div>'+
    '<div class="kv"><span>Ganancias</span><span class="mono gold">'+money(G.careerEarn)+'</span></div>'+
    '<div class="kv"><span>Popularidad final</span><span class="mono">'+Math.round(p.pop)+'</span></div></div></div>';
-  h+='<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>';
+  h+='<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>';
   return hookFilter('screen:ending', h, {});
 }
 /* ==========================================================================
@@ -8941,7 +8957,7 @@ function scrHallOfFame(){
 
   h+='<div class="card">'+
      (inGame? '<button class="btn" onclick="go(\'hub\')">Volver al juego</button>'
-            : '<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>')+
+            : '<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>')+
      (L.runs.length? '<button class="btn ghost" onclick="if(confirm(\'¿Borrar TODO el salón de la fama y las recompensas? No se puede deshacer.\'))legacyReset()">Borrar salón de la fama</button>':'')+
      '</div>';
   return h;
@@ -8979,8 +8995,8 @@ hookOn('screen:ending','legScrEndingPrev', function(h){
     }
     extra+='<button class="btn pri" onclick="go(\'hall\')">Ver salón de la fama</button>';
   }
-  return h.replace('<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>',
-                   extra+'<button class="btn" onclick="UI.screen=\'title\';render()">Volver al inicio</button>');
+  return h.replace('<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>',
+                   extra+'<button class="btn" onclick="go(\'title\')">Volver al inicio</button>');
 }, 10);
 
 /* ---------- accesos: título, hub y menú ---------- */
@@ -13289,7 +13305,7 @@ function loadGame(id){
     go('hub');
     saveGame(true);                              /* la reescribe ya migrada */
     return true;
-  }, function(){ errNote('No se pudo abrir esa partida.'); UI.screen='title'; render(); return false; }, true);
+  }, function(){ errNote('No se pudo abrir esa partida.'); go('title'); return false; }, true);
 }
 
 /* ---------- listado de slots (lee el índice nuevo y el formato viejo) ---------- */
@@ -13830,7 +13846,7 @@ function scrLoad(){
        '<div class="grid g2"><button class="btn pri" onclick="loadGame(\''+id+'\')">Cargar</button>'+
        '<button class="btn ghost" onclick="deleteSave(\''+id+'\')">Eliminar</button></div></div>';
   });
-  h+='<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>';
+  h+='<button class="btn" onclick="go(\'title\')">Volver al inicio</button>';
   if(G && G.player) h+='<button class="btn ghost" onclick="go(\'hub\')">Seguir jugando</button>';
   return hookFilter('screen:load', h, {});
 }
@@ -14242,14 +14258,14 @@ hookOn('screen:load','qScrLoadPrev', function(h){
     var used=storageUsedKB(), n=Object.keys(saveIndex()).length;
     var pct=clamp(Math.round(used/5120*100),0,100);
     var warn = pct>=80;
-    return h.replace('<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>',
+    return h.replace('<button class="btn" onclick="go(\'title\')">Volver al inicio</button>',
       '<div class="card'+(warn?' hi':'')+'"><div class="hdr"><span class="b">Espacio de guardado</span>'+
       '<span class="tag'+(warn?' red':'')+'">'+used+' / 5120 KB</span></div>'+
       '<div class="bar" style="height:10px"><i class="'+(warn?'r':'g')+'" style="width:'+pct+'%"></i></div>'+
       '<p class="xs dim2" style="margin:6px 0 0">'+n+' partida'+(n===1?'':'s')+' guardada'+(n===1?'':'s')+'. '+
       (warn? 'Poco espacio: borrá alguna partida vieja para que el juego pueda seguir guardando.'
            : 'El navegador limita el almacenamiento a unos 5 MB por sitio.')+'</p></div>'+
-      '<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>');
+      '<button class="btn" onclick="go(\'title\')">Volver al inicio</button>');
   }, function(){ return h; }, true);
 }, 10);
 
@@ -22635,7 +22651,7 @@ CL.evSanitize = function(){
            f.result.round = undefined y la pantalla de resultado imprimia
            "round undefined" en toda decision. */
         f.result={winner:r.winner,method:'dec',methodEs:r.methodEs,round:r.round,cards:r.cards,totals:r.totals};
-        UI.screen='fightresult'; render();
+        fightScreen('fightresult');
       }
       return true;
     };
@@ -24834,7 +24850,7 @@ function scrChallenges(){
               ' · recompensa: '+esc(c.r))+
        '</div></div>';
   });
-  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24863,7 +24879,7 @@ function scrAch(){
     });
     h+='</div></div>';
   }
-  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24892,7 +24908,7 @@ function scrRecords(){
     });
     h+='</div>';
   }
-  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -25011,7 +25027,7 @@ function scrRace(){
 
   h+='<div class="card"><h3 class="dim">¿Y el multijugador de verdad?</h3>'+
      '<pre class="mshare xs">'+esc(META.NET_CONTRACT)+'</pre></div>';
-  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -26449,7 +26465,7 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     }
     rebuildRosters();
     if(typeof window.CAGE_AUDIT!=='undefined'&&window.CAGE_AUDIT) window.CAGE_AUDIT.normalize();
-    UI.screen='legacy';UI.sub=null;saveGame(true);render();return true;
+    saveGame(true); go('legacy'); return true;
   };
   function buildLegacySnapshot(p){
     var fights=clN(p.rec.w)+clN(p.rec.l)+clN(p.rec.d);return {name:p.name,nick:p.nick||'',record:recStr(p),wins:p.rec.w,losses:p.rec.l,draws:p.rec.d,ko:p.rec.ko,sub:p.rec.sub,dec:p.rec.dec,koLoss:p.rec.kol,subLoss:p.rec.subl,decLoss:p.rec.decl,titles:p.titles,defenses:p.defenses,bestRank:p.bestRank,streakBest:safeInt(p.bestStreak,0),fights:fights,age:ageOf(p),startYear:G.startYear,endYear:G.year,years:Math.max(0,G.year-G.startYear),cash:safeNum(G.cash,0),earned:safeNum(G.careerEarn,0),pop:safeNum(p.pop,0),div:p.div,divisionChanged:!!p.divAdapt,career:JSON.parse(JSON.stringify(p.career||[])),rivalries:((p.rel&&p.rel.rivalry)||0)};
