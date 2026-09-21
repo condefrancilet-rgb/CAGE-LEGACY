@@ -634,3 +634,114 @@ suite('B-007 · la pantalla de fin de carrera respeta el contrato', () => {
   });
 
 });
+
+suite('A-013 · la pantalla de resultado muestra un solo cobro, el real', () => {
+
+  /* Tras una pelea hay DOS objetos de pago:
+       G.fightPayout  lo escribe applyWinLossResult con su propia cuenta
+       G.lastPayout   lo escribe el hook fight:applied/economia, que ademas
+                      AJUSTA la caja con diff = q.net - paidOld
+     Medido: la caja final coincide SIEMPRE con G.lastPayout (8 de 8), nunca
+     con G.fightPayout. Y las dos se pintan en la MISMA pantalla: "Cobro neto"
+     en scrFightResult (5008) y "Liquidacion" en el hook (12756).
+     O sea que el jugador lee dos netos distintos a la vez, y el destacado
+     arriba es el que NO cobra. Es la misma forma que D-010: dos mensajes que
+     se contradicen en la misma pantalla. */
+
+  function trasPelea(seed, meta){
+    const h = H.boot({ seed });
+    H.startCareer(h, { metaSeed: meta, style:'mma', div:'LW', age:24 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+    c.G.cash = 0;
+    c.finishFight('ko', 'p');
+    c.applyPlayerFight();
+    return c;
+  }
+
+  test('el "Cobro neto" destacado es lo que de verdad entra en la caja', () => {
+    const c = trasPelea(500, 6000);
+    const caja = Math.round(c.G.cash);
+    const mostrado = Math.round(c.G.fightPayout.net);
+    eq(mostrado, caja,
+       'la pantalla destaca ' + mostrado + ' de cobro neto pero en la caja entraron ' + caja);
+  });
+
+  test('los dos desgloses de la misma pantalla dicen lo mismo', () => {
+    const c = trasPelea(502, 6194);
+    const arriba = Math.round(c.G.fightPayout.net);
+    const abajo  = Math.round(c.G.lastPayout.net);
+    eq(arriba, abajo,
+       'la misma pantalla muestra ' + arriba + ' arriba y ' + abajo + ' abajo');
+  });
+
+  test('tambien con la multa por no dar el peso', () => {
+    const h = H.boot({ seed: 503 });
+    H.startCareer(h, { metaSeed: 6291, style:'mma', div:'LW', age:24 });
+    const c = h.ctx, p = c.G.player;
+    const opp = Object.values(c.G.fighters)
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+    c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
+    c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+    c.G.camp.missWeight = true;
+    c.G.cash = 0;
+    c.finishFight('ko', 'p');
+    c.applyPlayerFight();
+    eq(Math.round(c.G.fightPayout.net), Math.round(c.G.cash),
+       'con multa de peso, el cobro mostrado no es el cobrado');
+  });
+
+});
+
+suite('A-002 · careerEarn registra lo que de verdad se gano', () => {
+
+  /* El hook fight:applied/economia hacia:
+       G.cash       += diff;                 // diff PUEDE ser negativo
+       G.careerEarn += Math.max(0, diff);    // aqui no
+     applyWinLossResult ya habia sumado su propio 'paidOld' a las dos. Cuando
+     la correccion es negativa -la formula vieja concedio bono y fightPayout no,
+     o CL.payout descuenta deuda- la caja baja y las ganancias de carrera se
+     quedan con la cifra vieja.
+
+     La auditoria lo daba por CONFIRMADO en codigo pero NO medido. Medido
+     ahora: 94 de 144 peleas divergen. Caso real: entran 947 en caja y la
+     carrera anota 1.597.
+
+     Importa porque careerEarn alimenta el legado, tres logros y la puntuacion
+     final. */
+
+  test('lo que suma la carrera es lo que suma la caja', () => {
+    const A = require('../autopilot.js');
+    const h = H.boot({ seed: 31 });
+    H.startCareer(h, { metaSeed: 5200, style:'mma', div:'LW', age:22 });
+    const c = h.ctx;
+    let peleas = 0, divergen = 0, ejemplo = null;
+    const orig = c.applyPlayerFight;
+    c.applyPlayerFight = function(){
+      const ce = c.G.careerEarn, cash = c.G.cash;
+      const r = orig();
+      if(c.G.lastPayout){
+        peleas++;
+        const dCash = Math.round(c.G.cash - cash), dCE = Math.round(c.G.careerEarn - ce);
+        if(dCE !== dCash){ divergen++; if(!ejemplo) ejemplo = dCash + ' en caja contra ' + dCE + ' en carrera'; }
+      }
+      return r;
+    };
+    A.correrCarrera(h, { maxWeeks: 300, politica:'basica', seedPolitica: 31 });
+    ok(peleas > 10, 'no se midieron suficientes peleas: ' + peleas);
+    eq(divergen, 0, divergen + ' de ' + peleas + ' peleas divergen · ejemplo: ' + ejemplo);
+  });
+
+  test('careerEarn nunca queda negativo', () => {
+    const A = require('../autopilot.js');
+    const h = H.boot({ seed: 82 });
+    H.startCareer(h, { metaSeed: 5622, style:'mma', div:'LW', age:22 });
+    const c = h.ctx;
+    A.correrCarrera(h, { maxWeeks: 200, politica:'basica', seedPolitica: 82 });
+    ok(c.G.careerEarn >= 0, 'careerEarn quedo en negativo: ' + c.G.careerEarn);
+  });
+
+});

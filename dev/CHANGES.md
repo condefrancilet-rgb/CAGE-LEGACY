@@ -1296,3 +1296,57 @@ diseñada, no un olvido. Cambiar los números es balance, y va a F14.
    rojo en todas. Pero `CL.overdraft` clampa la caja a **0** y manda el resto a deuda, así
    que `G.cash >= 0` es siempre verdadero. La señal válida es `CL.debtTotal()`. Es
    **exactamente el mismo error** que cometí con C-008, en la misma sesión.
+
+---
+
+## F3-06 · A-013 · La pantalla de resultado mostraba dos cobros distintos
+
+Tras una pelea hay **dos objetos de pago**:
+
+- `G.fightPayout` — lo escribe `applyWinLossResult` con su propia cuenta.
+- `G.lastPayout` — lo escribe el hook `fight:applied/economia`, que además **ajusta la
+  caja** con `diff = q.net - paidOld`.
+
+Y **los dos se pintan en la misma pantalla**: "Cobro neto" en `scrFightResult` (5008) y la
+tarjeta "💵 Liquidación" en el hook (12756).
+
+**Medido:** la caja coincide **siempre** con `G.lastPayout` (8 de 8) y **nunca** con
+`G.fightPayout`. Un caso real destacaba **7.900** de cobro neto mientras entraban **15.664**
+— el número grande de arriba era el falso.
+
+Es la misma forma que D-010: dos mensajes que se contradicen en la misma pantalla, y el
+destacado es el equivocado. Como el hook es el que reconcilia la caja, es el que tiene la
+verdad: ahora deja `G.fightPayout` sincronizado.
+
+**Por qué no se movió a `RUNTIME_KEYS`.** Es un valor derivado y sólo lo lee la pantalla,
+así que parecía candidato. Pero si se pierde al recargar, `scrFightResult` haría `pay.net`
+sobre `undefined` y lanzaría — exactamente el bug que se acaba de cerrar en B-007.
+Persistirlo es la protección. Se queda.
+
+---
+
+## F3-07 · A-002 · `careerEarn` registraba más de lo que se ganaba
+
+El hook de economía hacía:
+
+```js
+G.cash       += diff;                 // diff PUEDE ser negativo
+G.careerEarn += Math.max(0, diff);    // aquí no
+```
+
+`applyWinLossResult` ya había sumado su propio `paidOld` a las dos. Cuando la corrección es
+**negativa** —la fórmula vieja concede bono y `fightPayout()` no, o `CL.payout()` descuenta
+deuda— la caja baja y las ganancias de carrera se quedan con la cifra vieja.
+
+La auditoría lo daba por *CONFIRMADO en código pero **no medido***. **Medido ahora: 94 de
+144 peleas divergen.** Caso real: entran **947** en la caja y la carrera anota **1.597**.
+
+Importa porque `careerEarn` alimenta el legado, tres logros y la puntuación final: el
+jugador terminaba la carrera con un marcador que nunca ganó.
+
+Arreglado sumando el `diff` entero, con suelo en 0 para que una racha de correcciones no lo
+deje negativo.
+
+**Las trazas del golden master se regeneran** en los dos casos: `fightPayout` y `careerEarn`
+viven en `G`, así que su valor entra en la huella. Es el cambio buscado — ahora guardan la
+cifra real.
