@@ -1,0 +1,5 @@
+# Copias del juego hechas SOLO para enviarlas (regla de entrega: nombre con el
+# hash del commit). Son identicas byte a byte a index-4-blindado.html, asi que
+# versionarlas seria guardar el juego dos veces y una copia mas por envio.
+# El original versionado es index-4-blindado.html y nada mas.
+cage-legacy_*.html
