@@ -17827,7 +17827,12 @@ CL.year = function(){
     history:    {fn:function(){ return scrHistory(); }},
     stats:      {fn:function(){ return scrStats(); }},
     menu:       {fn:function(){ return scrMenu(); }},
-    ending:     {fn:function(){ return scrEnding(); }}
+    /* B-007: era la UNICA entrada de la tabla sin la guarda. scrEnding usa
+       G.ending sin comprobarlo, asi que dibujarla sin final lanzaba y la red
+       de render devolvia al jugador al hub con un aviso. Ahora cumple el
+       mismo contrato que retire, fight, fightresult y mg: si no puede
+       dibujarse, devuelve null y el router decide. */
+    ending:     {fn:function(){ if(!G || !G.ending) return null; return scrEnding(); }}
   };
   /* una pantalla se registra en UNA tabla; CL.screens queda como espejo para
      los módulos que se registraron antes de que existiera CL.SCREENS. */

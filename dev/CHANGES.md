@@ -1245,3 +1245,54 @@ evidencia. Queda como deuda, y es de la familia de `dev/DEUDAS-F4.md`.
 `vaultCash` siguen sin lectura. Prometen **información** (ver una debilidad del rival,
 mejor scouting, mejores respuestas en prensa) o **calidad de camp**, que no tienen un punto
 único donde entrar. Cada uno necesita su propio diseño, no un factor.
+
+---
+
+## F3-04 · B-007 · La pantalla de fin de carrera respeta el contrato
+
+`ending` era la **única** entrada de `CL.SCREENS` sin guarda: `scrEnding` usa `G.ending`
+sin comprobarlo, así que dibujarla sin final lanzaba `TypeError: Cannot read properties of
+undefined (reading 't')`. La red de `render()` lo capturaba y devolvía al jugador al hub con
+un aviso, de modo que no se veía — pero el contrato *"devuelvo `null` si no puedo
+dibujarme"*, que sí implementan `retire`, `fight`, `fightresult` y `mg`, estaba roto en esa
+sola entrada. Ahora lo cumple.
+
+---
+
+## F3-05 · H-006 revisado: reproduce, pero **no es un defecto**
+
+La auditoría lo marcaba ALTO: *"el novato queda en descubierto antes de poder cobrar"*.
+Medido, la descripción es correcta — y aun así **no hay nada que arreglar**, porque el juego
+lo modela a propósito.
+
+Traza semana a semana de un novato sin tocar nada:
+
+```
+al crear la carrera:  caja 3.150 · deuda 650
+  "adelanto de arranque: el gimnasio y el equipo elegidos cuestan
+   más de lo que cubren tus $2.500 iniciales"  — Rafa Ocampo, 0,4 %
+  semana 1 · caja 2.625     semana  7 · caja 0 · deuda   650
+  semana 2 · caja 2.100     semana  8 · caja 0 · deuda 1.175
+  semana 3 · caja 1.575     semana  9 · caja 0 · deuda 1.700
+  semana 4 · caja 1.050     semana 10 · caja 0 · deuda 2.225
+  semana 5 · caja   525     semana 11 · caja 0 · deuda 2.774
+  semana 6 · caja     0     semana 12 · caja 0 · deuda 3.328
+```
+
+Primer cobro de pelea entre las semanas **7 y 12** (10 carreras, `metaSeed` variado). O sea:
+la caja se agota antes del primer ingreso, tal cual decía la auditoría.
+
+**Por qué no se toca.** El juego tiene maquinaria explícita para exactamente esto: te da un
+**adelanto de arranque** al crear la carrera porque sabe que el gimnasio elegido cuesta más
+que la base, convierte el descubierto en **deuda visible con interés** en vez de en un saldo
+negativo invisible, y tiene **austeridad** al llegar al tope (`CL.OD_CAP`). Eso es tensión
+diseñada, no un olvido. Cambiar los números es balance, y va a F14.
+
+### Dos errores de medición míos, encadenados
+
+1. **`metaSeed` fijo, otra vez.** Mis primeras 8 carreras dieron cifras **idénticas**:
+   eran una sola muestra repetida. Es la tercera vez en esta obra.
+2. **"Nunca entra en rojo" era falso.** Medí `while(G.cash >= 0)` y me dio 80 semanas sin
+   rojo en todas. Pero `CL.overdraft` clampa la caja a **0** y manda el resto a deuda, así
+   que `G.cash >= 0` es siempre verdadero. La señal válida es `CL.debtTotal()`. Es
+   **exactamente el mismo error** que cometí con C-008, en la misma sesión.

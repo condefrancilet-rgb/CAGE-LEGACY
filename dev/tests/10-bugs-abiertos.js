@@ -601,3 +601,36 @@ suite('H-010/011 · los articulos de la tienda cumplen lo que prometen', () => {
   });
 
 });
+
+suite('B-007 · la pantalla de fin de carrera respeta el contrato', () => {
+
+  /* En el barrido de las 33 pantallas, 'ending' era la UNICA que lanzaba:
+     TypeError leyendo 't' de undefined, porque scrEnding usa G.ending sin
+     comprobarlo. La red de render lo capturaba y devolvia al jugador al hub
+     con un aviso, asi que no se veia — pero 'ending' era la unica entrada de
+     CL.SCREENS que no implementa el contrato "devuelvo null si no puedo
+     dibujarme" que si usan retire, fight, fightresult y mg. */
+
+  test('sin G.ending devuelve null en vez de lanzar', () => {
+    const { c } = mundo(4801);
+    c.G.ending = null;
+    const sc = c.CL.SCREENS.ending;
+    ok(sc && typeof sc.fn === 'function', 'no existe la entrada ending en CL.SCREENS');
+    let lanzo = false, r;
+    try { r = sc.fn(); } catch(e){ lanzo = true; }
+    ok(!lanzo, 'la pantalla de fin de carrera lanzo sin G.ending');
+    eq(r, null, 'deberia devolver null, como retire, fightresult y mg');
+  });
+
+  test('con G.ending sigue dibujando', () => {
+    const { c } = mundo(4802);
+    c.G.ending = { t: 'Un final', d: 'La descripcion del final.' };
+    const sc = c.CL.SCREENS.ending;
+    let r = null, lanzo = false;
+    try { r = sc.fn(); } catch(e){ lanzo = true; }
+    ok(!lanzo, 'la pantalla lanzo con G.ending puesto');
+    ok(typeof r === 'string' && r.length > 0, 'no devolvio html');
+    ok(r.indexOf('Un final') >= 0, 'no pinto el titulo del final');
+  });
+
+});
