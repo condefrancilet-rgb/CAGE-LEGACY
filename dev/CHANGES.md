@@ -1489,3 +1489,66 @@ Migrar las **12 escrituras de `UI.screen` que viven dentro de cadenas HTML** (lo
 "Volver al inicio", todos a `'title'`) y revisar las **15 restantes** de código, decidiendo
 para cada una si es navegación (va a `go`) o recuperación (dueño propio). Después, cerrar
 E2 con su criterio de salida y pasar a E3.
+
+---
+
+# CORRECCIÓN · El cálculo de ruido del A/B estaba mal, y mis veredictos con él
+
+**El usuario detectó el error y tenía razón en los tres puntos.** Queda escrito aquí porque
+invalida veredictos que yo ya había reportado como buenos.
+
+## Los tres errores
+
+**1. Ruido de un brazo, no de la diferencia.** `dev/equivalencia.js` calculaba
+`2·√(p(1−p)/n)` sobre el brazo "antes". Eso es el error de **una** proporción. El de la
+**diferencia** entre dos brazos independientes es `√(pa·qa/na + pb·qb/nb)` — para n iguales,
+**√2 veces mayor**. El "4,98 pp" que reporté para `% campeones` era exactamente
+`2·√(0,855·0,145/200)`. El ruido real ronda los **7 pp**.
+
+**2. Proporciones por pelea sin agrupar.** `win rate`, `% KO`, `% sumisión` y `% decisión`
+se calculan sobre **peleas**, pero las peleas están anidadas en carreras: dos peleas de la
+misma carrera no son independientes. Usar `n = número de peleas` infla la precisión. Ahora
+se usa el **estimador linealizado de una razón con la carrera como conglomerado**, que no
+supone nada sobre la correlación intra-carrera: la mide.
+
+**3. "Dentro del ruido" no es "equivalente".** Que un intervalo contenga al cero sólo dice
+que **no se detectó** diferencia; con muestras chicas eso pasa casi siempre. Para
+**afirmar** equivalencia hace falta un margen fijado de antemano y que el intervalo
+**entero** caiga dentro. Ahora hay tres veredictos y **NO CONCLUYENTE es un resultado
+legítimo, no un aprobado**.
+
+Márgenes, declarados de antemano: medias ±5 % relativo · proporciones por carrera ±5 pp ·
+proporciones por pelea ±2 pp.
+
+## Veredictos recalculados
+
+| A/B | antes decía | ahora dice |
+|---|---|---|
+| `rollEvent` (F2-17) | equivalencia aceptada | **IDÉNTICO** — 200/200 huellas, no hace falta inferencia |
+| `savePrune` (F2-20) | equivalencia aceptada | **IDÉNTICO** — 200/200 huellas |
+| cinco bugs (F2-21…25) | equivalencia aceptada | **IDÉNTICO** — 200/200 huellas |
+| **agresividad (`3a635ea`)** | **equivalencia aceptada** | **NO CONCLUYENTE** |
+
+Los tres primeros no se ven afectados: con las huellas idénticas no hay nada que inferir.
+**El cuarto sí: mi veredicto era incorrecto.**
+
+### Agresividad, con el cálculo bueno
+
+| métrica | n=200 · IC95 de la diferencia | n=500 · IC95 |
+|---|---|---|
+| win rate | [−2,16, 1,72] NO CONCLUYENTE | [−0,98, 1,55] **EQUIVALENTE** |
+| % KO | [−3,04, 2,41] NO CONCLUYENTE | [−1,35, 2,22] NO CONCLUYENTE |
+| % campeones | **[−10,33, 4,33]** NO CONCLUYENTE | **[−7,06, 3,06]** NO CONCLUYENTE |
+
+Lo que sí quedó demostrado al subir a 500 carreras: **el win rate es equivalente** dentro de
+±2 pp. O sea que la suma cero del cambio se sostiene donde importa. Lo que **no** se puede
+afirmar es nada sobre la tasa de campeones.
+
+## Por qué no se sigue midiendo
+
+Con un efecto real de 3 pp sobre una base de ~0,85, **500 carreras por brazo lo detectan
+sólo ~27 % de las veces**. Harían falta del orden de **2.200 carreras por brazo** para
+decidirlo. No compensa: el A/B de 500 ya consumió horas de CPU compitiendo con las suites.
+
+**Decisión: el −3 pp de campeones de `3a635ea` pasa a la lista de F14 como pregunta de
+balance abierta**, no como defecto ni como equivalencia demostrada.
