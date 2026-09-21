@@ -1606,7 +1606,8 @@ finalización a mano y demuestre que sobrevive. Queda anotado dentro del propio 
 
 ## Siguiente paso exacto
 
-**E3 — reorganizar la pantalla de inicio.** La línea base ya está medida:
+**E3 — reorganizar la pantalla de inicio.** *(Superado: ver la sección E3 de más abajo.)*
+La línea base ya está medida:
 
 | resolución | pantallas de alto | nodos | botones | <44 px |
 |---|---|---|---|---|
@@ -1616,3 +1617,150 @@ finalización a mano y demuestre que sobrevive. Queda anotado dentro del propio 
 
 Objetivo: **≤ 1,5 pantallas en 360×640**. Primer paso del encargo: escribir el
 **inventario** de cada bloque y botón del inicio en `dev/`, antes de implementar nada.
+
+---
+
+# E3 — PREPARACIÓN (inventario, mapa y red). **Esperando OK para tocar la interfaz.**
+
+El encargo puso una excepción a la autonomía sólo para esta etapa: mapa antes de
+implementar. Así que acá **no hay ni una línea de interfaz tocada**; lo que hay es lo
+medido y la red que protege el movimiento.
+
+## Lo que se midió
+
+| herramienta nueva | qué contesta |
+|---|---|
+| `dev/perf/pantalla-dom.js` | alto de `title` **y** `hub` en las tres resoluciones |
+| `dev/perf/hub-inventario.js` | bloque por bloque del inicio (px, nodos, botones, destinos) + captura |
+| `dev/perf/pantallas-todas.js` | alto de **las 35 pantallas** a 360×640 |
+| `dev/perf/perfil.js` | **dónde** se va el tiempo (perfilador de V8), no cuánto |
+
+### `title` también pasa de 1,5 pantallas — pero por 53 px
+
+| pantalla | estado | 360×640 | 390×844 | 412×915 |
+|---|---|---|---|---|
+| `title` | virgen | 1,47 | 1,10 | 1,00 |
+| `title` | **con carrera guardada** | **1,58** | 1,18 | 1,07 |
+| `hub` | semana normal | **8,84** | 6,35 | 5,64 |
+
+`title` entra en E3 por la regla, pero con 25 nodos y 7 botones no tiene un problema de
+densidad: se pasa por 53 px y se arregla plegando los dos párrafos de "Cómo funciona".
+**El problema de verdad sigue siendo el hub.**
+
+### El inicio, medido
+
+5.655 px · 21 bloques · **82 acciones distintas**. Dos bloques son el **30 %** del alto y
+los dos son configuración, no decisión semanal: *Foco de entrenamiento* (1.143 px, 36
+botones, **33 de los 38 botones por debajo de 44 px**) y *Cómo estás trabajando* (532 px,
+10 botones). Captura: `dev/perf/hub-360x640.png` y la tira de 9 pantallas
+`dev/perf/hub-360x640-tira.png`.
+
+El mapa propuesto está en **`dev/E3-INICIO.md`** con su justificación y las cinco
+decisiones que dejo marcadas y no tomadas.
+
+## La red de "nada se pierde" — escrita y verificada ANTES
+
+- `dev/fixtures/e3/inventario-inicio.json` — 82 acciones congeladas a mano con
+  `dev/make-inventario.js`. No se regenera en la suite.
+- `dev/tests/13-inventario.js` — 4 pruebas: toda acción sigue alcanzable, ninguna
+  pantalla del alcance queda a más de dos toques del inicio, y el fixture cubre las dos
+  caras del inicio (semana normal y semana de pelea).
+- **8 mutantes válidos, 8 rojos.** Dos mutantes que escribí primero no existían en el
+  fuente (los botones se emiten con comillas escapadas): se descartaron por inválidos y se
+  rehicieron contra el emisor real. Queda anotado, porque un mutante que no muta lo que
+  creías es exactamente la trampa que ya pagué antes.
+
+## La inconsistencia de A-002: la aclaro y cierro el A/B que faltaba
+
+Dije que A-002 "sólo cambió la huella" y a la vez que los cinco arreglos dieron 200/200
+huellas idénticas. **Las dos cosas no podían ser ciertas, y la que fallaba era la primera
+lectura:** A-002 **no está** entre esos cinco. El A/B de los cinco corrió sobre `a2d7719`
+contra el árbol con los arreglos de `a9aaa17`. **A-002 y A-013 entraron en `6e7854b`, cuyo
+padre es `43d8925`, y no tenían A/B ninguno.** Lo corrí.
+
+**A/B de A-002/A-013 — `43d8925` contra `6e7854b`, 200 carreras × 300 semanas por brazo:**
+
+| campo | antes | después | delta | IC95 pareado |
+|---|---|---|---|---|
+| `careerEarn` | 1.370.860 | 1.360.268 | **−10.592** | [−11.403, −9.782] |
+| los otros 32 campos | — | — | **0 exacto** | [0, 0] |
+
+`careerEarn` baja en **las 200 carreras** (entre −207 y −33.160; −0,77 %). **Ningún otro
+campo cambia en ninguna**: ni caja, ni récord, ni KO, ni títulos, ni campeón, ni ranking.
+**Veredicto: EQUIVALENCIA ACEPTADA**, con el único efecto real aislado exactamente donde el
+arreglo apuntaba. La consecuencia de balance (los umbrales calibrados con el valor inflado)
+está en `dev/F14-BALANCE.md` §9.
+
+## Dos errores más en la herramienta de A/B, encontrados al usarla
+
+**1. Comparaba como independientes dos brazos que corren las MISMAS semillas.** `sim.js`
+siembra cada carrera con su seed, así que la carrera *i* de un brazo y la del otro son la
+misma carrera con el código cambiado. Analizarlas sin parear tira casi toda la potencia. El
+IC de la caja salía **±184.195** cuando la diferencia pareada es **cero exacto en las 200
+carreras**. Ahora, si las semillas coinciden, se parea: medias con el EE de las diferencias,
+y proporciones con el estimador de razón linealizado **pareado por conglomerado**.
+
+**2. Contaba las huellas idénticas por índice, no por semilla.** `sim.js` reparte entre
+cuatro workers y el orden de llegada no es el de salida, así que `a[i]` y `b[i]` podían ser
+carreras distintas. Comparando dos corridas que en realidad coinciden en 199 de 200, decía
+**"49 de 200"**. El error **subestima** la identidad, así que ningún "idéntico" que reporté
+antes estaba inflado por esto — lo comprobé volviendo a correr los diez pares guardados.
+
+También se marcó el caso `EQUIVALENTE (efecto real, < margen)`: un intervalo que cabe en el
+margen **pero excluye el cero** no es "no cambió nada", es "cambió poco". Sin esa marca,
+`careerEarn` se habría leído como si no hubiera pasado nada.
+
+### Veredictos recalculados con la herramienta corregida
+
+| A/B | n | resultado |
+|---|---|---|
+| control A/A | 200 | **IDÉNTICO** 200/200 |
+| tres A/B de arreglos sueltos | 200 c/u | **IDÉNTICO** 200/200 |
+| G-002 · puerta de drama | 250 | toca 23 de 33 campos, hasta en 89 % de las carreras — no concluyente |
+| I-002 · campeón fantasma | 250 | toca 23 campos, en 24 % de las carreras — no concluyente |
+| **E-001 · agresividad** | 500 | **win rate, % KO, % decisión y % sumisión: EQUIVALENTES** con el pareo. % campeones −2,00 pp, IC **[−5,10, 1,10]** (antes [−7,06, 3,06]) — sigue sin cerrar contra ±5 pp |
+| **A-002/A-013** | 200 | **EQUIVALENCIA ACEPTADA**, sólo cambia `careerEarn` |
+
+Y una corrección de coste: dije que cerrar lo de campeones exigía ~2.200 carreras por brazo.
+Con el pareo el EE baja de 2,53 a 1,55 pp y **el n necesario cae a ~534**. No la lancé —la
+instrucción fue matarla— pero el número corregido está en F14 §2 para que la decisión se tome
+con el coste real.
+
+## E4 — primer perfilado de la lógica
+
+`baseline.js` decía **cuánto** tarda cada cosa. El perfilador de V8 dice **dónde** se va:
+
+| bloque | ms por llamada | dónde se va |
+|---|---|---|
+| `advanceWeek` | 19,1 | **`TX.snapshot` 42,5 %** (`:4055`, `JSON.stringify(G)` entero cada semana) · `repairCritical/revisar` **15,1 %** (`:6372`) |
+| `saveSerialize` | 25,0 | `saveSerialize` 50,8 % + `saveReplacer` 48,5 % = **99,3 % en el serializador** |
+| `loadGame` | 116,6 | **22,1 % se va en volver a serializar** (`saveSerialize`+`saveReplacer`) · `stHash` 7,8 % |
+| `scrHub` | 1,14 | **`socCircle` 12,9 % + `socPartners` 8,6 %** = la tarjeta *Tu círculo* es el 21,5 % del dibujado |
+
+Tres cosas que eso dice y las medias no decían:
+
+1. **Más de la mitad de `advanceWeek` no es simulación**: es la red de transacciones y la de
+   integridad. Ninguna de las dos calcula nada del juego.
+2. **Cargar una partida re-serializa una partida.** Casi una cuarta parte de los 117 ms.
+3. **El bloque más caro de dibujar el inicio es justo uno de los que el mapa de E3 se lleva
+   a `people`.** E3 y E4 empujan para el mismo lado sin haberlo buscado.
+
+Nada de esto se tocó: es el mapa de E4, no su ejecución.
+
+
+## Siguiente paso exacto (actualizado)
+
+**Esperar el OK del mapa de `dev/E3-INICIO.md`.** No se toca una línea de interfaz hasta
+entonces; es la excepción a la autonomía que el encargo puso para esta etapa.
+
+Con el OK, el primer commit de E3 es **mover el bloque *Foco de entrenamiento* (1.143 px,
+36 botones, 33 de los 38 táctiles chicos) del inicio a `train`**, ampliando `alcance` a
+`["hub","train"]` en el fixture y dejando la suite en verde. Es el 20 % del alto de un golpe
+y la prueba 13 lo protege.
+
+Si el mapa no se aprueba, lo que igual queda hecho y sirve: las cuatro herramientas de
+medición, el inventario de 82 acciones, la red de "nada se pierde" verificada con 8 mutantes,
+y el perfilado de E4.
+
+Estado: **suite 170 verdes**, navegador 28 verdes, golden master idéntico, archivo del juego
+**sin tocar** (md5 `87d0326c25fa2a5a7f6e0c8df41fa327`).
