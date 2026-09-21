@@ -1350,3 +1350,75 @@ deje negativo.
 **Las trazas del golden master se regeneran** en los dos casos: `fightPayout` y `careerEarn`
 viven en `G`, así que su valor entra en la huella. Es el cambio buscado — ahora guardan la
 cifra real.
+
+---
+
+# ARRANQUE DEL PLAN DE CINCO ETAPAS
+
+## Estado real contra el estado de partida del encargo
+
+El encargo parte de `6f56cb9` con la cola de F2 pendiente. **El repo está 12 commits por
+delante y esa cola ya está cerrada entera.** La divergencia queda explicada por los commits
+posteriores, así que no corresponde detenerse (ARRANQUE, punto 2).
+
+| ítem de E1 | estado | evidencia |
+|---|---|---|
+| `savePrune` | **consolidado** (sólo el recorrido y la regla del jugador) | `1567086`, D-014 |
+| `pruneWorld` | **no se fusiona**: cambia qué luchadores existen | D-013, medido |
+| `cardioStart`/`strStart`/`drillStart` | **no se fusionan**: el camino vivo ya es una función; el respaldo es inalcanzable por construcción | D-015, medido |
+| cierre de intercambio (opcional) | **no se extrae**: lo repetido era la regla de round, ya en `roundOver()` | D-016 |
+
+Decisiones por **D-016** (no D-012). Registro por **F3-07** (no F2-18).
+
+**Aviso sobre el criterio de salida de E1.** "Golden master idéntico" ya no puede medirse
+contra el punto de partida: los arreglos posteriores a F2 movieron las trazas **a
+propósito** (agresividad cambia el combate; `careerEarn` y `fightPayout` viven en `G`).
+Cada regeneración está documentada con su A/B. Se aplica el criterio como *idéntico desde
+la última regeneración justificada*.
+
+## Línea base de rendimiento (ARRANQUE punto 3)
+
+Generada con `node dev/perf/baseline.js` y `node dev/perf/hub-dom.js`. Archivos:
+`dev/perf/baseline.json` y `dev/perf/hub-dom.json`.
+
+| medida | valor |
+|---|---|
+| `advanceWeek` media | **24,04 ms** |
+| `advanceWeek` p95 | **30,40 ms** |
+| `advanceWeek` máximo | 132,82 ms |
+| `saveSerialize` media | 45,48 ms |
+| `loadGame` media | **147,24 ms** |
+| save semana 50 / 150 / 300 | 729,4 / 677,7 / **750,3 KB** |
+
+**El inicio, en el DOM real** (no en el harness):
+
+| resolución | alto | **pantallas** | nodos | bytes | botones | <44 px |
+|---|---|---|---|---|---|---|
+| 360×640 | 5.655 px | **8,84** | 327 | 17.996 | 76 | 38 |
+| 390×844 | 5.361 px | 6,35 | 327 | 18.004 | 76 | 38 |
+| 412×915 | 5.163 px | 5,64 | 327 | 18.025 | 76 | 38 |
+
+Objetivo de E3: **≤ 1,5 pantallas en 360×640**.
+
+### Una medición mía que era falsa, corregida
+
+La primera versión de `hub-dom.js` midió **14 nodos y 1 pantalla** en las tres
+resoluciones, y lo di por bueno un momento. Es falso: **si hay un evento pendiente el hub se
+colapsa** a mostrar sólo el evento. Lo detecté al contrastar con una captura de pantalla,
+que mostraba un inicio lleno. El medidor ahora vacía la cola antes de medir y deja el aviso
+escrito. Es la séptima vez en esta obra que el instrumento miente antes que el código.
+
+## Copia y save congelados (ARRANQUE punto 4)
+
+- `dev/perf/congelado/juego-base.html` — copia del juego en este punto.
+- `dev/perf/congelado/save-referencia.json` — 749 KB, carrera 7-4-0 en 2018/47, hecho con
+  esa copia.
+- `dev/tests/11-congelado.js` — tres pruebas permanentes: el save existe, carga sin perder
+  la carrera, y el juego sigue avanzando después de cargarlo.
+
+## Siguiente paso exacto
+
+**E2 — dueño único de la navegación.** Mapear las 37 escrituras directas de `UI.screen`,
+los 6 cierres de minijuego con sus 3 destinos y los 30 escritores de `G.mg`; red de
+caracterización antes de tocar; `goTo(pantalla)` como único escritor de `UI.screen` y único
+que decide el scroll (I1).

@@ -1,0 +1,41 @@
+[
+ {
+  "pantalla": "hub",
+  "pendientes": 0,
+  "altoDoc": 5655,
+  "nodos": 327,
+  "bytes": 17996,
+  "botones": 76,
+  "botonesChicos": 38,
+  "navAlto": 55.6875,
+  "desborde": false,
+  "viewport": "360x640",
+  "pantallas": 8.84
+ },
+ {
+  "pantalla": "hub",
+  "pendientes": 0,
+  "altoDoc": 5361,
+  "nodos": 327,
+  "bytes": 18004,
+  "botones": 76,
+  "botonesChicos": 38,
+  "navAlto": 55.6875,
+  "desborde": false,
+  "viewport": "390x844",
+  "pantallas": 6.35
+ },
+ {
+  "pantalla": "hub",
+  "pendientes": 0,
+  "altoDoc": 5163,
+  "nodos": 327,
+  "bytes": 18025,
+  "botones": 76,
+  "botonesChicos": 38,
+  "navAlto": 55.6875,
+  "desborde": false,
+  "viewport": "412x915",
+  "pantallas": 5.64
+ }
+]
