@@ -479,3 +479,125 @@ suite('E-001 · la agresividad del jugador deja de ser decorativa', () => {
   });
 
 });
+
+suite('H-010/011 · los articulos de la tienda cumplen lo que prometen', () => {
+
+  /* Medido: los once flags que escriben los articulos aparecen UNA sola vez en
+     todo el archivo — la escritura. Cero lecturas. El jugador paga y el efecto
+     anunciado no existe en ningun sitio. Los mas caros: 'penthouse' 300.000 y
+     'vault' 750.000.
+
+     Se conectan los cinco que tienen un enganche numerico claro, para que la
+     descripcion sea verdad. Los otros seis siguen muertos y estan listados en
+     dev/CHANGES.md: prometen informacion o calidad de camp, que no tienen un
+     punto unico donde entrar. */
+
+  test('cutman · menos dano acumulado tras la pelea', () => {
+    function danoTrasPelea(conCutman){
+      const { c } = mundo(4701);
+      const p = c.G.player;
+      if(conCutman) c.G.flags.cutman = 1;
+      const opp = Object.values(c.G.fighters)
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
+      c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+      c.G.fight.p.hp = 40;
+      p.dmg = 0;
+      c.finishFight('ko', 'p');
+      c.applyPlayerFight();
+      return p.dmg;
+    }
+    const sin = danoTrasPelea(false), con = danoTrasPelea(true);
+    ok(con < sin, 'el cutman no redujo el dano acumulado: ' + sin + ' -> ' + con);
+  });
+
+  test('recoverylab · mejor recuperacion entre rounds', () => {
+    function stamTrasRound(conLab){
+      const { c } = mundo(4702);
+      const p = c.G.player;
+      if(conLab) c.G.flags.recoveryLab = 1;
+      const opp = Object.values(c.G.fighters)
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
+      c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
+      c.G.fight.p.stam = 30;
+      c.G.fight.round = 1;
+      c.endRound();
+      return c.G.fight.p.stam;
+    }
+    const sin = stamTrasRound(false), con = stamTrasRound(true);
+    ok(con > sin, 'el laboratorio no mejoro la recuperacion entre rounds: ' + sin + ' -> ' + con);
+  });
+
+  test('penthouse · mejor descanso semanal', () => {
+    function fatigaTrasSemana(conCasa){
+      const { c } = mundo(4703);
+      if(conCasa) c.G.flags.penthouse = 1;
+      c.G.player.fatigue = 80;
+      c.advanceWeek();
+      return c.G.player.fatigue;
+    }
+    const sin = fatigaTrasSemana(false), con = fatigaTrasSemana(true);
+    ok(con < sin, 'la casa de campeon no mejoro el descanso: ' + sin + ' -> ' + con);
+  });
+
+  test('vault · la renta es ESTABLE, no un pago unico', () => {
+    /* Esta prueba pasa SIN arreglo, y esta bien que asi sea: la boveda NO
+       estaba rota. Lei `CL.once('vaultIncome')` como una guarda de una vez en
+       la vida y me equivoque — CL.once lleva la marca a year+'-'+week, o sea
+       que es una vez POR SEMANA. La renta es estable de verdad.
+       Se deja escrita porque fija ese contrato: si alguien convierte CL.once
+       en un once-ever, esta prueba cae. */
+    const { c } = mundo(4704);
+    c.G.cash = 100000;
+    c.G.flags.vault = 1;
+    c.G.flags.vaultCash = 375000;
+    const rentas = [];
+    for(let i = 0; i < 3; i++){
+      const antes = c.G.cash;
+      c.advanceWeek();
+      rentas.push(c.G.cash - antes);
+    }
+    /* se compara contra un mundo identico sin boveda, semana a semana */
+    const { c: b } = mundo(4704);
+    b.G.cash = 100000;
+    const base = [];
+    for(let i = 0; i < 3; i++){
+      const antes = b.G.cash;
+      b.advanceWeek();
+      base.push(b.G.cash - antes);
+    }
+    const extra = rentas.map((v, i) => v - base[i]);
+    ok(extra[0] > 0, 'la boveda no pago la primera semana: ' + extra[0]);
+    ok(extra[1] > 0, 'la boveda no pago la segunda semana (' + extra[1] +
+       '): la renta no es estable, es un pago unico');
+    ok(extra[2] > 0, 'la boveda no pago la tercera semana: ' + extra[2]);
+  });
+
+  test('nutri · el corte de peso castiga menos en la bolsa', () => {
+    /* Se afirma sobre fightPayout, que el propio archivo declara "FUENTE UNICA
+       DE VERDAD DEL PAGO" (12698) y es lo que el jugador ve en la liquidacion
+       y lo que el hook fight:applied/economia usa para ajustar la caja.
+       Nota: al medir esto encontre que G.cash no siempre coincide con lo que
+       devuelve fightPayout — hay dos cuentas de dinero. Queda anotado como
+       hallazgo en dev/CHANGES.md; no se toca aqui. */
+    function multa(conNutri){
+      const { c } = mundo(4705);
+      const p = c.G.player;
+      if(conNutri) c.G.flags.nutri = 1;
+      const opp = Object.values(c.G.fighters)
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
+      c.startCamp(c.G.nextFight);
+      c.G.camp.missWeight = true;
+      const q = c.fightPayout({ purse:10000, title:false }, true, { method:'ko' });
+      const linea = (q.lines || []).find(l => String(l[0]).indexOf('no dar el peso') >= 0);
+      ok(linea, 'no aparece la multa por no dar el peso en la liquidacion');
+      return Math.abs(linea[1]);
+    }
+    const sin = multa(false), con = multa(true);
+    ok(con < sin,
+       'el nutricionista no redujo la multa por no dar el peso: ' + sin + ' -> ' + con);
+  });
+
+});

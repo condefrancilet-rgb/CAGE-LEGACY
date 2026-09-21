@@ -1194,3 +1194,54 @@ el cambio reparte en vez de inflar:
 defensivos. Es deliberado: `composure` es resistencia mental, y que un peleador agresivo la
 comprometa es coherente. **Y sobre todo, la neutralidad no se supone de la simetría de la
 constante: se mide.** El A/B es lo que la respalda.
+
+---
+
+## F3-03 · H-010/011 · Los artículos de la tienda cumplían su promesa: ahora sí
+
+**Medido primero:** los **once** flags que escriben los artículos aparecen **una sola vez
+en todo el archivo** — la escritura. **Cero lecturas.** El jugador paga y el efecto que la
+descripción promete no existe en ningún sitio. Los más caros: `penthouse` 300.000 y
+`vault` 750.000.
+
+Se conectaron los cuatro que tienen un enganche numérico claro:
+
+| artículo | promesa | dónde entra ahora |
+|---|---|---|
+| `cutman` | "recibís menos daño acumulado" | el daño tras la pelea baja un 28 % |
+| `recoverylab` | "mejora la recuperación entre rounds" | `RES.betweenRounds`, +25 % al factor |
+| `penthouse` | "descanso" | el descanso semanal sube un 20 % |
+| `nutri` | "el corte de peso deja de castigarte tanto" | la multa pasa del 20 % al 10 % |
+
+### Tres cosas que aprendí midiendo, y que corrigen lo que yo mismo había escrito
+
+1. **`vault` NO estaba roto.** Leí `CL.once('vaultIncome')` como una guarda de *una vez en
+   la vida* y afirmé que la renta era un pago único. **Me equivoqué:** `CL.once` marca con
+   `year+'-'+week`, o sea **una vez por semana**. La renta es estable de verdad. La prueba
+   se conserva igualmente, porque fija ese contrato: si alguien convierte `CL.once` en un
+   once-ever, cae.
+2. **Mis dos primeros arreglos fueron a rutas muertas.** `endRound` delega en
+   `RES.betweenRounds` y sólo usa su propio cálculo si `RES` no existe; y la multa de peso
+   que gobierna la liquidación vive en `fightPayout`, no en el `purse *= .8` de
+   `applyWinLossResult`. Las pruebas seguían rojas y por eso se descubrió.
+3. **Una prueba mía no probaba nada.** La primera versión de la de `nutri` terminaba en
+   `ok(true, ...)`. Pasaba siempre. Es la quinta vez en esta obra.
+
+### Hallazgo nuevo, anotado y NO tocado: hay dos cuentas de dinero
+
+Al rastrear `nutri` apareció que `fightPayout()` —que el propio archivo declara **"FUENTE
+ÚNICA DE VERDAD DEL PAGO"** (12698)— devuelve un neto que **no siempre coincide con lo que
+acaba en `G.cash`**. Medido: con la multa de peso activa, `fightPayout` daba 9.480 sin
+nutricionista y 10.665 con él, mientras `G.cash` terminaba en 15.664 **en los dos casos**.
+
+`applyWinLossResult` hace su propia cuenta y el hook `fight:applied/economia` ajusta después
+con `diff = q.net - paidOld`. Son dos caminos, y la liquidación que el jugador **ve** puede
+no ser la que **cobra**. No lo toco: necesita su propia investigación y su propia
+evidencia. Queda como deuda, y es de la familia de `dev/DEUDAS-F4.md`.
+
+### Lo que sigue muerto
+
+`analyst`, `stylist`, `eliteCampWeek`/`eliteCampBoost`, `teamCamp`, `videoWall` y
+`vaultCash` siguen sin lectura. Prometen **información** (ver una debilidad del rival,
+mejor scouting, mejores respuestas en prensa) o **calidad de camp**, que no tienen un punto
+único donde entrar. Cada uno necesita su propio diseño, no un factor.

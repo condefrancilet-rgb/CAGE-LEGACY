@@ -1296,7 +1296,9 @@ function advanceWeekCore(){
   var p = G.player;
   p.weeksIdle++;
   if(p.injWeeks>0){ p.injWeeks--; if(p.injWeeks===0){ p.inj=null; newsWeek.push('Recibiste el alta médica.'); } }
-  p.fatigue = clamp(p.fatigue - (8 + p.st.recovery/12), 0, 100);
+  /* H-011: la casa de campeon prometia "descanso" por 300.000 y su flag no se
+     leia. Entra aqui, que es el descanso semanal. */
+  p.fatigue = clamp(p.fatigue - (8 + p.st.recovery/12) * (G.flags.penthouse?1.2:1), 0, 100);
   p.dmg = clamp(p.dmg-5,0,100);
   if(p.weeksIdle>12 && typeof changePopularity==='function') changePopularity(-0.18,'inactividad',true);
   else if(p.weeksIdle>12) p.pop = clamp(p.pop - 0.18, 1, 100);
@@ -2152,7 +2154,10 @@ function endRound(){
   var p=G.player,o=F(f.opp);
   if(typeof RES!=='undefined' && RES.betweenRounds){ RES.betweenRounds('p'); RES.betweenRounds('o'); }
   else {
-    rest('p', 12 + p.st.recovery/8); rest('o', 12 + o.st.recovery/8);
+    /* H-011: el laboratorio prometia "mejora la recuperacion entre rounds" y
+       su flag no se leia. Entra aqui, que es la recuperacion entre rounds. */
+    rest('p', (12 + p.st.recovery/8) * (G.flags.recoveryLab?1.25:1));
+    rest('o', 12 + o.st.recovery/8);
     f.p.hp = clamp(f.p.hp + 1.0 + p.st.recovery/35,0,100);
     f.o.hp = clamp(f.o.hp + 1.0 + o.st.recovery/35,0,100);
   }
@@ -3466,7 +3471,10 @@ function applyWinLossResult(){
   p.weeksIdle=0; o.weeksIdle=0;
   // dinero
   var purse = f.purse || 5000;
-  if(G.camp && G.camp.missWeight) purse *= .8;
+  /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
+     tanto" y su flag no se leia. Entra aqui: la multa por no dar el peso pasa
+     del 20% al 10%. */
+  if(G.camp && G.camp.missWeight) purse *= (G.flags.nutri? .9 : .8);
   var pay = won? purse : purse*0.6;
   var bonus = 0;
   if(res.method!=='dec' && chance(.45)) bonus = Math.round(purse*0.5);
@@ -3487,7 +3495,9 @@ function applyWinLossResult(){
   fightXP(p, won, res); fightXP(o, !won, res);
   // daño / lesiones
   p.fatigue = clamp(p.fatigue + ri(25,45),0,100);
-  p.dmg = clamp(p.dmg + (100-f.p.hp)*0.6 + ri(5,15),0,100);
+  /* H-010: el cutman prometia "recibis menos dano acumulado" y su flag no se
+     leia en ningun sitio. Ahora se lee aqui, que es donde el dano se acumula. */
+  p.dmg = clamp(p.dmg + ((100-f.p.hp)*0.6 + ri(5,15)) * (G.flags.cutman?0.72:1), 0, 100);
   o.fatigue = clamp(o.fatigue + ri(25,45),0,100);
   o.dmg = clamp(o.dmg + (100-G.fight.o.hp)*0.6,0,100);
   if(!won && (res.method==='ko'||res.method==='tko')){ p.injWeeks=ri(6,16); p.inj='suspensión médica'; }
@@ -12699,7 +12709,10 @@ function fightPayout(f, won, res){
   if(won){ winB=Math.round(base*0.55 + safeNum(c&&c.bonus,0)); lines.push(['Bono de victoria', winB]); }
   if(res && res.method!=='dec' && chance(0.45)){ perfB=Math.round(base*0.5); lines.push(['Bono de actuación', perfB]); }
   if(f && f.title && won){ titleB=Math.round(base*0.3); lines.push(['Bono de título', titleB]); }
-  if(G.camp && G.camp.missWeight){ penalty=Math.round((showUp+winB)*0.2); lines.push(['Multa por no dar el peso', -penalty]); }
+  /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
+     tanto" y su flag no se leia. Entra aqui, en la fuente unica del pago: la
+     multa por no dar el peso pasa del 20% al 10%. */
+  if(G.camp && G.camp.missWeight){ penalty=Math.round((showUp+winB)*(G.flags&&G.flags.nutri?0.10:0.20)); lines.push(['Multa por no dar el peso', -penalty]); }
   var gross = showUp+winB+perfB+titleB-penalty;
   var m=mgrById(G.mgId), cut=m? safeNum(m.cut,0) : 0;
   var fee=Math.round(gross*cut);
@@ -25201,7 +25214,11 @@ var RES = (function(){
   function betweenRounds(side){
     if(!G.fight) return;
     var f=side==='p'?G.player:F(G.fight.opp), s=G.fight[side], r=normalize(f);
-    var rec=clamp(.7 + r.recovery/95, .9, 1.75);
+    /* H-011: el laboratorio de recuperacion prometia "mejora la recuperacion
+       entre rounds" y su flag no se leia en ningun sitio. Entra aqui, que es
+       la ruta viva — endRound delega en esta funcion y solo cae a su propio
+       calculo si RES no existe. */
+    var rec=clamp(.7 + r.recovery/95, .9, 1.75) * (side==='p' && G.flags && G.flags.recoveryLab ? 1.25 : 1);
     var damagePenalty=clamp((r.accum-45)/120,0,.35);
     s.stam=clamp(s.stam + 11*rec,0,100);
     s.wobble=clamp(safeNum(s.wobble,0)-.18*rec,0,1);
