@@ -1,0 +1,1050 @@
+{
+ "cuando": "2026-09-21T21:57:09.303Z",
+ "offsetScript": 566,
+ "bloques": [
+  {
+   "que": "advanceWeek",
+   "n": 200,
+   "ms": 3815.034131,
+   "filas": [
+    {
+     "nombre": "TX.snapshot",
+     "donde": "index-4-blindado.html:4055",
+     "juego": true,
+     "muestras": 9423,
+     "pc": 42.53,
+     "ms": 1622.47
+    },
+    {
+     "nombre": "revisar",
+     "donde": "index-4-blindado.html:6372",
+     "juego": true,
+     "muestras": 2863,
+     "pc": 12.92,
+     "ms": 492.96
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6410",
+     "juego": true,
+     "muestras": 588,
+     "pc": 2.65,
+     "ms": 101.24
+    },
+    {
+     "nombre": "revisar",
+     "donde": "index-4-blindado.html:6372",
+     "juego": true,
+     "muestras": 488,
+     "pc": 2.2,
+     "ms": 84.02
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6412",
+     "juego": true,
+     "muestras": 369,
+     "pc": 1.67,
+     "ms": 63.54
+    },
+    {
+     "nombre": "(garbage collector)",
+     "donde": "(motor)",
+     "juego": false,
+     "muestras": 317,
+     "pc": 1.43,
+     "ms": 54.58
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 201,
+     "pc": 0.91,
+     "ms": 34.61
+    },
+    {
+     "nombre": "socCircle",
+     "donde": "index-4-blindado.html:11823",
+     "juego": true,
+     "muestras": 201,
+     "pc": 0.91,
+     "ms": 34.61
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1473",
+     "juego": true,
+     "muestras": 198,
+     "pc": 0.89,
+     "ms": 34.09
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 170,
+     "pc": 0.77,
+     "ms": 29.27
+    },
+    {
+     "nombre": "worldTick",
+     "donde": "index-4-blindado.html:1471",
+     "juego": true,
+     "muestras": 166,
+     "pc": 0.75,
+     "ms": 28.58
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1195",
+     "juego": true,
+     "muestras": 159,
+     "pc": 0.72,
+     "ms": 27.38
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:17729",
+     "juego": true,
+     "muestras": 155,
+     "pc": 0.7,
+     "ms": 26.69
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1540",
+     "juego": true,
+     "muestras": 134,
+     "pc": 0.6,
+     "ms": 23.07
+    },
+    {
+     "nombre": "rankScore",
+     "donde": "index-4-blindado.html:1175",
+     "juego": true,
+     "muestras": 130,
+     "pc": 0.59,
+     "ms": 22.38
+    },
+    {
+     "nombre": "rnd",
+     "donde": "index-4-blindado.html:579",
+     "juego": true,
+     "muestras": 121,
+     "pc": 0.55,
+     "ms": 20.83
+    },
+    {
+     "nombre": "rankScoreSafe",
+     "donde": "index-4-blindado.html:1166",
+     "juego": true,
+     "muestras": 120,
+     "pc": 0.54,
+     "ms": 20.66
+    },
+    {
+     "nombre": "NORM.one",
+     "donde": "index-4-blindado.html:6311",
+     "juego": true,
+     "muestras": 119,
+     "pc": 0.54,
+     "ms": 20.49
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 112,
+     "pc": 0.51,
+     "ms": 19.28
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:17720",
+     "juego": true,
+     "muestras": 111,
+     "pc": 0.5,
+     "ms": 19.11
+    },
+    {
+     "nombre": "NORM.one",
+     "donde": "index-4-blindado.html:6311",
+     "juego": true,
+     "muestras": 108,
+     "pc": 0.49,
+     "ms": 18.6
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 107,
+     "pc": 0.48,
+     "ms": 18.42
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6398",
+     "juego": true,
+     "muestras": 105,
+     "pc": 0.47,
+     "ms": 18.08
+    },
+    {
+     "nombre": "rnd",
+     "donde": "index-4-blindado.html:579",
+     "juego": true,
+     "muestras": 100,
+     "pc": 0.45,
+     "ms": 17.22
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 94,
+     "pc": 0.42,
+     "ms": 16.19
+    },
+    {
+     "nombre": "normalizeRuntime",
+     "donde": "index-4-blindado.html:6445",
+     "juego": true,
+     "muestras": 92,
+     "pc": 0.42,
+     "ms": 15.84
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 85,
+     "pc": 0.38,
+     "ms": 14.64
+    },
+    {
+     "nombre": "applyResultCore",
+     "donde": "index-4-blindado.html:1579",
+     "juego": true,
+     "muestras": 76,
+     "pc": 0.34,
+     "ms": 13.09
+    },
+    {
+     "nombre": "recalcRank",
+     "donde": "index-4-blindado.html:1189",
+     "juego": true,
+     "muestras": 75,
+     "pc": 0.34,
+     "ms": 12.91
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1201",
+     "juego": true,
+     "muestras": 73,
+     "pc": 0.33,
+     "ms": 12.57
+    },
+    {
+     "nombre": "overall",
+     "donde": "index-4-blindado.html:980",
+     "juego": true,
+     "muestras": 71,
+     "pc": 0.32,
+     "ms": 12.22
+    },
+    {
+     "nombre": "feedCtx",
+     "donde": "index-4-blindado.html:26927",
+     "juego": true,
+     "muestras": 71,
+     "pc": 0.32,
+     "ms": 12.22
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1532",
+     "juego": true,
+     "muestras": 70,
+     "pc": 0.32,
+     "ms": 12.05
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:3671",
+     "juego": true,
+     "muestras": 69,
+     "pc": 0.31,
+     "ms": 11.88
+    },
+    {
+     "nombre": "strikeR",
+     "donde": "index-4-blindado.html:976",
+     "juego": true,
+     "muestras": 67,
+     "pc": 0.3,
+     "ms": 11.54
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:27806",
+     "juego": true,
+     "muestras": 64,
+     "pc": 0.29,
+     "ms": 11.02
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6473",
+     "juego": true,
+     "muestras": 63,
+     "pc": 0.28,
+     "ms": 10.85
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 63,
+     "pc": 0.28,
+     "ms": 10.85
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9047",
+     "juego": true,
+     "muestras": 60,
+     "pc": 0.27,
+     "ms": 10.33
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:1115",
+     "juego": true,
+     "muestras": 60,
+     "pc": 0.27,
+     "ms": 10.33
+    }
+   ]
+  },
+  {
+   "que": "saveSerialize",
+   "n": 200,
+   "ms": 4997.353534,
+   "filas": [
+    {
+     "nombre": "saveSerialize",
+     "donde": "index-4-blindado.html:14189",
+     "juego": true,
+     "muestras": 14815,
+     "pc": 50.77,
+     "ms": 2537.21
+    },
+    {
+     "nombre": "saveReplacer",
+     "donde": "index-4-blindado.html:14159",
+     "juego": true,
+     "muestras": 14139,
+     "pc": 48.45,
+     "ms": 2421.44
+    },
+    {
+     "nombre": "(garbage collector)",
+     "donde": "(motor)",
+     "juego": false,
+     "muestras": 201,
+     "pc": 0.69,
+     "ms": 34.42
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "file:///home/user/CAGE-LEGACY/dev/perf/perfil.js",
+     "juego": false,
+     "muestras": 18,
+     "pc": 0.06,
+     "ms": 3.08
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "file:///home/user/CAGE-LEGACY/dev/perf/perfil.js",
+     "juego": false,
+     "muestras": 5,
+     "pc": 0.02,
+     "ms": 0.86
+    },
+    {
+     "nombre": "post",
+     "donde": "node:inspector",
+     "juego": false,
+     "muestras": 1,
+     "pc": 0,
+     "ms": 0.17
+    },
+    {
+     "nombre": "dispatch",
+     "donde": "(motor)",
+     "juego": false,
+     "muestras": 1,
+     "pc": 0,
+     "ms": 0.17
+    }
+   ]
+  },
+  {
+   "que": "loadGame",
+   "n": 25,
+   "ms": 2913.893776,
+   "filas": [
+    {
+     "nombre": "saveSerialize",
+     "donde": "index-4-blindado.html:14189",
+     "juego": true,
+     "muestras": 1879,
+     "pc": 11.13,
+     "ms": 324.28
+    },
+    {
+     "nombre": "saveReplacer",
+     "donde": "index-4-blindado.html:14159",
+     "juego": true,
+     "muestras": 1855,
+     "pc": 10.99,
+     "ms": 320.14
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:14208",
+     "juego": true,
+     "muestras": 1728,
+     "pc": 10.23,
+     "ms": 298.22
+    },
+    {
+     "nombre": "stHash",
+     "donde": "index-4-blindado.html:3933",
+     "juego": true,
+     "muestras": 1318,
+     "pc": 7.81,
+     "ms": 227.46
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:13253",
+     "juego": true,
+     "muestras": 642,
+     "pc": 3.8,
+     "ms": 110.8
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 586,
+     "pc": 3.47,
+     "ms": 101.13
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 573,
+     "pc": 3.39,
+     "ms": 98.89
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 559,
+     "pc": 3.31,
+     "ms": 96.47
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6473",
+     "juego": true,
+     "muestras": 445,
+     "pc": 2.64,
+     "ms": 76.8
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6473",
+     "juego": true,
+     "muestras": 421,
+     "pc": 2.49,
+     "ms": 72.66
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:27806",
+     "juego": true,
+     "muestras": 397,
+     "pc": 2.35,
+     "ms": 68.52
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 387,
+     "pc": 2.29,
+     "ms": 66.79
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 386,
+     "pc": 2.29,
+     "ms": 66.62
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:6259",
+     "juego": true,
+     "muestras": 382,
+     "pc": 2.26,
+     "ms": 65.93
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9047",
+     "juego": true,
+     "muestras": 215,
+     "pc": 1.27,
+     "ms": 37.11
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9047",
+     "juego": true,
+     "muestras": 207,
+     "pc": 1.23,
+     "ms": 35.72
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9047",
+     "juego": true,
+     "muestras": 192,
+     "pc": 1.14,
+     "ms": 33.14
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:3671",
+     "juego": true,
+     "muestras": 175,
+     "pc": 1.04,
+     "ms": 30.2
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:3671",
+     "juego": true,
+     "muestras": 169,
+     "pc": 1,
+     "ms": 29.17
+    },
+    {
+     "nombre": "(garbage collector)",
+     "donde": "(motor)",
+     "juego": false,
+     "muestras": 168,
+     "pc": 1,
+     "ms": 28.99
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:3671",
+     "juego": true,
+     "muestras": 145,
+     "pc": 0.86,
+     "ms": 25.02
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:14234",
+     "juego": true,
+     "muestras": 132,
+     "pc": 0.78,
+     "ms": 22.78
+    },
+    {
+     "nombre": "normalizeFighterState",
+     "donde": "index-4-blindado.html:6250",
+     "juego": true,
+     "muestras": 120,
+     "pc": 0.71,
+     "ms": 20.71
+    },
+    {
+     "nombre": "normalizeFighterState",
+     "donde": "index-4-blindado.html:6250",
+     "juego": true,
+     "muestras": 117,
+     "pc": 0.69,
+     "ms": 20.19
+    },
+    {
+     "nombre": "normalizeFighterState",
+     "donde": "index-4-blindado.html:6250",
+     "juego": true,
+     "muestras": 112,
+     "pc": 0.66,
+     "ms": 19.33
+    },
+    {
+     "nombre": "stStable",
+     "donde": "index-4-blindado.html:3948",
+     "juego": true,
+     "muestras": 110,
+     "pc": 0.65,
+     "ms": 18.98
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9063",
+     "juego": true,
+     "muestras": 105,
+     "pc": 0.62,
+     "ms": 18.12
+    },
+    {
+     "nombre": "fix",
+     "donde": "index-4-blindado.html:14206",
+     "juego": true,
+     "muestras": 103,
+     "pc": 0.61,
+     "ms": 17.78
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9063",
+     "juego": true,
+     "muestras": 102,
+     "pc": 0.6,
+     "ms": 17.6
+    },
+    {
+     "nombre": "safeInt",
+     "donde": "index-4-blindado.html:6240",
+     "juego": true,
+     "muestras": 100,
+     "pc": 0.59,
+     "ms": 17.26
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 90,
+     "pc": 0.53,
+     "ms": 15.53
+    },
+    {
+     "nombre": "safeInt",
+     "donde": "index-4-blindado.html:6240",
+     "juego": true,
+     "muestras": 89,
+     "pc": 0.53,
+     "ms": 15.36
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9063",
+     "juego": true,
+     "muestras": 88,
+     "pc": 0.52,
+     "ms": 15.19
+    },
+    {
+     "nombre": "STATE.fingerprint",
+     "donde": "index-4-blindado.html:4017",
+     "juego": true,
+     "muestras": 87,
+     "pc": 0.52,
+     "ms": 15.01
+    },
+    {
+     "nombre": "ensureRel",
+     "donde": "index-4-blindado.html:11357",
+     "juego": true,
+     "muestras": 83,
+     "pc": 0.49,
+     "ms": 14.32
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 82,
+     "pc": 0.49,
+     "ms": 14.15
+    },
+    {
+     "nombre": "safeInt",
+     "donde": "index-4-blindado.html:6240",
+     "juego": true,
+     "muestras": 82,
+     "pc": 0.49,
+     "ms": 14.15
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:14201",
+     "juego": true,
+     "muestras": 74,
+     "pc": 0.44,
+     "ms": 12.77
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 72,
+     "pc": 0.43,
+     "ms": 12.43
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:13100",
+     "juego": true,
+     "muestras": 69,
+     "pc": 0.41,
+     "ms": 11.91
+    }
+   ]
+  },
+  {
+   "que": "scrHub",
+   "n": 1000,
+   "ms": 1141.840108,
+   "filas": [
+    {
+     "nombre": "socCircle",
+     "donde": "index-4-blindado.html:11823",
+     "juego": true,
+     "muestras": 855,
+     "pc": 12.89,
+     "ms": 147.16
+    },
+    {
+     "nombre": "socPartners",
+     "donde": "index-4-blindado.html:11792",
+     "juego": true,
+     "muestras": 570,
+     "pc": 8.59,
+     "ms": 98.11
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:18018",
+     "juego": true,
+     "muestras": 514,
+     "pc": 7.75,
+     "ms": 88.47
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:18061",
+     "juego": true,
+     "muestras": 332,
+     "pc": 5,
+     "ms": 57.14
+    },
+    {
+     "nombre": "money",
+     "donde": "index-4-blindado.html:645",
+     "juego": true,
+     "muestras": 323,
+     "pc": 4.87,
+     "ms": 55.59
+    },
+    {
+     "nombre": "bondOf",
+     "donde": "index-4-blindado.html:11330",
+     "juego": true,
+     "muestras": 158,
+     "pc": 2.38,
+     "ms": 27.19
+    },
+    {
+     "nombre": "money",
+     "donde": "index-4-blindado.html:645",
+     "juego": true,
+     "muestras": 147,
+     "pc": 2.22,
+     "ms": 25.3
+    },
+    {
+     "nombre": "safeInt",
+     "donde": "index-4-blindado.html:6240",
+     "juego": true,
+     "muestras": 140,
+     "pc": 2.11,
+     "ms": 24.1
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 139,
+     "pc": 2.1,
+     "ms": 23.92
+    },
+    {
+     "nombre": "ensureRel",
+     "donde": "index-4-blindado.html:11357",
+     "juego": true,
+     "muestras": 131,
+     "pc": 1.97,
+     "ms": 22.55
+    },
+    {
+     "nombre": "safeRun",
+     "donde": "index-4-blindado.html:11145",
+     "juego": true,
+     "muestras": 118,
+     "pc": 1.78,
+     "ms": 20.31
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 98,
+     "pc": 1.48,
+     "ms": 16.87
+    },
+    {
+     "nombre": "scrHub",
+     "donde": "index-4-blindado.html:17989",
+     "juego": true,
+     "muestras": 96,
+     "pc": 1.45,
+     "ms": 16.52
+    },
+    {
+     "nombre": "scrHub",
+     "donde": "index-4-blindado.html:4583",
+     "juego": true,
+     "muestras": 93,
+     "pc": 1.4,
+     "ms": 16.01
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:11836",
+     "juego": true,
+     "muestras": 62,
+     "pc": 0.93,
+     "ms": 10.67
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:25102",
+     "juego": true,
+     "muestras": 57,
+     "pc": 0.86,
+     "ms": 9.81
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "file:///home/user/CAGE-LEGACY/dev/perf/perfil.js",
+     "juego": false,
+     "muestras": 55,
+     "pc": 0.83,
+     "ms": 9.47
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:25098",
+     "juego": true,
+     "muestras": 53,
+     "pc": 0.8,
+     "ms": 9.12
+    },
+    {
+     "nombre": "bondOf",
+     "donde": "index-4-blindado.html:11330",
+     "juego": true,
+     "muestras": 49,
+     "pc": 0.74,
+     "ms": 8.43
+    },
+    {
+     "nombre": "insertAfterTopbar",
+     "donde": "index-4-blindado.html:9201",
+     "juego": true,
+     "muestras": 46,
+     "pc": 0.69,
+     "ms": 7.92
+    },
+    {
+     "nombre": "META.careerScore",
+     "donde": "index-4-blindado.html:24004",
+     "juego": true,
+     "muestras": 46,
+     "pc": 0.69,
+     "ms": 7.92
+    },
+    {
+     "nombre": "safeInt",
+     "donde": "index-4-blindado.html:6240",
+     "juego": true,
+     "muestras": 44,
+     "pc": 0.66,
+     "ms": 7.57
+    },
+    {
+     "nombre": "coreStatsCard",
+     "donde": "index-4-blindado.html:9173",
+     "juego": true,
+     "muestras": 44,
+     "pc": 0.66,
+     "ms": 7.57
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:20252",
+     "juego": true,
+     "muestras": 43,
+     "pc": 0.65,
+     "ms": 7.4
+    },
+    {
+     "nombre": "CL.matchup",
+     "donde": "index-4-blindado.html:16707",
+     "juego": true,
+     "muestras": 43,
+     "pc": 0.65,
+     "ms": 7.4
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 41,
+     "pc": 0.62,
+     "ms": 7.06
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:19516",
+     "juego": true,
+     "muestras": 41,
+     "pc": 0.62,
+     "ms": 7.06
+    },
+    {
+     "nombre": "(garbage collector)",
+     "donde": "(motor)",
+     "juego": false,
+     "muestras": 40,
+     "pc": 0.6,
+     "ms": 6.88
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:18638",
+     "juego": true,
+     "muestras": 39,
+     "pc": 0.59,
+     "ms": 6.71
+    },
+    {
+     "nombre": "CL.identity",
+     "donde": "index-4-blindado.html:16655",
+     "juego": true,
+     "muestras": 38,
+     "pc": 0.57,
+     "ms": 6.54
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:19543",
+     "juego": true,
+     "muestras": 37,
+     "pc": 0.56,
+     "ms": 6.37
+    },
+    {
+     "nombre": "META.S",
+     "donde": "index-4-blindado.html:23875",
+     "juego": true,
+     "muestras": 36,
+     "pc": 0.54,
+     "ms": 6.2
+    },
+    {
+     "nombre": "relScore",
+     "donde": "index-4-blindado.html:11398",
+     "juego": true,
+     "muestras": 33,
+     "pc": 0.5,
+     "ms": 5.68
+    },
+    {
+     "nombre": "esc",
+     "donde": "index-4-blindado.html:648",
+     "juego": true,
+     "muestras": 32,
+     "pc": 0.48,
+     "ms": 5.51
+    },
+    {
+     "nombre": "legacyScore",
+     "donde": "index-4-blindado.html:8741",
+     "juego": true,
+     "muestras": 31,
+     "pc": 0.47,
+     "ms": 5.34
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:9179",
+     "juego": true,
+     "muestras": 30,
+     "pc": 0.45,
+     "ms": 5.16
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:21675",
+     "juego": true,
+     "muestras": 28,
+     "pc": 0.42,
+     "ms": 4.82
+    },
+    {
+     "nombre": "(anonima)",
+     "donde": "index-4-blindado.html:25819",
+     "juego": true,
+     "muestras": 28,
+     "pc": 0.42,
+     "ms": 4.82
+    },
+    {
+     "nombre": "safeNum",
+     "donde": "index-4-blindado.html:6239",
+     "juego": true,
+     "muestras": 27,
+     "pc": 0.41,
+     "ms": 4.65
+    },
+    {
+     "nombre": "META.careerScore",
+     "donde": "index-4-blindado.html:24004",
+     "juego": true,
+     "muestras": 27,
+     "pc": 0.41,
+     "ms": 4.65
+    }
+   ]
+  }
+ ]
+}

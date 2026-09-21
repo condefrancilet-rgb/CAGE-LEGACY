@@ -1,0 +1,796 @@
+{
+ "bloques": [
+  {
+   "i": 0,
+   "tag": "div",
+   "clase": "topbar",
+   "titulo": "",
+   "altoPx": 55,
+   "nodos": 7,
+   "bytes": 225,
+   "botones": []
+  },
+  {
+   "i": 1,
+   "tag": "div",
+   "clase": "card core-card",
+   "titulo": "Estadísticas clave de tu estiloMMA completo · ",
+   "altoPx": 296,
+   "nodos": 48,
+   "bytes": 1481,
+   "botones": []
+  },
+  {
+   "i": 2,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "0-0 (0 KO · 0 SUB · 0 DEC)",
+   "altoPx": 152,
+   "nodos": 26,
+   "bytes": 737,
+   "botones": []
+  },
+  {
+   "i": 3,
+   "tag": "div",
+   "clase": "card gold",
+   "titulo": "Ofertas sobre la mesa2",
+   "altoPx": 145,
+   "nodos": 5,
+   "bytes": 216,
+   "botones": [
+    {
+     "txt": "Ver ofertas",
+     "onclick": "go('offers')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 4,
+   "tag": "div",
+   "clase": "grid g2",
+   "titulo": "",
+   "altoPx": 256,
+   "nodos": 12,
+   "bytes": 563,
+   "botones": [
+    {
+     "txt": "EntrenarSemana libre",
+     "onclick": "go('train')",
+     "alto": 77
+    },
+    {
+     "txt": "Ficha completaStats, potencial, estilo",
+     "onclick": "go('stats')",
+     "alto": 77
+    },
+    {
+     "txt": "RankingsDivisiones y campeones",
+     "onclick": "go('rank')",
+     "alto": 77
+    },
+    {
+     "txt": "PersonajesEquipo y rivales",
+     "onclick": "go('people')",
+     "alto": 77
+    },
+    {
+     "txt": "GimnasioCambiar equipo",
+     "onclick": "go('gym')",
+     "alto": 62
+    },
+    {
+     "txt": "ContratosDinero y patrocinios",
+     "onclick": "go('contracts')",
+     "alto": 62
+    }
+   ]
+  },
+  {
+   "i": 5,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Foco de entrenamientocarga normal",
+   "altoPx": 1143,
+   "nodos": 49,
+   "bytes": 6990,
+   "botones": [
+    {
+     "txt": "Boxeo",
+     "onclick": "focusSet('a','box')",
+     "alto": 38
+    },
+    {
+     "txt": "Kickboxing",
+     "onclick": "focusSet('a','kick')",
+     "alto": 38
+    },
+    {
+     "txt": "Muay Thai / clinch",
+     "onclick": "focusSet('a','muay')",
+     "alto": 38
+    },
+    {
+     "txt": "Wrestling",
+     "onclick": "focusSet('a','wrest')",
+     "alto": 38
+    },
+    {
+     "txt": "Grappling / BJJ",
+     "onclick": "focusSet('a','grap')",
+     "alto": 38
+    },
+    {
+     "txt": "Cardio",
+     "onclick": "focusSet('a','cardio')",
+     "alto": 38
+    },
+    {
+     "txt": "Fuerza y potencia",
+     "onclick": "focusSet('a','str')",
+     "alto": 38
+    },
+    {
+     "txt": "Sparring",
+     "onclick": "focusSet('a','spar')",
+     "alto": 38
+    },
+    {
+     "txt": "Técnica / drills",
+     "onclick": "focusSet('a','tech')",
+     "alto": 38
+    },
+    {
+     "txt": "Trabajo mental",
+     "onclick": "focusSet('a','mind')",
+     "alto": 38
+    },
+    {
+     "txt": "Recuperación",
+     "onclick": "focusSet('a','rest')",
+     "alto": 38
+    },
+    {
+     "txt": "Boxeo",
+     "onclick": "focusSet('b','box')",
+     "alto": 38
+    },
+    {
+     "txt": "Kickboxing",
+     "onclick": "focusSet('b','kick')",
+     "alto": 38
+    },
+    {
+     "txt": "Muay Thai / clinch",
+     "onclick": "focusSet('b','muay')",
+     "alto": 38
+    },
+    {
+     "txt": "Wrestling",
+     "onclick": "focusSet('b','wrest')",
+     "alto": 38
+    },
+    {
+     "txt": "Grappling / BJJ",
+     "onclick": "focusSet('b','grap')",
+     "alto": 38
+    },
+    {
+     "txt": "Cardio",
+     "onclick": "focusSet('b','cardio')",
+     "alto": 38
+    },
+    {
+     "txt": "Fuerza y potencia",
+     "onclick": "focusSet('b','str')",
+     "alto": 38
+    },
+    {
+     "txt": "Sparring",
+     "onclick": "focusSet('b','spar')",
+     "alto": 38
+    },
+    {
+     "txt": "Técnica / drills",
+     "onclick": "focusSet('b','tech')",
+     "alto": 38
+    },
+    {
+     "txt": "Trabajo mental",
+     "onclick": "focusSet('b','mind')",
+     "alto": 38
+    },
+    {
+     "txt": "Recuperación",
+     "onclick": "focusSet('b','rest')",
+     "alto": 38
+    },
+    {
+     "txt": "Boxeo",
+     "onclick": "focusSet('c','box')",
+     "alto": 38
+    },
+    {
+     "txt": "Kickboxing",
+     "onclick": "focusSet('c','kick')",
+     "alto": 38
+    },
+    {
+     "txt": "Muay Thai / clinch",
+     "onclick": "focusSet('c','muay')",
+     "alto": 38
+    },
+    {
+     "txt": "Wrestling",
+     "onclick": "focusSet('c','wrest')",
+     "alto": 38
+    },
+    {
+     "txt": "Grappling / BJJ",
+     "onclick": "focusSet('c','grap')",
+     "alto": 38
+    },
+    {
+     "txt": "Cardio",
+     "onclick": "focusSet('c','cardio')",
+     "alto": 38
+    },
+    {
+     "txt": "Fuerza y potencia",
+     "onclick": "focusSet('c','str')",
+     "alto": 38
+    },
+    {
+     "txt": "Sparring",
+     "onclick": "focusSet('c','spar')",
+     "alto": 38
+    },
+    {
+     "txt": "Técnica / drills",
+     "onclick": "focusSet('c','tech')",
+     "alto": 38
+    },
+    {
+     "txt": "Trabajo mental",
+     "onclick": "focusSet('c','mind')",
+     "alto": 38
+    },
+    {
+     "txt": "Recuperación",
+     "onclick": "focusSet('c','rest')",
+     "alto": 38
+    },
+    {
+     "txt": "ligera",
+     "onclick": "focusSet('load','ligera')",
+     "alto": 46
+    },
+    {
+     "txt": "normal",
+     "onclick": "focusSet('load','normal')",
+     "alto": 46
+    },
+    {
+     "txt": "dura",
+     "onclick": "focusSet('load','dura')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 6,
+   "tag": "div",
+   "clase": "card hi",
+   "titulo": "Dejar correr el tiempo",
+   "altoPx": 191,
+   "nodos": 6,
+   "bytes": 372,
+   "botones": [
+    {
+     "txt": "1 mes",
+     "onclick": "advancePeriod(4)",
+     "alto": 62
+    },
+    {
+     "txt": "3 meses",
+     "onclick": "advancePeriod(13)",
+     "alto": 62
+    },
+    {
+     "txt": "1 año",
+     "onclick": "advancePeriod(52)",
+     "alto": 62
+    }
+   ]
+  },
+  {
+   "i": 7,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "El mundo",
+   "altoPx": 316,
+   "nodos": 9,
+   "bytes": 523,
+   "botones": [
+    {
+     "txt": "Ver todo el historial del mundo",
+     "onclick": "go('history','news')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 8,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Peleador completoDESARROLLO",
+   "altoPx": 240,
+   "nodos": 9,
+   "bytes": 505,
+   "botones": [
+    {
+     "txt": "Ver tu carrera",
+     "onclick": "go('clcareer')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 9,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "💰 Gasto semanal−$525/sem",
+   "altoPx": 153,
+   "nodos": 11,
+   "bytes": 385,
+   "botones": []
+  },
+  {
+   "i": 10,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Cómo estás trabajando○ Sin enfoque",
+   "altoPx": 532,
+   "nodos": 30,
+   "bytes": 1423,
+   "botones": [
+    {
+     "txt": "○Sin enfoque",
+     "onclick": "clSetFocus('none')",
+     "alto": 77
+    },
+    {
+     "txt": "◎Técnica pura",
+     "onclick": "clSetFocus('tech')",
+     "alto": 77
+    },
+    {
+     "txt": "🫁Motor",
+     "onclick": "clSetFocus('engine')",
+     "alto": 77
+    },
+    {
+     "txt": "⚔️Guerra",
+     "onclick": "clSetFocus('war')",
+     "alto": 62
+    },
+    {
+     "txt": "🧠Estudio",
+     "onclick": "clSetFocus('smart')",
+     "alto": 62
+    },
+    {
+     "txt": "🌿Descarga",
+     "onclick": "clSetFocus('recover')",
+     "alto": 62
+    },
+    {
+     "txt": "🪙 Austero$0 · Vivís con lo mínimo",
+     "onclick": "clSetSpend('lean')",
+     "alto": 92
+    },
+    {
+     "txt": "⚖️ Normal$180 · Lo justo: comida, fisio y supl",
+     "onclick": "clSetSpend('normal')",
+     "alto": 92
+    },
+    {
+     "txt": "💠 Profesional$620 · Nutricionista, fisio sema",
+     "onclick": "clSetSpend('pro')",
+     "alto": 110
+    },
+    {
+     "txt": "🔥 Todo adentro$1,500 · Equipo completo alrede",
+     "onclick": "clSetSpend('allin')",
+     "alto": 110
+    }
+   ]
+  },
+  {
+   "i": 11,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "⚡ Técnicas especiales🔷 0",
+   "altoPx": 160,
+   "nodos": 5,
+   "bytes": 278,
+   "botones": [
+    {
+     "txt": "🌳 Árbol de técnicas",
+     "onclick": "go('tq')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 12,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "🎯 Tu carrera12 pts",
+   "altoPx": 141,
+   "nodos": 8,
+   "bytes": 326,
+   "botones": [
+    {
+     "txt": "Mi peleador",
+     "onclick": "go('bio')",
+     "alto": 46
+    },
+    {
+     "txt": "Desafíos",
+     "onclick": "go('challenges')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 13,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "⏩ Tiemposin semanas vacías",
+   "altoPx": 237,
+   "nodos": 6,
+   "bytes": 414,
+   "botones": [
+    {
+     "txt": "⏩ Avanzar hasta el próximo evento importanteha",
+     "onclick": "autoAdvanceToImportant(26)",
+     "alto": 80
+    }
+   ]
+  },
+  {
+   "i": 14,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Tu círculo0 vínculos",
+   "altoPx": 180,
+   "nodos": 7,
+   "bytes": 339,
+   "botones": [
+    {
+     "txt": "👥 Ver relaciones",
+     "onclick": "go('social')",
+     "alto": 62
+    },
+    {
+     "txt": "📱 Abrir el grupo",
+     "onclick": "chatStart()",
+     "alto": 62
+    }
+   ]
+  },
+  {
+   "i": 15,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Quién te sigue🏳️ Tu país",
+   "altoPx": 261,
+   "nodos": 25,
+   "bytes": 933,
+   "botones": []
+  },
+  {
+   "i": 16,
+   "tag": "div",
+   "clase": "card story-hub-card",
+   "titulo": "📖 Tu historiaprospect",
+   "altoPx": 181,
+   "nodos": 6,
+   "bytes": 295,
+   "botones": [
+    {
+     "txt": "Abrir mundo y memoria0 recuerdos · 15 publicac",
+     "onclick": "go('story')",
+     "alto": 63
+    }
+   ]
+  },
+  {
+   "i": 17,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "",
+   "altoPx": 96,
+   "nodos": 5,
+   "bytes": 210,
+   "botones": [
+    {
+     "txt": "💳 Invertir$0 disponible",
+     "onclick": "go('shop')",
+     "alto": 62
+    },
+    {
+     "txt": "🏠 Gimnasiosvisitar o mudarte",
+     "onclick": "go('gyms')",
+     "alto": 62
+    }
+   ]
+  },
+  {
+   "i": 18,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "🎰 Casino🎟️ 0",
+   "altoPx": 160,
+   "nodos": 5,
+   "bytes": 251,
+   "botones": [
+    {
+     "txt": "Entrar al casino",
+     "onclick": "CAS.enterScreen()",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 19,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Tu mundo3 personas",
+   "altoPx": 244,
+   "nodos": 11,
+   "bytes": 464,
+   "botones": [
+    {
+     "txt": "Ver historias y personas",
+     "onclick": "go('clcareer')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 20,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "LegadoAPRENDIZ",
+   "altoPx": 199,
+   "nodos": 16,
+   "bytes": 527,
+   "botones": [
+    {
+     "txt": "🏆 Salón de la fama",
+     "onclick": "go('hall')",
+     "alto": 62
+    },
+    {
+     "txt": "🏁 Anunciar el retiro",
+     "onclick": "go('retire')",
+     "alto": 62
+    }
+   ]
+  }
+ ],
+ "tarjetas": [
+  {
+   "id": "identity",
+   "orden": 6,
+   "bytes": 529,
+   "dibuja": true
+  },
+  {
+   "id": "finanzas",
+   "orden": 6,
+   "bytes": 409,
+   "dibuja": true
+  },
+  {
+   "id": "ufc",
+   "orden": 8,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "peso",
+   "orden": 10,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "decisiones",
+   "orden": 12,
+   "bytes": 1447,
+   "dibuja": true
+  },
+  {
+   "id": "deuda",
+   "orden": 12,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "tecnicas",
+   "orden": 12,
+   "bytes": 302,
+   "dibuja": true
+  },
+  {
+   "id": "meta",
+   "orden": 12,
+   "bytes": 350,
+   "dibuja": true
+  },
+  {
+   "id": "pilares",
+   "orden": 14,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "auto_advance",
+   "orden": 18,
+   "bytes": 438,
+   "dibuja": true
+  },
+  {
+   "id": "circulo",
+   "orden": 30,
+   "bytes": 363,
+   "dibuja": true
+  },
+  {
+   "id": "sagas",
+   "orden": 34,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "publico",
+   "orden": 36,
+   "bytes": 957,
+   "dibuja": true
+  },
+  {
+   "id": "observado",
+   "orden": 38,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "vida",
+   "orden": 40,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "historia",
+   "orden": 40,
+   "bytes": 334,
+   "dibuja": true
+  },
+  {
+   "id": "content_team",
+   "orden": 42,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "inversion",
+   "orden": 44,
+   "bytes": 234,
+   "dibuja": true
+  },
+  {
+   "id": "casino",
+   "orden": 46,
+   "bytes": 275,
+   "dibuja": true
+  },
+  {
+   "id": "instalaciones",
+   "orden": 48,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "threads",
+   "orden": 72,
+   "bytes": 488,
+   "dibuja": true
+  },
+  {
+   "id": "legado",
+   "orden": 80,
+   "bytes": 551,
+   "dibuja": true
+  }
+ ],
+ "total": 5655,
+ "semanaJuego": "2016/13",
+ "record": "0-0",
+ "accionesUnicas": [
+  "CAS.enterScreen()",
+  "advancePeriod(13)",
+  "advancePeriod(4)",
+  "advancePeriod(52)",
+  "autoAdvanceToImportant(26)",
+  "chatStart()",
+  "clSetFocus('engine')",
+  "clSetFocus('none')",
+  "clSetFocus('recover')",
+  "clSetFocus('smart')",
+  "clSetFocus('tech')",
+  "clSetFocus('war')",
+  "clSetSpend('allin')",
+  "clSetSpend('lean')",
+  "clSetSpend('normal')",
+  "clSetSpend('pro')",
+  "focusSet('a','box')",
+  "focusSet('a','cardio')",
+  "focusSet('a','grap')",
+  "focusSet('a','kick')",
+  "focusSet('a','mind')",
+  "focusSet('a','muay')",
+  "focusSet('a','rest')",
+  "focusSet('a','spar')",
+  "focusSet('a','str')",
+  "focusSet('a','tech')",
+  "focusSet('a','wrest')",
+  "focusSet('b','box')",
+  "focusSet('b','cardio')",
+  "focusSet('b','grap')",
+  "focusSet('b','kick')",
+  "focusSet('b','mind')",
+  "focusSet('b','muay')",
+  "focusSet('b','rest')",
+  "focusSet('b','spar')",
+  "focusSet('b','str')",
+  "focusSet('b','tech')",
+  "focusSet('b','wrest')",
+  "focusSet('c','box')",
+  "focusSet('c','cardio')",
+  "focusSet('c','grap')",
+  "focusSet('c','kick')",
+  "focusSet('c','mind')",
+  "focusSet('c','muay')",
+  "focusSet('c','rest')",
+  "focusSet('c','spar')",
+  "focusSet('c','str')",
+  "focusSet('c','tech')",
+  "focusSet('c','wrest')",
+  "focusSet('load','dura')",
+  "focusSet('load','ligera')",
+  "focusSet('load','normal')",
+  "go('bio')",
+  "go('challenges')",
+  "go('clcareer')",
+  "go('contracts')",
+  "go('gym')",
+  "go('gyms')",
+  "go('hall')",
+  "go('history','news')",
+  "go('offers')",
+  "go('people')",
+  "go('rank')",
+  "go('retire')",
+  "go('shop')",
+  "go('social')",
+  "go('stats')",
+  "go('story')",
+  "go('tq')",
+  "go('train')"
+ ],
+ "semanas": 12,
+ "etiqueta": "s12"
+}
