@@ -1891,9 +1891,87 @@ versión de la red. No porque el código estuviera mal, sino porque mis escenari
 agregaban claves, no tocaban la cola y no miraban la identidad del objeto. **Los tres
 huecos eran míos**, y sólo aparecieron al mutar mi propia red.
 
+---
+
+# E3, SEGUNDA RONDA — el criterio de aceptación, medido contra el pliegue
+
+La primera vez reporté «1,49 pantallas» y lo di por cerrado. **Estaba midiendo el caso
+fácil.** Medido como corresponde, dos cosas fallaban:
+
+- **«Avanzar» acababa en 654 px con el pliegue en 583**: fuera de pantalla en semana
+  normal. El pliegue a 360×640 no es 640 sino **583**, porque la barra se come 57.
+- El **peor caso realista** daba **2,45 pantallas** con **0 de 3 avisos** visibles.
+
+Y los botones de la barra medían **43×70 px** — un píxel corto — desde antes de E3.
+
+## Cómo quedó
+
+| estado | 360×640 | 390×844 | 412×915 | «Avanzar» sin scroll | franja de avisos |
+|---|---|---|---|---|---|
+| semana normal | **1,40** | 1,04 | 1,00 | **SÍ** | — |
+| peor caso realista | **2,36** | 1,73 | 1,56 | **SÍ** | **SÍ** |
+
+El peor caso es **pelea de título** contra el rival de nombre más largo del plantel, evento
+de nombre largo y **tres avisos encendidos**. Lo elegí incómodo a propósito: un peor caso
+elegido cómodo no mide nada. «Avanzar» acaba ahí en **547 px**, con 36 px de margen.
+
+**0 objetivos táctiles por debajo de 44 px en todo el documento**, barra incluida, en las
+seis combinaciones. Herramienta nueva: `dev/perf/inicio.js`, que falla con código != 0 si
+algún criterio no se cumple.
+
+## Qué cambió
+
+1. **Orden del inicio contra el pliegue**: cabecera · avisos · decisión · **Avanzar**, y
+   debajo estado · avisos en detalle · el mundo. El estado del peleador estaba arriba.
+2. **Franja de avisos**: una línea de señales bajo la cabecera. Sin `onclick` a propósito
+   —saltar a la tarjeta movería el scroll, que es lo que I1 prohíbe—. La señal no exige
+   scroll; el detalle sigue en su tarjeta.
+3. **«El mundo» pasó a tarjeta con orden 90**: un titular no puede empujar hacia abajo un
+   aviso de peso o de deuda.
+4. **Compactado sin quitar información**: ticker de la pelea en una línea, la explicación
+   del bloque sólo cuando no hay pelea firmada, botones de período sin envolver.
+
+## El scroll no se mudó de casa
+
+| pantalla, 360×640 | antes de E3 | 1.ª ronda | **ahora** |
+|---|---|---|---|
+| `train` | 3,08 | 5,57 ← el scroll se había mudado | **1,75** |
+| `menu` | 1,43 | 4,03 | **1,21** |
+| `stats` | 2,92 | 4,42 | **1,85** |
+| `people` | 2,68 | 2,97 | **1,54** |
+| `bio` | 1,98 | 2,43 | **1,45** |
+
+**Ninguna pasa de 2 pantallas.** Mecanismo: **secciones plegables** (`<details>`, HTML
+plano, sin JS ni estado), con el resumen como objetivo táctil de 44 px. Las tarjetas
+mudadas a una misma pantalla se agrupan en **una** sección: con una por tarjeta, siete
+resúmenes de 49 px sumaban 343 px de cabeceras plegadas.
+
+## Decisión 2: `identity` y `threads`, fundidas
+
+Una tarjeta, «Tu peleador y tu mundo», con un solo botón. Las dos originales siguen
+registradas con sus cuerpos intactos; su sitio es `'off'` y las dibuja la nueva.
+
+## La red de I1 volvió a fallar, y volvió a tener razón
+
+Al dejar el inicio en 1,40 pantallas, **ninguna** de las pantallas candidatas tenía ya
+margen de scroll, y la prueba falló con «SIN PANTALLA DONDE MEDIR I1». Es la segunda vez
+que esa red avisa de algo que yo no había previsto. La respuesta correcta no es bajar la
+exigencia sino **medir donde de verdad hay scroll**: ahora las candidatas empiezan por las
+pantallas largas (`gym`, `story`, `rank`) y el desplazamiento se calcula del margen real.
+Verificada otra vez con tres mutantes, tres rojos.
+
 ## Siguiente paso exacto
 
-**E4 — rendimiento**, ya con red. Orden por coste medido (`dev/perf/perfil.json`):
+**E3b — `story` (9,95 pantallas) y `gym` (8,35)**, con los mismos criterios que el inicio.
+`gym` tiene además los **14 objetivos táctiles por debajo de 44 px** que quedan en el juego.
+Está en `dev/E5-AUDITORIA.md` §A-2 con la lista completa de pantallas por encima de 2.
+
+Y anotado para E5 (`dev/E5-AUDITORIA.md` §A-1): **`hookRun` se traga errores que la trampa
+global no ve**. Hay que contar los fallos aislados en carreras largas (tienen que ser 0 o
+estar explicados) y comprobar si un enganche que falla a mitad deja escrituras parciales
+en `G`.
+
+## E4 — rendimiento, ya con red. Orden por coste medido (`dev/perf/perfil.json`):
 
 1. **`TX.snapshot`, 42,5 % de `advanceWeek`** (`:4055`). Ya se puede tocar: la red de
    `14-rollback.js` prueba la propiedad, no la implementación.

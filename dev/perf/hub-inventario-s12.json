@@ -13,16 +13,6 @@
   {
    "i": 1,
    "tag": "div",
-   "clase": "card",
-   "titulo": "0-0 (0 KO · 0 SUB · 0 DEC)",
-   "altoPx": 134,
-   "nodos": 26,
-   "bytes": 719,
-   "botones": []
-  },
-  {
-   "i": 2,
-   "tag": "div",
    "clase": "card gold",
    "titulo": "Ofertas sobre la mesa2",
    "altoPx": 115,
@@ -37,40 +27,50 @@
    ]
   },
   {
-   "i": 3,
+   "i": 2,
    "tag": "div",
    "clase": "card hi",
    "titulo": "Avanzar",
-   "altoPx": 312,
+   "altoPx": 256,
    "nodos": 11,
-   "bytes": 682,
+   "bytes": 1095,
    "botones": [
     {
      "txt": "Cambiar",
      "onclick": "go('train')",
-     "alto": 46
+     "alto": 44
     },
     {
      "txt": "1 mes",
      "onclick": "advancePeriod(4)",
-     "alto": 62
+     "alto": 46
     },
     {
      "txt": "3 meses",
      "onclick": "advancePeriod(13)",
-     "alto": 62
+     "alto": 46
     },
     {
      "txt": "1 año",
      "onclick": "advancePeriod(52)",
-     "alto": 62
+     "alto": 46
     },
     {
-     "txt": "⏩ Hasta el próximo evento importantehasta 26 s",
+     "txt": "⏩ Hasta el próximo evento (máx 26 sem)",
      "onclick": "autoAdvanceToImportant(26)",
-     "alto": 80
+     "alto": 62
     }
    ]
+  },
+  {
+   "i": 3,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "0-0 (0 KO · 0 SUB · 0 DEC)",
+   "altoPx": 134,
+   "nodos": 26,
+   "bytes": 719,
+   "botones": []
   },
   {
    "i": 4,
@@ -101,7 +101,15 @@
   {
    "id": "identity",
    "orden": 6,
-   "bytes": 546,
+   "bytes": 452,
+   "sitio": "off",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "carrera",
+   "orden": 6,
+   "bytes": 956,
    "sitio": "menu",
    "tieneContenido": true,
    "dibuja": false
@@ -221,7 +229,7 @@
   {
    "id": "historia",
    "orden": 40,
-   "bytes": 343,
+   "bytes": 322,
    "sitio": "menu",
    "tieneContenido": true,
    "dibuja": false
@@ -261,8 +269,8 @@
   {
    "id": "threads",
    "orden": 72,
-   "bytes": 488,
-   "sitio": "menu",
+   "bytes": 425,
+   "sitio": "off",
    "tieneContenido": true,
    "dibuja": false
   },
@@ -273,9 +281,17 @@
    "sitio": "menu",
    "tieneContenido": true,
    "dibuja": false
+  },
+  {
+   "id": "mundo",
+   "orden": 90,
+   "bytes": 342,
+   "sitio": "hub",
+   "tieneContenido": true,
+   "dibuja": true
   }
  ],
- "total": 954,
+ "total": 898,
  "semanaJuego": "2016/13",
  "record": "0-0",
  "accionesUnicas": [

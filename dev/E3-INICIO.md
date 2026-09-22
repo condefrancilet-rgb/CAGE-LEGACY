@@ -334,3 +334,79 @@ inicio dibuja en sus dos caras. Sin la red, eso se iba silencioso.
 | 3 | El casino se movió **desde el compositor**, sin abrir el módulo 33. |
 | 4 | `story` (9,95 pantallas) y `gym` (8,35) siguen **fuera del alcance de E3**. Anotadas para E5. |
 | 5 | `stats` dejó de ser un callejón sin salida en contenido —recibió las estadísticas del estilo—, pero **sigue sin salidas propias**. Eso es E5. |
+
+---
+
+## 12. SEGUNDA RONDA — el criterio de aceptación, medido de verdad
+
+La primera vez reporté «1,49 pantallas» y lo di por cerrado. Estaba midiendo el caso fácil.
+Medido como corresponde —dos estados, tres resoluciones, y **contra el pliegue**, que a
+360×640 son 583 px porque la barra se come 57—:
+
+| estado | 360×640 | 390×844 | 412×915 | «Avanzar» sin scroll | franja de avisos |
+|---|---|---|---|---|---|
+| semana normal | **1,40** | 1,04 | 1,00 | **SÍ** en las tres | — |
+| peor caso realista | **2,36** | 1,73 | 1,56 | **SÍ** en las tres | **SÍ** en las tres |
+
+El **peor caso realista** es: **pelea de título** contra el rival de nombre más largo del
+plantel, evento de nombre largo, y **tres avisos encendidos** (peso, equipo de contenido,
+instalaciones). Lo elegí a propósito incómodo: un peor caso elegido cómodo no mide nada.
+
+**Lo que fallaba y ya no.** En la primera ronda «Avanzar» acababa en **654 px** con el
+pliegue en 583 — o sea, **fuera de pantalla en semana normal**. Ahora acaba en **547 px en
+el peor caso**, con 36 px de margen.
+
+### Qué cambió para conseguirlo
+
+1. **Orden nuevo del inicio**, medido contra el pliegue:
+   cabecera · **avisos** · decisión de la semana · **Avanzar** — y debajo: estado · avisos
+   en detalle · el mundo. El estado del peleador estaba arriba y empujaba todo.
+2. **Franja de avisos**: una línea de señales bajo la cabecera. El detalle sigue en su
+   tarjeta más abajo; la **señal** ya no exige scroll. No lleva `onclick` a propósito:
+   saltar a la tarjeta movería el scroll, que es lo que I1 prohíbe.
+3. **«El mundo» pasó a tarjeta con orden 90**, detrás de los avisos: un titular no puede
+   empujar hacia abajo un aviso de peso o de deuda.
+4. **Compactado sin quitar información**: el ticker de la pelea en una línea (la bolsa y
+   los rounds primero, el nombre del evento es lo que se recorta), la explicación del
+   bloque sólo cuando **no** hay pelea firmada, y los botones de período sin envolver.
+
+## 13. Los 44 px, en toda la pantalla
+
+La barra inferior es el menú persistente, así que entra. Medían **43×70 px** — un píxel
+corto — desde antes de E3. Con `min-height:44px`:
+
+**0 objetivos táctiles por debajo de 44 px en todo el documento**, en las seis
+combinaciones de estado y resolución.
+
+## 14. Que el scroll no se haya mudado de casa
+
+Toda pantalla que recibió bloques del inicio, medida a 360×640 con el save congelado:
+
+| pantalla | antes de E3 | 1.ª ronda | **ahora** |
+|---|---|---|---|
+| `train` | 3,08 | 5,57 ← se había mudado el scroll | **1,75** |
+| `menu` | 1,43 | 4,03 | **1,21** |
+| `stats` | 2,92 | 4,42 | **1,85** |
+| `people` | 2,68 | 2,97 | **1,54** |
+| `bio` | 1,98 | 2,43 | **1,45** |
+| `hub` | 8,34 | 1,98 | **1,98** |
+
+**Ninguna pasa de 2 pantallas.** El mecanismo es una **sección plegable** (`<details>`,
+HTML plano: sin JS, sin estado que guardar, sin dependencias), con el resumen como objetivo
+táctil de 44 px. Las tarjetas mudadas a una misma pantalla se agrupan en **una** sección:
+con una por tarjeta, siete resúmenes de 49 px sumaban 343 px de cabeceras plegadas.
+
+## 15. Decisión 2: `identity` y `threads`, fundidas
+
+Las dos llevaban a `clcareer` con dos botones al mismo sitio. Ahora son **una** tarjeta,
+«Tu peleador y tu mundo», con un solo botón. Las dos originales siguen registradas y con
+sus cuerpos intactos (`CL.identityBody` / `CL.threadsBody`); lo único que cambió es que su
+sitio es `'off'` y las dibuja la nueva.
+
+## 16. Decisión 5 y el foco del bloque
+
+- La línea del foco vigente vive **dentro de «Avanzar»**, justo encima de
+  *1 mes / 3 meses / 1 año*, con un botón «Cambiar» que lleva a `train`. Quien avanza por
+  bloques ve en qué se le va el tiempo sin salir del inicio.
+- Es un **botón**, no un enlace `javascript:`: este archivo no usa URLs `javascript:` y
+  además la red del inventario cuenta botones — un enlace se le escapa.

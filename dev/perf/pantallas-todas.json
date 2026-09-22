@@ -1,7 +1,7 @@
 [
  {
   "real": "cldiag",
-  "alto": 7354,
+  "alto": 7333,
   "nodos": 394,
   "bytes": 16905,
   "botones": 3,
@@ -25,51 +25,6 @@
   "botones": 50,
   "chicos": 14,
   "nombre": "gym"
- },
- {
-  "real": "hub",
-  "alto": 5336,
-  "nodos": 329,
-  "bytes": 13508,
-  "botones": 42,
-  "chicos": 0,
-  "nombre": "ending"
- },
- {
-  "real": "hub",
-  "alto": 5336,
-  "nodos": 329,
-  "bytes": 13508,
-  "botones": 42,
-  "chicos": 0,
-  "nombre": "fight"
- },
- {
-  "real": "hub",
-  "alto": 5336,
-  "nodos": 329,
-  "bytes": 13508,
-  "botones": 42,
-  "chicos": 0,
-  "nombre": "fightresult"
- },
- {
-  "real": "hub",
-  "alto": 5336,
-  "nodos": 329,
-  "bytes": 13508,
-  "botones": 42,
-  "chicos": 0,
-  "nombre": "hub"
- },
- {
-  "real": "hub",
-  "alto": 5336,
-  "nodos": 329,
-  "bytes": 13508,
-  "botones": 42,
-  "chicos": 0,
-  "nombre": "mg"
  },
  {
   "real": "shop",
@@ -126,24 +81,6 @@
   "nombre": "create"
  },
  {
-  "real": "train",
-  "alto": 1972,
-  "nodos": 79,
-  "bytes": 4084,
-  "botones": 14,
-  "chicos": 0,
-  "nombre": "train"
- },
- {
-  "real": "stats",
-  "alto": 1870,
-  "nodos": 323,
-  "bytes": 9459,
-  "botones": 0,
-  "chicos": 0,
-  "nombre": "stats"
- },
- {
   "real": "endgame",
   "alto": 1811,
   "nodos": 92,
@@ -151,15 +88,6 @@
   "botones": 12,
   "chicos": 0,
   "nombre": "endgame"
- },
- {
-  "real": "people",
-  "alto": 1713,
-  "nodos": 143,
-  "bytes": 5413,
-  "botones": 0,
-  "chicos": 0,
-  "nombre": "people"
  },
  {
   "real": "gyms",
@@ -216,13 +144,49 @@
   "nombre": "hall"
  },
  {
-  "real": "bio",
+  "real": "hub",
   "alto": 1264,
-  "nodos": 78,
-  "bytes": 2640,
-  "botones": 3,
+  "nodos": 74,
+  "bytes": 2850,
+  "botones": 9,
   "chicos": 0,
-  "nombre": "bio"
+  "nombre": "ending"
+ },
+ {
+  "real": "hub",
+  "alto": 1264,
+  "nodos": 74,
+  "bytes": 2850,
+  "botones": 9,
+  "chicos": 0,
+  "nombre": "fight"
+ },
+ {
+  "real": "hub",
+  "alto": 1264,
+  "nodos": 74,
+  "bytes": 2850,
+  "botones": 9,
+  "chicos": 0,
+  "nombre": "fightresult"
+ },
+ {
+  "real": "hub",
+  "alto": 1264,
+  "nodos": 74,
+  "bytes": 2850,
+  "botones": 9,
+  "chicos": 0,
+  "nombre": "hub"
+ },
+ {
+  "real": "hub",
+  "alto": 1264,
+  "nodos": 74,
+  "bytes": 2850,
+  "botones": 9,
+  "chicos": 0,
+  "nombre": "mg"
  },
  {
   "real": "legacy",
@@ -252,6 +216,15 @@
   "nombre": "history"
  },
  {
+  "real": "stats",
+  "alto": 1181,
+  "nodos": 483,
+  "bytes": 14440,
+  "botones": 0,
+  "chicos": 0,
+  "nombre": "stats"
+ },
+ {
   "real": "contracts",
   "alto": 1179,
   "nodos": 51,
@@ -261,20 +234,47 @@
   "nombre": "contracts"
  },
  {
+  "real": "train",
+  "alto": 1123,
+  "nodos": 152,
+  "bytes": 7346,
+  "botones": 29,
+  "chicos": 0,
+  "nombre": "train"
+ },
+ {
+  "real": "people",
+  "alto": 985,
+  "nodos": 158,
+  "bytes": 6022,
+  "botones": 2,
+  "chicos": 0,
+  "nombre": "people"
+ },
+ {
+  "real": "bio",
+  "alto": 930,
+  "nodos": 109,
+  "bytes": 3777,
+  "botones": 3,
+  "chicos": 0,
+  "nombre": "bio"
+ },
+ {
   "real": "title",
-  "alto": 1013,
-  "nodos": 25,
-  "bytes": 1554,
+  "alto": 830,
+  "nodos": 27,
+  "bytes": 1656,
   "botones": 7,
   "chicos": 0,
   "nombre": "title"
  },
  {
   "real": "menu",
-  "alto": 917,
-  "nodos": 29,
-  "bytes": 1572,
-  "botones": 11,
+  "alto": 776,
+  "nodos": 119,
+  "bytes": 5284,
+  "botones": 27,
   "chicos": 0,
   "nombre": "menu"
  },
