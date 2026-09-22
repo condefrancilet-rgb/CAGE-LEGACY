@@ -54,6 +54,14 @@ const ESTADOS = [
       try{ saveGame(true); }catch(e){}
       if(typeof go==='function') go('title'); else { UI.screen='title'; render(); }
     } },
+  /* E3 mudo el foco de entrenamiento del inicio a «Entrenar»: hay que medir
+     las dos, porque lo que se saca de una aparece en la otra. */
+  { id:'train', prep: () => {
+      if(typeof startCareer === 'function') startCareer();
+      for(let i=0;i<12;i++){ try{ advanceWeek(); }catch(e){} }
+      if(typeof G!=='undefined' && G) G.pending = [];
+      if(typeof go==='function') go('train'); else { UI.screen='train'; render(); }
+    } },
   { id:'hub', prep: () => {
       if(typeof startCareer === 'function') startCareer();
       for(let i=0;i<12;i++){ try{ advanceWeek(); }catch(e){} }

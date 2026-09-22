@@ -4695,6 +4695,9 @@ function scrTrain(){
     h+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
   });
   h+='</div>';
+  /* E3: el foco vive acá. Va DESPUES del trabajo de la semana porque eso es
+     lo que se viene a hacer a esta pantalla; el foco es configuración. */
+  h+=focusCard();
   if(c && c.log.length){
     h+='<div class="card"><h3>Diario del campamento</h3><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>';
   }
@@ -6186,8 +6189,29 @@ function periodLabel(s){
     camp:'Empieza el campamento: a partir de acá el tiempo pasa semana a semana.',
     inj:'Te lesionaste entrenando.', retired:'Tu carrera terminó.'}[s] || 'Bloque completado.';
 }
-function periodPanel(){
-  var f=focusGet(), p=G.player;
+/* ==========================================================================
+   E3 — EL FOCO DE ENTRENAMIENTO VIVE EN «ENTRENAR», NO EN EL INICIO
+   --------------------------------------------------------------------------
+   Medido a 360x640: esta tarjeta ocupaba 1.143 px, el 20 % del alto del
+   inicio, y traía 36 de sus 71 botones — 33 de ellos por debajo de los 44 px
+   de objetivo táctil, o sea TODOS los botones chicos del inicio menos los de
+   la barra. Y no es una decisión de la semana: es configuración que se elige
+   una vez y se revisa cada tanto.
+   Se parte en dos y no se pierde nada:
+     focusCard()    — la tarjeta entera, ahora dentro de scrTrain()
+     focusResumen() — una línea en el inicio con lo elegido y un botón
+   Las mismas 36 acciones, en la pantalla que se llama Entrenar. La condición
+   de cuándo existen no cambia: la misma con la que el inicio dibujaba el
+   panel (fuera de campamento con pelea, y sin retirarse).
+   Fijado por dev/tests/13-inventario.js, que exige que las 82 acciones del
+   inicio sigan alcanzables y a no más de dos toques.
+   ========================================================================== */
+function focusVisible(){
+  return !!(G && G.player && !G.player.retired && !(G.camp && G.nextFight));
+}
+function focusCard(){
+  if(!focusVisible()) return '';
+  var f=focusGet();
   var names = {}; FOCUS_OPTS.forEach(function(k){ names[k]=TRAIN[k].n; });
   var h='<div class="card"><div class="hdr"><h3 style="margin:0">Foco de entrenamiento</h3>'+
     '<span class="tag on">'+({ligera:'carga ligera',normal:'carga normal',dura:'carga dura'})[f.load]+'</span></div>'+
@@ -6195,7 +6219,7 @@ function periodPanel(){
   [['a','Principal (55%)'],['b','Secundario (30%)'],['c','Terciario (15%)']].forEach(function(s){
     h+='<div class="xs dim2" style="margin-top:6px">'+s[1]+'</div><div>';
     FOCUS_OPTS.forEach(function(k){
-      h+='<button class="btn '+(f[s[0]]===k?'sel':'')+'" style="display:inline-block;width:auto;margin:0 5px 5px 0;padding:9px 12px;min-height:38px;font-size:13px" onclick="focusSet(\''+s[0]+'\',\''+k+'\')">'+names[k]+'</button>';
+      h+='<button class="btn '+(f[s[0]]===k?'sel':'')+'" style="display:inline-block;width:auto;margin:0 5px 5px 0;padding:9px 12px;min-height:44px;font-size:13px" onclick="focusSet(\''+s[0]+'\',\''+k+'\')">'+names[k]+'</button>';
     });
     h+='</div>';
   });
@@ -6204,6 +6228,19 @@ function periodPanel(){
       return '<button class="btn '+(f.load===l?'sel':'')+'" style="text-align:center" onclick="focusSet(\'load\',\''+l+'\')">'+l+'</button>';
     }).join('')+'</div>';
   h+='<p class="xs dim2">Carga dura sube más rápido pero acumula fatiga y riesgo de lesión. Ligera conserva el cuerpo y desarrolla menos.</p></div>';
+  return h;
+}
+/* Lo que queda en el inicio: qué elegiste, y por dónde cambiarlo. */
+function focusResumen(){
+  if(!focusVisible()) return '';
+  var f=focusGet();
+  return '<div class="card"><div class="hdr"><span class="b">Foco</span>'+
+    '<span class="tag on">'+({ligera:'carga ligera',normal:'carga normal',dura:'carga dura'})[f.load]+'</span></div>'+
+    '<p class="sm dim" style="margin:0 0 6px">'+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+'</p>'+
+    '<button class="btn" onclick="go(\'train\')">Cambiar el foco</button></div>';
+}
+function periodPanel(){
+  var h=focusResumen();
 
   h+='<div class="card hi"><h3>Dejar correr el tiempo</h3>'+
     '<p class="sm dim">Se interrumpe solo si aparece un evento, una oferta, una lesión o el inicio de un campamento.</p>'+

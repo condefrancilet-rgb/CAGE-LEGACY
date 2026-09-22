@@ -2,7 +2,8 @@
  "generado": "dev/make-inventario.js",
  "nota": "Inventario del inicio ANTES de E3. Cada accion tiene que seguir alcanzable despues.",
  "alcance": [
-  "hub"
+  "hub",
+  "train"
  ],
  "acciones": [
   {
