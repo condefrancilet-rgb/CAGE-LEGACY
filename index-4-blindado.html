@@ -50,9 +50,15 @@ p{margin:0 0 10px}
 .btn small{display:block;color:var(--dim);font-size:12.5px;font-weight:400;margin-top:3px}
 .btn:disabled{opacity:.45}
 .grid{display:grid;gap:8px}
-.g2{grid-template-columns:1fr 1fr}
-.g3{grid-template-columns:repeat(3,1fr)}
-.g4{grid-template-columns:repeat(4,1fr)}
+/* minmax(0,1fr) y no 1fr: por defecto una celda de grid no baja de su
+   contenido (min-width:auto), asi que una palabra larga -«Automatico»,
+   «Peso Pluma»- ensancha la columna y la rejilla desborda la pantalla. Medido:
+   el menu desbordaba 15 px a 360 px de ancho, y el ranking hasta 83 px cuando
+   le tocaba una division de nombre largo. Venia de antes de E3; aparecio al
+   barrer las 35 pantallas en las tres resoluciones. */
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:520px){.g4{grid-template-columns:repeat(2,1fr)}}
 .row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #1f2a36;font-size:14px}
 .row:last-child{border-bottom:0}
@@ -4701,6 +4707,8 @@ function scrTrain(){
   if(c && c.log.length){
     h+='<div class="card"><h3>Diario del campamento</h3><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>';
   }
+  /* E3: las tarjetas que el mapa manda a esta pantalla (ver CL.CARD_HOME). */
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('train');
   return h;
 }
 function doWeek(k){
@@ -5222,7 +5230,9 @@ function scrPeople(){
     });
     h+='</div>';
   }
-  return hookFilter('screen:people', h, {});
+  /* E3: idem para Gente (ver CL.CARD_HOME). */
+  return hookFilter('screen:people', h, {}) +
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('people') : '');
 }
 function coachLine(c){
   var m=memRef(c);
@@ -5395,7 +5405,11 @@ function scrMenu(){
     });
     h+='</div>';
   }
-  return hookFilter('screen:menu', h, {});
+  /* E3: las tarjetas que el mapa manda al menu (ver CL.CARD_HOME). Van
+     DESPUES del filtro, para que los suscriptores de screen:menu sigan viendo
+     exactamente el mismo html que veian antes. */
+  return hookFilter('screen:menu', h, {}) +
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('menu') : '');
 }
 /* [código muerto eliminado: confirmRetire v1 — la redeclaración posterior lo pisaba por hoisting] */
 var SAVEKEY='cagelegacy_v1';
@@ -16407,6 +16421,56 @@ CL.hubCard = function(id, fn, order){
   CL.hubCards.sort(function(x,y){ return x.o-y.o; });
 };
 
+/* ==========================================================================
+   E3 — CADA TARJETA TIENE UN SITIO, Y LO DECIDE EL NUCLEO
+   --------------------------------------------------------------------------
+   El inicio media 8,84 pantallas a 360x640 porque TODA tarjeta registrada se
+   dibujaba ahi: no habia forma de decir "esto va en Entrenar". Ahora la hay,
+   y vive aca, en el compositor, no en las tarjetas.
+
+   Por que importa que viva aca: la tarjeta del casino se registra DENTRO del
+   modulo 33, que no se toca ni una linea. Como el que decide donde se dibuja
+   es el compositor, la tarjeta se puede mudar sin abrir ese modulo: su fn()
+   se sigue llamando tal cual. Es el "se puede proteger desde fuera" de la
+   frontera, aplicado a la colocacion.
+
+   Mover una tarjeta es una entrada en esta tabla y nada mas. Lo que NO hace
+   es cambiar cuando aparece: cada fn conserva su propia condicion.
+   Protegido por dev/tests/13-inventario.js: toda accion del inicio tiene que
+   seguir alcanzable y a no mas de dos toques.
+   ========================================================================== */
+CL.CARD_HOME = {
+  /* configuracion del entrenamiento: se elige una vez, no se decide cada semana */
+  decisiones:'train',    /* enfoque y gasto semanal — 532 px, 10 botones     */
+  finanzas:'train',      /* el gasto medido, pegado a donde se elige         */
+  pilares:'train',       /* pilares del campamento — preparacion            */
+  tecnicas:'train',      /* arbol de tecnicas                               */
+  /* gente */
+  circulo:'people',      /* vinculos y grupo                                */
+  publico:'bio',         /* quien te sigue: es tu ficha publica             */
+  /* archivo y tienda: se visitan, no se atienden */
+  identity:'menu', threads:'menu',   /* las dos llevaban al mismo sitio     */
+  meta:'menu', historia:'menu', inversion:'menu', legado:'menu',
+  casino:'menu'          /* la tarjeta es del modulo 33 y no se toca: lo que
+                            cambia es donde la llama el compositor          */
+  /* Se quedan en el inicio, y por eso no estan aca: auto_advance (avanzar la
+     semana), vida (las actividades que consumen la semana) y los avisos que
+     solo aparecen cuando tienen algo que decir — peso, deuda, ufc, sagas,
+     observado, content_team, instalaciones. */
+};
+CL.cardHome = function(id){ return CL.CARD_HOME[id] || 'hub'; };
+CL.renderCards = function(pantalla){
+  var h = '';
+  for(var i=0;i<CL.hubCards.length;i++){
+    var c = CL.hubCards[i];
+    if(CL.cardHome(c.id) !== pantalla) continue;
+    /* misma clave de error que antes ('hub/<id>'): los diagnosticos guardados
+       siguen significando lo mismo aunque la tarjeta se haya mudado. */
+    h += (safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '');
+  }
+  return h;
+};
+
 /* --- estado persistente -------------------------------------------------- */
 CL.DEF = function(){
   return {
@@ -18030,10 +18094,7 @@ CL.year = function(){
     h = safeRun('hub/coreStats', function(){
       return insertAfterTopbar(h, coreStatsCard(G.player,false));
     }, function(){ return h; }, true) || h;
-    for(var i=0;i<CL.hubCards.length;i++){
-      var c=CL.hubCards[i];
-      h += (safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '');
-    }
+    h += CL.renderCards('hub');
     return h;
   };
 
@@ -24992,6 +25053,8 @@ function scrBio(){
      '<div class="grid g2"><button class="btn pri" onclick="META.share()">Compartir carrera</button>'+
      '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>';
 
+  /* E3: las tarjetas que el mapa manda a la ficha publica (CL.CARD_HOME). */
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('bio');
   h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';
   return h;
 }

@@ -62,6 +62,18 @@ const ESTADOS = [
       if(typeof G!=='undefined' && G) G.pending = [];
       if(typeof go==='function') go('train'); else { UI.screen='train'; render(); }
     } },
+  { id:'menu', prep: () => {
+      if(typeof startCareer === 'function') startCareer();
+      for(let i=0;i<12;i++){ try{ advanceWeek(); }catch(e){} }
+      if(typeof G!=='undefined' && G) G.pending = [];
+      if(typeof go==='function') go('menu'); else { UI.screen='menu'; render(); }
+    } },
+  { id:'people', prep: () => {
+      if(typeof startCareer === 'function') startCareer();
+      for(let i=0;i<12;i++){ try{ advanceWeek(); }catch(e){} }
+      if(typeof G!=='undefined' && G) G.pending = [];
+      if(typeof go==='function') go('people'); else { UI.screen='people'; render(); }
+    } },
   { id:'hub', prep: () => {
       if(typeof startCareer === 'function') startCareer();
       for(let i=0;i<12;i++){ try{ advanceWeek(); }catch(e){} }

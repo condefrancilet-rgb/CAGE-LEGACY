@@ -3,7 +3,10 @@
  "nota": "Inventario del inicio ANTES de E3. Cada accion tiene que seguir alcanzable despues.",
  "alcance": [
   "hub",
-  "train"
+  "train",
+  "menu",
+  "people",
+  "bio"
  ],
  "acciones": [
   {
