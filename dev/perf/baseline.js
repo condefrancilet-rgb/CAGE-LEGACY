@@ -11,12 +11,16 @@ const A = require('../autopilot.js');
 
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i >= 0 ? process.argv[i+1] : d; };
 const OUT = arg('out', path.join(__dirname, 'baseline.json'));
+/* --file mide OTRA copia del juego. Sin esto no hay comparacion honesta: los
+   ms dependen de la carga de la maquina, asi que las dos versiones tienen que
+   medirse en la misma corrida, una detras de otra. */
+const ARCHIVO = arg('file', null);
 const pct = (v, p) => { const s = v.slice().sort((a,b)=>a-b); return s[Math.min(s.length-1, Math.floor(s.length*p))]; };
 const med = v => v.reduce((a,b)=>a+b,0)/v.length;
 
 const R = { cuando: new Date().toISOString(), archivo: null, semillas: [] };
 R.archivo = require('node:crypto').createHash('md5')
-  .update(fs.readFileSync(path.join(__dirname,'..','..','index-4-blindado.html'))).digest('hex');
+  .update(fs.readFileSync(ARCHIVO || path.join(__dirname,'..','..','index-4-blindado.html'))).digest('hex');
 
 /* ---------- 1. advanceWeek: media y p95 en 300 semanas ---------- */
 const msSemana = [];
@@ -24,7 +28,7 @@ const tamSave = {};
 const msSave = [], msLoad = [];
 for(let i = 0; i < 3; i++){
   const seed = 700 + i*29, meta = 8000 + i*173;
-  const h = H.boot({ seed });
+  const h = H.boot({ seed, file: ARCHIVO });
   H.startCareer(h, { metaSeed: meta, style:'mma', div:'LW', age:22 });
   const c = h.ctx;
   for(let s = 1; s <= 300; s++){
@@ -55,10 +59,13 @@ R.save = { ms_media: +med(msSave).toFixed(2), load_ms_media: +med(msLoad).toFixe
 
 /* ---------- 2. render del inicio: ms y tamano del html ---------- */
 {
-  const h = H.boot({ seed: 777 });
+  const h = H.boot({ seed: 777, file: ARCHIVO });
   H.startCareer(h, { metaSeed: 8888, style:'mma', div:'LW', age:22 });
   const c = h.ctx;
   A.correrCarrera(h, { maxWeeks: 60, politica:'basica', seedPolitica: 777 });
+  /* sin esto se mide el hub COLAPSADO por un evento pendiente (14 nodos), que
+     es el caso facil y no dice nada. Me paso ya una vez con hub-dom.js. */
+  c.G.pending = [];
   const ms = [], largos = [];
   for(let i = 0; i < 40; i++){
     const t0 = process.hrtime.bigint();
