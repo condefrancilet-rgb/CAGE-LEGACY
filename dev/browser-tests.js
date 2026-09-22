@@ -9,7 +9,12 @@ const fs = require('node:fs');
 
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const PW     = '/opt/node22/lib/node_modules/playwright';
-const JUEGO  = 'file://' + path.join(__dirname, '..', 'index-4-blindado.html');
+/* --file apunta la suite a otra copia del juego. Existe para poder VERIFICAR
+   estas pruebas con mutantes: se muta una copia y tienen que ponerse rojas. */
+const ARCHIVO = process.argv.includes('--file')
+  ? path.resolve(process.argv[process.argv.indexOf('--file')+1])
+  : path.join(__dirname, '..', 'index-4-blindado.html');
+const JUEGO  = 'file://' + ARCHIVO;
 
 /* viewports exigidos: 360x640 vertical y horizontal, mas dos telefonos reales */
 const VIEWPORTS = [
@@ -81,32 +86,55 @@ async function main(){
     anota(vp.n + ' · ' + barrido.n + ' pantallas sin excepcion', barrido.malas.length === 0, JSON.stringify(barrido.malas).slice(0, 200));
     anota(vp.n + ' · sin desborde horizontal', barrido.desborde.length === 0, JSON.stringify(barrido.desborde).slice(0, 200));
 
-    /* --- I1 en navegador real: interaccion en sitio no mueve el scroll --- */
+    /* --- I1 en navegador real: interaccion en sitio no mueve el scroll ---
+       Esta prueba media SIEMPRE en el hub con focusSet(). E3 dejo el hub en
+       1,49 pantallas y mudo focusSet a «Entrenar», asi que a 412x915 el hub
+       dejo de dar margen de scroll y la prueba se auto-salto: dos aserciones
+       de I1 pasaron a "NO MEDIDO" y siguieron contando como VERDES. Un aviso
+       que se apaga solo no es un aviso. Ahora:
+         · se busca una pantalla con margen de scroll REAL y con un control en
+           sitio que exista ahi de verdad (se comprueba en el DOM);
+         · si no hay ninguna, la prueba FALLA. No se salta.                 */
     const scroll = await page.evaluate(async () => {
       const esperar = ms => new Promise(r => setTimeout(r, ms));
-      go('hub'); await esperar(150);
-      const alto = document.documentElement.scrollHeight;
-      if(alto < window.innerHeight + 300) return { saltado: true, alto };
-      window.scrollTo(0, 400); await esperar(120);
-      const antes = window.scrollY;
-      const pantallaAntes = UI.screen;
-      focusSet('a', 'wrest');                      // interaccion en sitio
-      await esperar(200);
-      const enSitio = { antes, despues: window.scrollY, mismaPantalla: UI.screen === pantallaAntes };
-      window.scrollTo(0, 400); await esperar(120);
-      const antesNav = window.scrollY;
-      go('rank'); await esperar(200);
-      return { saltado: false, enSitio, nav: { antes: antesNav, despues: window.scrollY } };
+      /* [pantalla, selector de un control que re-dibuja SIN navegar] */
+      const candidatas = [
+        ['train', 'button[onclick^="focusSet("]'],
+        ['menu',  'button[onclick^="setPerf("]'],
+        ['hub',   'button[onclick^="clSetFocus("]'],
+      ];
+      for(const [pant, sel] of candidatas){
+        go(pant); await esperar(150);
+        if(document.documentElement.scrollHeight < window.innerHeight + 300) continue;
+        const btn = document.querySelector('#app ' + sel);
+        if(!btn) continue;
+        window.scrollTo(0, 400); await esperar(120);
+        const antes = window.scrollY, pantallaAntes = UI.screen;
+        btn.click();                                  // interaccion en sitio
+        await esperar(200);
+        const enSitio = { antes: antes, despues: window.scrollY,
+                          mismaPantalla: UI.screen === pantallaAntes };
+        window.scrollTo(0, 400); await esperar(120);
+        const antesNav = window.scrollY;
+        go('rank'); await esperar(200);
+        return { medido: true, pantalla: pant, enSitio: enSitio,
+                 nav: { antes: antesNav, despues: window.scrollY } };
+      }
+      return { medido: false,
+               detalle: candidatas.map(function(c){
+                 go(c[0]);
+                 return c[0] + ' alto=' + document.documentElement.scrollHeight +
+                        ' control=' + (document.querySelector('#app ' + c[1]) ? 'si' : 'no');
+               }).join(' · ') };
     });
-    if(scroll.saltado){
-      anota(vp.n + ' · T-SCROLL en navegador', true, 'NO MEDIDO: el hub no da margen de scroll a ' + vp.n);
-    } else {
-      anota(vp.n + ' · interaccion en sitio conserva el scroll (I1)',
-        scroll.enSitio.mismaPantalla && scroll.enSitio.despues === scroll.enSitio.antes,
-        scroll.enSitio.antes + ' -> ' + scroll.enSitio.despues);
-      anota(vp.n + ' · navegar sube al inicio (I1)',
-        scroll.nav.despues === 0, scroll.nav.antes + ' -> ' + scroll.nav.despues);
-    }
+    anota(vp.n + ' · interaccion en sitio conserva el scroll (I1)',
+      scroll.medido && scroll.enSitio.mismaPantalla && scroll.enSitio.despues === scroll.enSitio.antes,
+      scroll.medido ? (scroll.pantalla + ': ' + scroll.enSitio.antes + ' -> ' + scroll.enSitio.despues)
+                    : 'SIN PANTALLA DONDE MEDIR I1 — ' + scroll.detalle);
+    anota(vp.n + ' · navegar sube al inicio (I1)',
+      scroll.medido && scroll.nav.despues === 0,
+      scroll.medido ? (scroll.nav.antes + ' -> ' + scroll.nav.despues)
+                    : 'SIN PANTALLA DONDE MEDIR I1 — ' + scroll.detalle);
 
     /* --- targets tactiles (F17) --- */
     const tactil = await page.evaluate(() => {
