@@ -23,20 +23,37 @@ leía nunca). Medido:
 
 **Sigue sin ser concluyente contra el margen de 5 pp, pero por muy poco.**
 
-**Corrección al número que di antes.** Dije que decidirlo exigía ~2.200 carreras por brazo.
-Ese cálculo salía del análisis **sin parear**, que tira a la basura el hecho de que los dos
-brazos corren las mismas semillas. Con el pareo, a n=500 el EE del % de campeones baja de
-**2,53 pp a 1,55 pp**. La cuenta, con el δ actual de −2,00 pp y pidiendo que el intervalo
-entero entre en ±5 pp (o sea 2·EE ≤ 3,00 pp):
+**Dos correcciones a los números que di, y la segunda es mía otra vez.**
 
-- pareado: n ≈ 500 · (1,55/1,50)² ≈ **534 por brazo**
-- sin parear: n ≈ 500 · (2,53/1,50)² ≈ **1.422 por brazo**
+*Primera:* dije que decidirlo exigía ~2.200 carreras por brazo. Ese cálculo salía del
+análisis **sin parear**, que tira a la basura el hecho de que los dos brazos corren las
+mismas semillas. Con el pareo, a n=500 el EE del % de campeones baja de **2,53 pp a 1,55 pp**.
 
-Con las 500 que ya corrimos estamos a ~35 carreras del umbral. **Aviso honesto:** esa
-proyección se apoya en el δ estimado; si el verdadero está más cerca de −3 pp, el n exigido
-sube rápido (ahí nacía mi cifra vieja). Una corrida limpia de **n=800 por brazo**, declarada
-de antemano y sin mirar a mitad de camino —mirar y seguir corriendo hasta que dé es hacer
-trampa—, la cierra en ~1,5 h de reloj en vez de 6.
+*Segunda:* entonces dije **~534 por brazo**, y eso también está mal. 534 es el n con el que
+el intervalo cerraría **si la estimación volviera a dar exactamente −2,00 pp**, y eso pasa
+alrededor de la mitad de las veces. Calcular el n con el que el IC cierra *en el punto
+estimado* no es calcular el n con el que la prueba **funciona**: es diseñar para el caso
+mediano y llamarlo garantía.
+
+La cuenta correcta es la potencia de la prueba de equivalencia. Con margen ±5 pp y un efecto
+real de −2 pp, el lado que ata es el inferior: hace falta `δ̂ − 1,96·EE > −5`, así que
+`potencia = P(Z > 1,96 − 3/EE)`. Derivado (no copiado):
+
+| potencia | EE necesario | n pareado por brazo |
+|---|---|---|
+| **49 %** | 1,55 pp — *lo que ya tenemos a n=500* | 500 |
+| 52 % | 1,50 pp | **534** ← mi cifra equivocada |
+| 80 % | 1,071 pp | **~1.048** |
+| 90 % | 0,926 pp | ~1.403 |
+
+Sin parear, para la misma potencia del 80 %, harían falta ~2.790 por brazo. Así que el
+pareo **sí** reduce el coste a la mitad larga; lo que no hace es dejarlo al alcance de las
+500 que ya corrimos.
+
+**Regla, si alguna vez se corre:** una corrida **nueva**, con el n fijado **de antemano**
+(1.050 por brazo para 80 %). **Nunca sumar carreras a las 500 hasta que cierre.** Mirar el
+resultado y seguir corriendo hasta que dé bien sesga el veredicto hacia «equivalente»: es
+parada opcional, y convierte la prueba en un trámite que siempre aprueba.
 
 **No la lancé:** la instrucción fue matar ese A/B y mandar la pregunta acá. Queda el número
 corregido para que la decisión se tome con el coste real.

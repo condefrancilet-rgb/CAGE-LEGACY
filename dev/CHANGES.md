@@ -1815,18 +1815,91 @@ corrida de cada tres **sobre el mismo archivo**, porque sembrar `Math.random` no
 creación de carrera lee el DOM y usa `Date.now()`—. Ahora fija el borrador, como el harness,
 y repite 3 de 3. El hallazgo de `rank` era ruido; el de `menu`, real.
 
+---
+
+# Después de E3: los cuatro encargos de revisión
+
+## 1. Los 44 px, verificados en las pantallas nuevas
+
+La objeción era buena: mudar el foco no arregla sus 33 botones chicos. Medido en las seis
+pantallas que tocó E3, contando sólo los botones de `#app`:
+
+| pantalla | botones | alto mínimo | por debajo de 44 px |
+|---|---|---|---|
+| `hub` | 7 | 46 px | **0** |
+| `train` | 60 | **44 px** | **0** |
+| `menu` | 27 | 46 px | **0** |
+| `people` · `bio` · `stats` | 2 · 3 · 0 | 62 · 46 px | **0** |
+
+Los únicos objetivos por debajo de 44 px que quedan en todo el juego son **los cinco de la
+barra inferior**, que no son de E3.
+
+## 2. Los dos sistemas de foco: medidos antes de diseñar nada → **D-017**
+
+Ninguno está muerto y **ninguno pisa al otro**: son dos ejes del mismo sistema.
+`dev/focos.js`, 12 semillas por pregunta, dos brazos con la misma semilla.
+
+| | resultado |
+|---|---|
+| **A** (`focusSet`) cambia un bloque de 13 semanas | **SÍ, 12/12** |
+| **A**: la carga cambia el bloque | **SÍ, 12/12** |
+| **B** (`clSetFocus`) cambia una semana suelta | **SÍ, 12/12** |
+| **B** también se aplica **dentro** del bloque | **SÍ, 12/12** |
+| **A** se aplica a una semana suelta | **NO, 0/12** |
+
+A decide **qué** se entrena cuando el tiempo pasa en bloques (sólo lo lee `advancePeriod`);
+B decide **cómo** se entrena cada acción (lo lee el enganche `train`, también dentro del
+bloque). Componen, no compiten. **No es bug y no se funden.**
+
+## 3. El coste del A/B de campeones: mi ~534 también estaba mal → **F14 §2**
+
+534 es el n con el que el IC cerraría *si la estimación volviera a dar exactamente −2,00*,
+y eso pasa la mitad de las veces. Derivado: ese n da **51,6 % de potencia**. Para **80 %**
+hacen falta **~1.048** carreras pareadas por brazo (sin parear, ~2.790). Y la regla:
+corrida **nueva**, n fijado **de antemano**, **nunca** sumar carreras a las 500 — eso es
+parada opcional y sesga hacia «equivalente».
+
+## 4. La red del rollback, antes de tocar `TX.snapshot` → `dev/tests/14-rollback.js`
+
+`TX.snapshot` es el 42,5 % de `advanceWeek`, pero **no es grasa**: es lo que hace que una
+semana sea todo-o-nada. Se optimiza **cómo** se hace, nunca **si** se hace. Así que primero
+la red, **13 pruebas**, que fijan la propiedad y no la implementación:
+
+- fallo inyectado a **cuatro profundidades** del avance (`worldTick`, `historicalUfcTick`,
+  `queueEvent`, `teamCost`) → el estado persistible queda **idéntico**, campo a campo y por
+  huella;
+- una clave que la semana fallida **agrega** no sobrevive;
+- **la cola de eventos vuelve entera y con sus manejadores vivos** (es el único sitio donde
+  el estado lleva funciones, y `JSON.stringify` las perdería);
+- `G.player` sigue siendo **el mismo objeto** del plantel (JSON idéntico no basta: si fuera
+  una copia, mover al jugador dejaría de verse en el mundo);
+- el fallo **se registra**, no se silencia; y la partida sigue viva y avanza exactamente una
+  semana al reintentar;
+- un control que exige que una semana **sin** fallo sí cambie el estado, y otro que exige
+  que el comparador detecte un solo campo movido.
+
+**Y fijó una política que yo había supuesto mal.** Mis dos primeras inyecciones apuntaban a
+enganches, y el test falló con *«el rollback dejó 6 campos cambiados»*. El rollback no
+estaba roto: **un enganche de `week` que falla no deshace la semana** — `hookRun` lo aísla,
+lo anota en `G.hookFails` y sigue. Es política deliberada, y `HOOK_ABORT` enumera los
+eventos que sí abortan. La red ahora fija **las dos** por separado, incluido el caso de un
+enganche de `normalize` (que sí aborta) fallando dentro de la semana.
+
+**Verificada con 8 mutantes, 8 rojos.** Tres de ellos —`restore` deja de borrar claves
+sobrantes, olvida `G.pending`, no repone al jugador— pasaban en **verde** con mi primera
+versión de la red. No porque el código estuviera mal, sino porque mis escenarios no
+agregaban claves, no tocaban la cola y no miraban la identidad del objeto. **Los tres
+huecos eran míos**, y sólo aparecieron al mutar mi propia red.
+
 ## Siguiente paso exacto
 
-**E4 — rendimiento.** El mapa ya está medido (`dev/perf/perfil.json`), en este orden:
+**E4 — rendimiento**, ya con red. Orden por coste medido (`dev/perf/perfil.json`):
 
-1. **`TX.snapshot` es el 42,5 % de `advanceWeek`** (`:4055`): un `JSON.stringify(G)` de la
-   partida entera, cada semana. Es la red de transacciones, no simulación.
-2. **`repairCritical/revisar`, 15,1 %** (`:6372`).
+1. **`TX.snapshot`, 42,5 % de `advanceWeek`** (`:4055`). Ya se puede tocar: la red de
+   `14-rollback.js` prueba la propiedad, no la implementación.
+2. **`repairCritical/revisar`, 15,1 %** (`:6372`) — necesita su propia red antes.
 3. **`loadGame` se va el 22,1 % en volver a serializar** (117 ms por carga).
 4. `saveSerialize`: 99,3 % dentro del serializador (25 ms).
 
-Antes de tocar nada de eso hace falta una red de caracterización propia, como en E2 y E3:
-el golden master cubre el resultado, no el coste.
-
-Estado: **suite 170 verdes**, navegador 28 verdes, golden master idéntico, desborde cero,
+Estado: **suite 183 verdes**, navegador 28 verdes, golden master idéntico, desborde cero,
 las 82 acciones del inventario alcanzables y ninguna a más de dos toques.

@@ -302,3 +302,50 @@ prueba que dejó fuera a `fightFinishResolve`/`sparFinishResolve` (precedente de
 en ese camino nada baja la vida. Lo único que toca es `drain`, y `drain` sólo modifica
 `stam` —`G.fight[side].stam = clamp(...)`—, nunca `hp`. Queda dicho para que nadie lo
 "arregle" creyendo que es un hueco.
+
+---
+
+## D-017 — Los dos sistemas de foco de entrenamiento: los dos están vivos, y no se pisan
+
+**La pregunta.** El inicio tenía **dos** bloques de foco de entrenamiento a la vez: uno de
+36 botones (`focusSet`) y otro de 10 (`clSetFocus` + `clSetSpend`). Antes de decidir dónde
+vive cada uno hay que saber si los dos hacen algo, y si uno anula al otro. Si uno estuviera
+muerto o pisara al otro, sería un bug para E5, no una cuestión de maquetación.
+
+**No se dedujo leyendo: se midió.** `dev/focos.js`, 12 semillas por pregunta, dos brazos
+idénticos salvo el ajuste que se mide, misma semilla en los dos. Se compara la foto de los
+stats del jugador más fatiga y daño, antes y después.
+
+| pregunta | resultado |
+|---|---|
+| **A** (`focusSet` → `G.focus`) cambia un bloque de 13 semanas | **SÍ — 12/12 carreras** |
+| **A**: la carga (ligera/dura) cambia el bloque | **SÍ — 12/12** |
+| **B** (`clSetFocus` → `CL.S().focus`) cambia una semana suelta | **SÍ — 12/12** |
+| **B** también se aplica **dentro** de un bloque | **SÍ — 12/12** |
+| **A** se aplica a una semana suelta | **NO — 0/12** |
+
+Ejemplo de la primera: con foco `box/box/box` contra `wrest/wrest/wrest`, misma semilla,
+el bloque de 13 semanas deja `boxing 47` contra `39` y `wrestling 44` contra `51`.
+
+**Qué son en realidad.** No son dos sistemas que compiten: son **dos ejes de un mismo
+sistema**, y cada uno lo lee un consumidor distinto.
+
+- **A decide QUÉ se entrena** cuando el tiempo pasa en bloques. Lo leen `focusWeights()` y
+  `loadMult()`, y a esos **sólo los llama `advancePeriod()`**.
+- **B decide CÓMO se entrena** cada acción: multiplicador, fatiga, riesgo y el gasto
+  semanal. Lo lee el enganche `CL.on('train','enfoque')`, que corre en **toda** acción de
+  entrenamiento — también en las que el bloque dispara por dentro.
+
+Por eso B se aplica dentro del bloque y A no se aplica a la semana suelta: no es que uno
+pise al otro, es que **componen**. En un bloque, A elige las tres disciplinas y la carga, y
+B modula cada una de esas semanas.
+
+**Decisión: ninguno es un bug, y NO se funden en E3.** E3 movió los dos a `train` sin
+tocarles una línea de lógica. Fundirlos sería cambiar comportamiento, y encima borraría una
+distinción que existe de verdad.
+
+**Lo que sí queda anotado, y es de diseño, no de código:** un jugador que nunca usa
+«1 mes / 3 meses / 1 año» **nunca usa el sistema A**. El bloque más grande que tenía el
+inicio (1.143 px, 36 botones) gobernaba únicamente el camino de los bloques. Eso refuerza
+la mudanza, no la contradice. Si algún día se quiere que A pese siempre, es una decisión de
+balance (F14), no una consolidación.
