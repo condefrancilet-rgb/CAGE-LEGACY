@@ -1,6 +1,9 @@
 # E3 — Reorganizar el inicio · INVENTARIO Y MAPA PROPUESTO
 
-Estado: **esperando OK**. Nada de la interfaz está tocado.
+> **ESTADO: E3 CERRADO.** El mapa se aprobó y está implementado. Lo de abajo es el
+> inventario y el mapa tal como se enviaron, sin retocar; el resultado medido está en
+> la sección 11, al final, y el relato en `dev/CHANGES.md`.
+
 Todo lo de acá está medido, no argumentado. Herramientas y salidas:
 
 | herramienta | qué mide | salida |
@@ -266,3 +269,68 @@ Las dos son de la tarjeta ***Tu círculo*** — el bloque #14 del inventario, qu
 a `people`. O sea que el bloque más caro de dibujar del inicio es uno de los que el mapa ya
 se llevaba por razones de interfaz. **No cambia la propuesta**, pero conviene saberlo: si el
 mapa se aprueba, E4 empieza con parte del trabajo hecho.
+
+---
+
+## 11. RESULTADO — qué pasó de verdad
+
+| pantalla | antes | después | objetivo |
+|---|---|---|---|
+| **inicio (`hub`)**, 360×640 | **8,84** pantallas · 5.655 px | **1,49** · 954 px | ≤ 1,5 ✓ |
+| inicio, 390×844 | 6,35 | 1,09 | ✓ |
+| inicio, 412×915 | 5,64 | 1,00 | ✓ |
+| **portada (`title`)** con carrera, 360×640 | **1,58** | **1,30** | ≤ 1,5 ✓ |
+| portada virgen, 360×640 | 1,47 | 1,19 | ✓ |
+
+| medida del inicio | antes | después |
+|---|---|---|
+| bloques | 21 | **5** |
+| nodos | 327 | **59** |
+| botones | 76 | **12** |
+| táctiles por debajo de 44 px | 38 | **5** (los cinco de la barra) |
+| acciones visibles a la vez | 70 | 7 |
+
+En **semana de pelea** el inicio queda en 1.294 px (2,02 pantallas): se suman el bloque
+de la pelea y las cinco actividades que consumen la semana. Todas son decisiones de esa
+semana, así que el mapa las deja donde están. Es la cara más cargada del inicio y está
+medida: `dev/perf/hub-inventario-save.json`.
+
+### Adónde fue cada cosa, ya hecho
+
+`train` ← foco de entrenamiento · cómo estás trabajando · gasto semanal · pilares · técnicas
+`menu` ← los seis accesos · peleador completo · tu mundo · tu carrera · tu historia ·
+invertir/gimnasios · legado · **casino**
+`people` ← tu círculo · `bio` ← quién te sigue · `stats` ← estadísticas clave del estilo
+
+**La frontera del casino se respetó exactamente como estaba escrito:** no se tocó una línea
+del módulo 33. Lo que cambió es el compositor (`CL.CARD_HOME` + `CL.renderCards`, en el
+núcleo), que decide qué pantalla llama a cada `fn()`.
+
+### Lo que la red evitó
+
+Al fundir los dos bloques de tiempo, el botón de avance automático quedó dentro de
+`periodPanel()`, que **no** se dibuja en semana de pelea — donde ese botón sí existía, con
+tope de 8 semanas en vez de 26. La prueba falló nombrándolo
+(*«desapareció `autoAdvanceToImportant(8)`»*) y el bloque se sacó a `avanzarCard()`, que el
+inicio dibuja en sus dos caras. Sin la red, eso se iba silencioso.
+
+### Dos cosas que aparecieron al medir, y que no eran de E3
+
+1. **Desborde horizontal de 15 px en `menu` a 360 px**, presente ya en `1881841`. Causa:
+   `.g2/.g3/.g4` usaban `1fr`, y una celda de grid no baja de su contenido, así que una
+   palabra larga ensancha la columna. Con `minmax(0,1fr)` el desborde cae a **cero en las
+   105 combinaciones** de pantalla y resolución.
+2. **La prueba de scroll del navegador se auto-saltaba.** Medía siempre en el hub; al
+   quedar el hub sin margen de scroll, dos aserciones de I1 pasaron a "NO MEDIDO" y
+   siguieron contando como verdes. Ahora falla si no puede medir, y está verificada con
+   tres mutantes.
+
+### Decisiones de §8: qué se hizo con cada una
+
+| # | qué decidí |
+|---|---|
+| 1 | **Los dos sistemas de foco se movieron a `train` sin fundirlos.** Fundirlos cambia comportamiento; sigue siendo pregunta de balance. |
+| 2 | `identity` y `threads` se mudaron las dos a `menu` y **se conservaron las dos tarjetas**: unificarlas es cambiar lo que el jugador ve, no dónde lo ve. |
+| 3 | El casino se movió **desde el compositor**, sin abrir el módulo 33. |
+| 4 | `story` (9,95 pantallas) y `gym` (8,35) siguen **fuera del alcance de E3**. Anotadas para E5. |
+| 5 | `stats` dejó de ser un callejón sin salida en contenido —recibió las estadísticas del estilo—, pero **sigue sin salidas propias**. Eso es E5. |

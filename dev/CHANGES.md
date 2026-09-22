@@ -1748,19 +1748,85 @@ Tres cosas que eso dice y las medias no decían:
 Nada de esto se tocó: es el mapa de E4, no su ejecución.
 
 
-## Siguiente paso exacto (actualizado)
+---
 
-**Esperar el OK del mapa de `dev/E3-INICIO.md`.** No se toca una línea de interfaz hasta
-entonces; es la excepción a la autonomía que el encargo puso para esta etapa.
+# E3 — CERRADO. El inicio pasa de 8,84 a 1,49 pantallas.
 
-Con el OK, el primer commit de E3 es **mover el bloque *Foco de entrenamiento* (1.143 px,
-36 botones, 33 de los 38 táctiles chicos) del inicio a `train`**, ampliando `alcance` a
-`["hub","train"]` en el fixture y dejando la suite en verde. Es el 20 % del alto de un golpe
-y la prueba 13 lo protege.
+El mapa se aprobó y se implementó en cuatro commits, cada uno medido antes y después.
 
-Si el mapa no se aprueba, lo que igual queda hecho y sirve: las cuatro herramientas de
-medición, el inventario de 82 acciones, la red de "nada se pierde" verificada con 8 mutantes,
-y el perfilado de E4.
+| pantalla, 360×640 | antes | después | objetivo |
+|---|---|---|---|
+| **inicio (`hub`)** | **8,84** pantallas · 5.655 px | **1,49** · 954 px | ≤ 1,5 ✓ |
+| **portada (`title`)**, con carrera | **1,58** | **1,30** | ≤ 1,5 ✓ |
 
-Estado: **suite 170 verdes**, navegador 28 verdes, golden master idéntico, archivo del juego
-**sin tocar** (md5 `87d0326c25fa2a5a7f6e0c8df41fa327`).
+| medida del inicio | antes | después |
+|---|---|---|
+| bloques · nodos · botones | 21 · 327 · 76 | **5 · 59 · 12** |
+| táctiles por debajo de 44 px | 38 | **5** (los cinco de la barra) |
+
+## Los cuatro pasos
+
+1. **El foco de entrenamiento se muda a «Entrenar».** El bloque más grande del inicio
+   (1.143 px, 20 % del alto) y el que traía **33 de los 38 botones táctiles chicos**. De
+   paso pasan de 38 a 44 px de alto: mudarlos sin arreglarlo habría sido mudar el problema.
+2. **Cada tarjeta tiene un sitio, y lo decide el núcleo** (`CL.CARD_HOME` + `CL.renderCards`).
+   Trece tarjetas se mudan a `train`, `people`, `bio` y `menu`. Ninguna cambia *cuándo*
+   aparece: cada `fn` conserva su condición.
+3. **La red de I1 deja de poder auto-saltarse** (ver abajo).
+4. **Los bloques del hub base**: las estadísticas del estilo a la Ficha, los seis accesos
+   al menú, un solo bloque para avanzar el tiempo, el mundo en un titular, y la portada
+   con «Cómo funciona» plegado.
+
+## La frontera del casino, respetada como estaba escrita
+
+No se tocó **una línea** del módulo 33. Su tarjeta se sigue registrando ahí dentro y su
+`fn()` se sigue llamando tal cual; lo único que cambió es **quién la llama**, que es el
+compositor, y vive en el núcleo. Es literalmente el "se puede proteger desde fuera".
+
+## Lo que la red evitó, y lo que la red no veía
+
+**Evitó una pérdida real.** Al fundir los dos bloques de tiempo, el botón de avance
+automático quedó dentro de `periodPanel()`, que no se dibuja en semana de pelea — donde ese
+botón sí existía, con tope de 8 semanas en vez de 26. La prueba falló nombrándolo
+(«desapareció `autoAdvanceToImportant(8)`») y el bloque se sacó a `avanzarCard()`, que el
+inicio dibuja en sus dos caras. Sin la red, eso se iba en silencio.
+
+**Y una red que se estaba apagando sola.** La prueba de scroll del navegador medía siempre
+en el hub; al quedar el hub sin margen de scroll, dos aserciones de **I1** —la invariante
+que el encargo dice que no se revierte nunca— pasaron a "NO MEDIDO" y **siguieron contando
+como verdes**. La suite bajó de 28 a 26 pruebas sin que nada fallara. Ahora busca una
+pantalla donde pueda medir de verdad y **falla si no la encuentra**. Verificada con tres
+mutantes: sin control en sitio → rojo; navegar sin subir al inicio → rojo; interactuar en
+sitio subiendo al inicio (el bug original) → rojo.
+
+Los dos primeros mutantes que escribí eran inválidos —uno dejaba vivos los botones de carga,
+el otro rompía `go()` pero no el segundo dueño del scroll— y sólo me enteré porque el script
+cuenta las ocurrencias antes de mutar.
+
+## Un bug que venía de antes, encontrado al medir
+
+`menu` desbordaba 15 px a 360 px de ancho, y ya lo hacía en `1881841`. Causa: `.g2/.g3/.g4`
+usaban `1fr`, y una celda de grid no baja de su contenido (`min-width:auto`), así que una
+palabra larga ensancha la columna. Con `minmax(0,1fr)`, **desborde cero en las 105
+combinaciones** de pantalla y resolución.
+
+También hubo que arreglar la herramienta: `dev/perf/desborde.js` daba desborde en `rank` una
+corrida de cada tres **sobre el mismo archivo**, porque sembrar `Math.random` no alcanza —la
+creación de carrera lee el DOM y usa `Date.now()`—. Ahora fija el borrador, como el harness,
+y repite 3 de 3. El hallazgo de `rank` era ruido; el de `menu`, real.
+
+## Siguiente paso exacto
+
+**E4 — rendimiento.** El mapa ya está medido (`dev/perf/perfil.json`), en este orden:
+
+1. **`TX.snapshot` es el 42,5 % de `advanceWeek`** (`:4055`): un `JSON.stringify(G)` de la
+   partida entera, cada semana. Es la red de transacciones, no simulación.
+2. **`repairCritical/revisar`, 15,1 %** (`:6372`).
+3. **`loadGame` se va el 22,1 % en volver a serializar** (117 ms por carga).
+4. `saveSerialize`: 99,3 % dentro del serializador (25 ms).
+
+Antes de tocar nada de eso hace falta una red de caracterización propia, como en E2 y E3:
+el golden master cubre el resultado, no el coste.
+
+Estado: **suite 170 verdes**, navegador 28 verdes, golden master idéntico, desborde cero,
+las 82 acciones del inventario alcanzables y ninguna a más de dos toques.
