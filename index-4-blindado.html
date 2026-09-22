@@ -125,6 +125,13 @@ label{display:block;font-size:12px;color:var(--dim);margin:0 0 3px}
 .sec>summary:hover{color:var(--gold)}
 .sec>.secBody{padding:0 10px 2px}
 .sec>.secBody>.card{margin-bottom:10px}
+/* FRANJA DE AVISOS. Los chips son anclas nativas: el salto lo hace el
+   navegador, no JS, asi que no hay scroll programatico que discutir con I1.
+   scroll-margin-top deja la tarjeta por debajo de la cabecera pegajosa
+   (.topbar mide ~55 px y es sticky), que si no la taparia. */
+.avisos a{display:inline-flex;align-items:center;min-height:44px;padding:6px 12px;margin:0 6px 4px 0;
+  border-radius:999px;text-decoration:none;font-size:12.5px}
+.avisoAncla{scroll-margin-top:68px}
 .mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .mini-tile{position:relative;border:1px solid var(--line2);border-radius:12px;background:linear-gradient(145deg,#18222d,#10161e);padding:10px;min-height:72px;text-align:left;cursor:pointer;color:var(--txt);font:inherit}
 .mini-tile:active{transform:scale(.985)}
@@ -592,7 +599,34 @@ body.hasdebt #app{padding-top:30px}
    CAGE LEGACY — 1. UTIL + DATA
    ========================================================================== */
 var G = null;          // estado global de la partida
-var UI = { screen:'title', sub:null, tmp:{} };
+var UI = { screen:'title', sub:null, tmp:{}, sec:{} };
+
+/* ==========================================================================
+   SECCIONES PLEGABLES — QUE NO SE CIERREN SOLAS
+   --------------------------------------------------------------------------
+   MEDIDO, y era un bug que yo mismo habia metido: render() reescribe
+   APP.innerHTML, asi que un <details> abierto se destruia y volvia a nacer
+   CERRADO en cuanto tocabas un boton de adentro. Con el foco de entrenamiento
+   abierto y pulsando «Wrestling»: la seccion se cerraba, el boton pasaba de
+   y=298 a y=673 y el scroll caia de 615 a 240. Despues de un toque, el boton
+   que acababas de pulsar no se veia.
+   (La primera sonda que escribi decia que todo estaba bien: habia pulsado el
+   boton YA seleccionado, el html salia identico y el DOM no se reescribia.
+   Una sonda que no cambia nada no prueba nada.)
+
+   Que estado abierto/cerrado vive en UI y NO en G: es estado de pantalla, no
+   de partida. En G viajaria a cada save y volveria al cargar otra partida.
+   El <details> avisa de sus cambios con ontoggle, que es HTML nativo: no hace
+   falta JS de escucha ni tocar render().
+   ========================================================================== */
+function secAbierta(id, porDefecto){
+  if(!UI.sec) UI.sec = {};
+  return Object.prototype.hasOwnProperty.call(UI.sec, id) ? !!UI.sec[id] : !!porDefecto;
+}
+function secToggle(id, abierta){
+  if(!UI.sec) UI.sec = {};
+  UI.sec[id] = !!abierta;
+}
 
 /* FIX RAIZ: rnd() con G=null se llamaba a si misma -> desbordamiento de pila.
    startCareer() pide un seed ANTES de que exista G, asi que arrancar una carrera
@@ -4634,7 +4668,7 @@ function avisosStrip(){
     if(CL.cardHome(c.id)!=='hub') continue;
     var out = safeRun('aviso/'+c.id, c.fn, function(){ return ''; }, true) || '';
     if(!out || !String(out).trim()) continue;
-    chips.push('<span class="tag on">'+AVISO_ETIQUETA[c.id]+'</span>');
+    chips.push('<a class="tag on" href="#aviso-'+c.id+'">'+AVISO_ETIQUETA[c.id]+'</a>');
   }
   if(!chips.length) return '';
   /* sin tarjeta alrededor: son señales, y cada pixel de aca empuja «Avanzar»
@@ -4784,14 +4818,14 @@ function scrTrain(){
   ['box','kick','muay','wrest','grap','cardio','str','mind','rest'].forEach(function(k){
     estandar+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
   });
-  h+=CL.seccion('Trabajo estándar', '<div class="card">'+estandar+'</div>');
+  h+=CL.seccion('trabajoEstandar', 'Trabajo estándar', '<div class="card">'+estandar+'</div>');
   /* E3: el foco vive acá, plegado. Va DESPUES del trabajo de la semana porque
      eso es lo que se viene a hacer a esta pantalla; el foco es configuración,
      y con la tarjeta abierta esta pantalla daba 5,6 pantallas de alto. */
-  h+=CL.seccion('Foco de entrenamiento', focusCard());
+  h+=CL.seccion('foco', 'Foco de entrenamiento', focusCard());
   if(c && c.log.length){
     /* plegado: 292 px de historial en la pantalla donde se decide la semana */
-    h+=CL.seccion('Diario del campamento',
+    h+=CL.seccion('diarioCamp', 'Diario del campamento',
       '<div class="card"><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>');
   }
   /* E3: las tarjetas que el mapa manda a esta pantalla (ver CL.CARD_HOME),
@@ -5295,7 +5329,7 @@ function scrPeople(){
   if(m){
     /* E3: la pantalla daba 2,77 de alto en carrera avanzada. El entrenador
        principal queda abierto; manager, gimnasio y rivales van plegados. */
-    h+=CL.seccion(m.name+' · manager',
+    h+=CL.seccion('manager', m.name+' · manager',
      '<div class="card"><p class="sm dim">'+esc(m.desc)+'</p>'+
      '<div class="grid g4"><div><div class="xs dim2">Ambición</div>'+bar(m.a.amb,100,'y')+'</div>'+
      '<div><div class="xs dim2">Honestidad</div>'+bar(m.a.hon,100,'g')+'</div>'+
@@ -5304,7 +5338,7 @@ function scrPeople(){
      '<p class="sm">'+relSummary(m.rel)+' · comisión '+Math.round(m.cut*100)+'%</p>'+
      (m.mem.length? '<div class="log">'+m.mem.slice(0,6).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+'</div>');
   }
-  h+=CL.seccion(g.name+' · gimnasio',
+  h+=CL.seccion('gimnasio', g.name+' · gimnasio',
    '<div class="card"><p class="sm dim">'+esc(g.desc)+'</p>'+
    '<div class="grid g2"><div><div class="xs dim2">Striking</div>'+bar(g.a.strike,100)+'</div>'+
    '<div><div class="xs dim2">Wrestling</div>'+bar(g.a.wrest,100)+'</div>'+
@@ -5322,7 +5356,7 @@ function scrPeople(){
       filas+='<div class="row" onclick="go(\'fighter\',\''+id+'\')" style="cursor:pointer"><span>'+esc(fname(f))+' <span class="dim2 xs">'+recStr(f)+'</span></span>'+
        '<span class="xs '+((f.rel.rivalry>50)?'bad':'dim')+'">'+relSummary(f.rel)+'</span></div>';
     });
-    h+=CL.seccion('Gente que te recuerda', '<div class="card">'+filas+'</div>');
+    h+=CL.seccion('recuerdan', 'Gente que te recuerda', '<div class="card">'+filas+'</div>');
   }
   /* E3: idem para Gente (ver CL.CARD_HOME). */
   return hookFilter('screen:people', h, {}) +
@@ -5436,14 +5470,14 @@ function scrStats(){
   /* E3: la ficha daba 3,2 pantallas de alto a 360x640 y E3 le habia sumado
      296 px mas. Queda abierto lo que se viene a ver —técnica y físico—; el
      resto son secciones a un toque. Ni un dato se quita. */
-  h+=CL.seccion('Mental', '<div class="card">'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>');
-  h+=CL.seccion('Aprendizaje',
+  h+=CL.seccion('mental', 'Mental', '<div class="card">'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>');
+  h+=CL.seccion('aprendizaje', 'Aprendizaje',
    '<div class="card"><p class="sm dim">Cuánto aprovechás cada semana de trabajo en cada área.</p>'+
    ALLST.filter(function(s){ return p.lr[s[0]]>=62 || p.lr[s[0]]<=42; }).map(function(s){
      return hookFilter('screen:stats', '<div class="row"><span>'+STNAME[s[0]]+'</span><span class="mono '+(p.lr[s[0]]>=62?'jade':'bad')+'">'+p.lr[s[0]]+'</span></div>', {});
    }).join('')+'</div>');
   if(p.styleHist.length>1){
-    h+=CL.seccion('Evolución de estilo',
+    h+=CL.seccion('evoEstilo', 'Evolución de estilo',
       '<div class="card"><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>');
   }
   return hookFilter('screen:stats', h, {});
@@ -9413,7 +9447,7 @@ function insertAfterTopbar(h,block){
 hookOn('screen:stats','coreScrStatsPrev', function(h){
   if(!G || !G.player) return h;
   /* plegada: E3 le sumo 296 px a una pantalla que ya daba 2,9 de alto */
-  return insertAfterTopbar(h, CL.seccion('Estadísticas clave de tu estilo', coreStatsCard(G.player,false)));
+  return insertAfterTopbar(h, CL.seccion('clave', 'Estadísticas clave de tu estilo', coreStatsCard(G.player,false)));
 }, 10);
 
 /* En la ficha de cualquier peleador también se muestran sus claves. */
@@ -16499,7 +16533,7 @@ hookOn('screen:menu','perfScrMenuPrev', function(h){
       '<p class="xs dim2" style="margin:8px 0 0">Automático mide los primeros segundos de minijuego y decide solo.</p></div>';
     /* E3: plegado. Es un ajuste que se toca una vez y ocupaba 250 px en la
        pantalla que recibio siete tarjetas del inicio. */
-    box = CL.seccion('Rendimiento', box);
+    box = CL.seccion('rendimiento', 'Rendimiento', box);
     var anchor='<button class="btn" onclick="go(\'hall\')">🏆 Salón de la fama y recompensas</button>';
     if(h.indexOf(anchor)>=0) return h.replace(anchor, anchor+box);
     return h+box;
@@ -16594,6 +16628,15 @@ CL.hubCard = function(id, fn, order){
    ========================================================================== */
 /* Etiqueta de la seccion en la que se pliega cada tarjeta mudada. Si una
    tarjeta no esta aca, se dibuja suelta (sin plegar). */
+/* La seccion mas usada de cada pantalla arranca abierta. El resto, cerradas;
+   y en cuanto el jugador abre o cierra una, manda su eleccion (UI.sec). */
+/* Abierta por defecto la seccion MAS USADA de cada pantalla... cuando esa
+   seccion existe. En `train`, `menu` y `stats` lo mas usado NO esta plegado:
+   el trabajo de la semana, los botones del menu y la hoja de stats ya estan
+   abiertos. Abrir ademas la seccion mas pesada de cada una las devolvia por
+   encima de dos pantallas de alto — medido: train 4,51 y menu 3,78. */
+CL.CARD_ABIERTA = { circulo:true, publico:true };   /* people · bio */
+CL.GRUPO_ABIERTO = {};
 CL.CARD_SECCION = {
   decisiones:'Cómo estás trabajando', finanzas:'Gasto semanal',
   pilares:'Pilares del campamento',   tecnicas:'Técnicas especiales',
@@ -16603,9 +16646,15 @@ CL.CARD_SECCION = {
   legado:'Legado y retiro',           casino:'Casino',
   circulo:'Tu círculo',               publico:'Quién te sigue'
 };
-CL.seccion = function(titulo, cuerpo, abierta){
+/* CL.seccion(id, titulo, cuerpo, abiertaPorDefecto)
+   El id es la clave estable en UI.sec: el titulo puede ser dinamico (el nombre
+   del manager, la semilla de la linea temporal) y no sirve como clave. */
+CL.seccion = function(id, titulo, cuerpo, porDefecto){
   if(!cuerpo || !String(cuerpo).trim()) return '';
-  return '<details class="sec"'+(abierta?' open':'')+'><summary>'+esc(titulo)+'</summary>'+
+  var ab = secAbierta(id, porDefecto);
+  return '<details class="sec" id="sec-'+id+'"'+(ab?' open':'')+
+         ' ontoggle="secToggle(\''+id+'\', this.open)">'+
+         '<summary>'+esc(titulo)+'</summary>'+
          '<div class="secBody">'+cuerpo+'</div></details>';
 };
 CL.CARD_HOME = {
@@ -16643,13 +16692,18 @@ CL.renderCards = function(pantalla, plegar){
     /* misma clave de error que antes ('hub/<id>'): los diagnosticos guardados
        siguen significando lo mismo aunque la tarjeta se haya mudado. */
     var out = safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '';
-    if(plegar === true && CL.CARD_SECCION[c.id]) h += CL.seccion(CL.CARD_SECCION[c.id], out);
+    if(plegar === true && CL.CARD_SECCION[c.id]) h += CL.seccion('card_'+c.id, CL.CARD_SECCION[c.id], out, CL.CARD_ABIERTA[c.id]);
+    else if(pantalla === 'hub' && typeof AVISO_ETIQUETA !== 'undefined' && AVISO_ETIQUETA[c.id] && out)
+      /* el destino del ancla de la franja. Se envuelve DESDE EL COMPOSITOR:
+         asi la tarjeta del aviso no sabe nada de la franja y no hay que abrir
+         ningun modulo para darle un id. */
+      h += '<div id="aviso-'+c.id+'" class="avisoAncla">'+out+'</div>';
     else h += out;
   }
   /* Si `plegar` es un texto, las agrupa TODAS en una sola seccion con ese
      titulo. Con una seccion por tarjeta, siete resumenes de 49 px sumaban
      343 px de cabeceras plegadas: mas que varias de las tarjetas. */
-  if(typeof plegar === 'string') return CL.seccion(plegar, h);
+  if(typeof plegar === 'string') return CL.seccion('grupo_'+pantalla, plegar, h, CL.GRUPO_ABIERTO[pantalla]);
   return h;
 };
 
@@ -25259,10 +25313,10 @@ function scrBio(){
   tl.forEach(function(e){
     linea+='<div class="mtli"><span class="mty mono">'+e.y+'</span><span class="mtico">'+e.ico+'</span><span class="sm">'+esc(e.t)+'</span></div>';
   });
-  h+=CL.seccion('Línea temporal · semilla '+META.seedCode(),
+  h+=CL.seccion('lineaTemporal', 'Línea temporal · semilla '+META.seedCode(),
      '<div class="card"><div class="mtl">'+linea+'</div></div>');
 
-  h+=CL.seccion('Compartir',
+  h+=CL.seccion('compartir', 'Compartir',
      '<div class="card"><pre class="mshare">'+esc(META.shareText())+'</pre>'+
      '<div class="grid g2"><button class="btn pri" onclick="META.share()">Compartir carrera</button>'+
      '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>');
