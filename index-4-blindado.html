@@ -81,7 +81,10 @@ p{margin:0 0 10px}
 .log div:last-child{border:0}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#0b0e12;border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
-.nav button{background:none;border:0;color:var(--dim2);font-size:10.5px;font-family:inherit;padding:6px 2px;cursor:pointer}
+/* 44 px tambien aca: la barra es el menu persistente del juego, no decoracion.
+   Median 43x70 y por un pixel no llegaban al minimo tactil. */
+.nav button{background:none;border:0;color:var(--dim2);font-size:10.5px;font-family:inherit;
+  padding:6px 2px;cursor:pointer;min-height:44px;display:grid;align-content:center}
 .nav button b{display:block;font-size:17px;line-height:1.1;font-weight:600}
 .nav button.on{color:var(--gold)}
 .split{display:flex;gap:10px;align-items:center}
@@ -108,6 +111,20 @@ label{display:block;font-size:12px;color:var(--dim);margin:0 0 3px}
   opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .ticker{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+/* SECCIONES PLEGABLES (E3). Las pantallas que recibieron bloques del inicio
+   pasaban de dos pantallas de alto: el scroll se habria mudado de sitio en
+   vez de desaparecer. <details> es HTML plano: sin JS, sin estado que
+   guardar y sin dependencias. El resumen es el objetivo tactil, por eso
+   min-height 44px. */
+.sec{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 10px;overflow:hidden}
+.sec>summary{list-style:none;cursor:pointer;padding:12px 14px;min-height:44px;display:flex;
+  align-items:center;justify-content:space-between;gap:8px;font-weight:600;font-size:15px}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::after{content:'▾';color:var(--dim2);font-size:13px;transition:transform .15s}
+.sec[open]>summary::after{transform:rotate(180deg)}
+.sec>summary:hover{color:var(--gold)}
+.sec>.secBody{padding:0 10px 2px}
+.sec>.secBody>.card{margin-bottom:10px}
 .mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .mini-tile{position:relative;border:1px solid var(--line2);border-radius:12px;background:linear-gradient(145deg,#18222d,#10161e);padding:10px;min-height:72px;text-align:left;cursor:pointer;color:var(--txt);font:inherit}
 .mini-tile:active{transform:scale(.985)}
@@ -4591,12 +4608,65 @@ function startCareer(){
   go('hub');
 }
 
+/* ==========================================================================
+   E3 — LA FRANJA DE AVISOS
+   --------------------------------------------------------------------------
+   Medido: en el peor caso realista (pelea proxima + tres avisos) el inicio da
+   2,45 pantallas a 360x640 y los tres avisos caen DEBAJO del pliegue. Un aviso
+   que hay que scrollear para ver no avisa.
+   La franja pone la SEÑAL arriba de todo, en una linea: el detalle sigue en su
+   tarjeta, mas abajo. No lleva onclick a proposito — saltar a la tarjeta
+   moveria el scroll, que es justo lo que I1 prohibe en una interaccion en
+   sitio. Aca la franja es el aviso, no un atajo.
+   Coste: llama una vez mas a cada fn() de aviso. Son funciones baratas y el
+   inicio entero se dibuja en 1,14 ms.
+   ========================================================================== */
+var AVISO_ETIQUETA = {
+  peso:'⚖️ Peso', deuda:'💸 Deuda', ufc:'🏆 Liga mayor', observado:'👁️ Tu estilo real',
+  sagas:'📖 Saga', content_team:'📹 Contenido', instalaciones:'⚡ Instalaciones'
+};
+function avisosStrip(){
+  if(typeof CL==='undefined' || !CL.hubCards) return '';
+  var chips=[];
+  for(var i=0;i<CL.hubCards.length;i++){
+    var c=CL.hubCards[i];
+    if(!AVISO_ETIQUETA[c.id]) continue;
+    if(CL.cardHome(c.id)!=='hub') continue;
+    var out = safeRun('aviso/'+c.id, c.fn, function(){ return ''; }, true) || '';
+    if(!out || !String(out).trim()) continue;
+    chips.push('<span class="tag on">'+AVISO_ETIQUETA[c.id]+'</span>');
+  }
+  if(!chips.length) return '';
+  /* sin tarjeta alrededor: son señales, y cada pixel de aca empuja «Avanzar»
+     hacia abajo en el peor caso. */
+  return '<div class="avisos" style="margin:0 0 8px;line-height:1.9">'+chips.join(' ')+'</div>';
+}
+
+/* E3: el estado del peleador deja de ir arriba del todo. Lo que el jugador
+   necesita ANTES de scrollear es la decision de la semana y el boton de
+   avanzar; el record y las barras se leen despues, y siguen completos. */
+function estadoCard(){
+  var p=G.player;
+  return '<div class="card"><div class="split"><div class="face p">'+esc(p.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
+   '<div style="flex:1"><div class="b">'+recStr(p)+' <span class="dim sm">('+p.rec.ko+' KO · '+p.rec.sub+' SUB · '+p.rec.dec+' DEC)</span></div>'+
+   '<div class="sm dim">'+ageOf(p)+' años · OVR '+ovr(p)+' · Potencial '+p.potGlobal+'</div></div>'+
+   '<div class="center"><div class="mono b gold">'+money(G.cash)+'</div><div class="xs dim2">en caja</div></div></div>'+
+   /* etiqueta y número en la misma línea que antes ocupaban dos */
+   '<hr><div class="grid g3">'+
+   '<div><div class="xs dim2">Popularidad <b class="mono">'+Math.round(p.pop)+'</b></div>'+bar(p.pop,100,'y')+'</div>'+
+   '<div><div class="xs dim2">Fatiga <b class="mono">'+Math.round(p.fatigue)+'</b></div>'+bar(p.fatigue,100)+'</div>'+
+   '<div><div class="xs dim2">Daño <b class="mono">'+Math.round(p.dmg)+'</b></div>'+bar(p.dmg,100)+'</div></div>'+
+   (p.inj? '<p class="sm bad" style="margin-top:8px">Lesionado: '+esc(p.inj)+' — '+p.injWeeks+' semanas restantes.</p>' : '')+
+   '</div>';
+}
+
 /* ================= HUB ================= */
 function scrHub(){
   var p=G.player, nf=G.nextFight;
   var h='<div class="topbar"><div class="r1"><div><h2 style="margin:0">'+esc(fname(p))+'</h2>'+
     '<span class="sm dim">'+DIVS[p.div].n+' · '+(p.org? G.orgs[p.org].ab : 'Agente libre')+' · '+rankLabel(p)+'</span></div>'+
     '<div class="center"><div class="mono sm">'+weekDate()+'</div><div class="xs dim2">semana '+G.week+'</div></div></div></div>';
+  h+=avisosStrip();       /* la señal, arriba del pliegue */
 
   // evento pendiente
   if(G.pending.length){
@@ -4610,19 +4680,6 @@ function scrHub(){
     h+='<div class="card"><p class="sm">'+esc(G.lastEventOut)+'</p><button class="btn ghost" onclick="G.lastEventOut=null;render()">Entendido</button></div>';
   }
 
-  h+='<div class="card"><div class="split"><div class="face p">'+esc(p.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
-   '<div style="flex:1"><div class="b">'+recStr(p)+' <span class="dim sm">('+p.rec.ko+' KO · '+p.rec.sub+' SUB · '+p.rec.dec+' DEC)</span></div>'+
-   '<div class="sm dim">'+ageOf(p)+' años · OVR '+ovr(p)+' · Potencial '+p.potGlobal+'</div></div>'+
-   '<div class="center"><div class="mono b gold">'+money(G.cash)+'</div><div class="xs dim2">en caja</div></div></div>'+
-   /* E3: etiqueta y número en la misma línea que antes ocupaban dos. Los tres
-      valores siguen estando; lo que se fue es una fila de texto. */
-   '<hr><div class="grid g3">'+
-   '<div><div class="xs dim2">Popularidad <b class="mono">'+Math.round(p.pop)+'</b></div>'+bar(p.pop,100,'y')+'</div>'+
-   '<div><div class="xs dim2">Fatiga <b class="mono">'+Math.round(p.fatigue)+'</b></div>'+bar(p.fatigue,100)+'</div>'+
-   '<div><div class="xs dim2">Daño <b class="mono">'+Math.round(p.dmg)+'</b></div>'+bar(p.dmg,100)+'</div></div>';
-  if(p.inj) h+='<p class="sm bad" style="margin-top:8px">Lesionado: '+esc(p.inj)+' — '+p.injWeeks+' semanas restantes.</p>';
-  h+='</div>';
-
   // pelea / campamento
   if(nf){
     var o=F(nf.oppId);
@@ -4632,7 +4689,12 @@ function scrHub(){
       '<div class="split"><div class="face">'+esc(o.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
       '<div style="flex:1"><div class="b">'+esc(fname(o))+' <span class="dim sm">'+recStr(o)+'</span></div>'+
       '<div class="sm dim">'+STYLES[o.style].n+' · '+rankLabel(o)+' · '+ageOf(o)+' años · OVR '+ovr(o)+'</div></div></div>'+
-      '<div class="ticker">'+esc(nf.event||'')+' · Bolsa '+money(nf.purse)+' · '+(nf.title?'5 rounds':'3 rounds')+'</div>';
+      /* Una linea: con un evento de nombre largo envolvia a dos y empujaba
+         «Avanzar» fuera de pantalla en el peor caso (pelea de titulo + rival
+         de nombre largo). La bolsa y los rounds son lo que no puede faltar,
+         asi que van primero y el nombre del evento es lo que se recorta. */
+      '<div class="ticker" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+        'Bolsa '+money(nf.purse)+' · '+(nf.title?'5 rounds':'3 rounds')+' · '+esc(nf.event||'')+'</div>';
     if(wk<=0){
       var c=G.camp;
       if(c && !c.weighDone) h+='<button class="btn pri" onclick="weighStart()">Ir al pesaje</button>';
@@ -4651,25 +4713,21 @@ function scrHub(){
       '<button class="btn" onclick="askFight()">Pedirle una pelea a tu manager</button></div>';
   }
 
-  /* E3: la rejilla de seis accesos se fue al menú (256 px). Cuatro de los
-     seis ya estaban en la barra inferior; tenerlos dos veces en la pantalla
-     más larga del juego no ayudaba a nadie. Ver accesosCard(). */
+  /* E3 — ORDEN DEL INICIO, medido contra el pliegue (640 px menos 56 de barra
+     = 584 px visibles a 360x640):
+       cabecera · avisos · decision de la semana · AVANZAR   <- sin scroll
+       estado · resumen del bloque · tarjetas de aviso · el mundo
+     Antes el estado iba arriba y «Avanzar» acababa en 654 px, o sea fuera de
+     pantalla en semana normal. La rejilla de seis accesos se fue al menú. */
   if(G.camp && G.nextFight){
     h+='<button class="btn go" onclick="skipWeek()">Pasar la semana sin entrenar</button>';
-  } else if(!G.player.retired){
-    h+=periodPanel();
   }
   h+=avanzarCard();   /* en las dos caras: ver el comentario de avanzarCard */
-  // noticias
-  if(G.news.length){
-    /* E3: el último titular, no doce. Ocupaba 316 px del inicio para repetir
-       lo que ya está entero en `history`, a un toque de acá. */
-    h+='<div class="card"><div class="hdr"><span class="b">El mundo</span>'+
-      '<button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'history\',\'news\')">Ver todo</button></div>'+
-      '<div class="log">'+
-      G.news.slice(0,1).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
-      '</div></div>';
-  }
+  h+=estadoCard();
+  if(!(G.camp && G.nextFight) && !G.player.retired) h+=periodPanel();
+  /* «El mundo» se registra como tarjeta con orden 90 (mundoCard) para que
+     quede DESPUES de los avisos: un titular no puede empujar hacia abajo un
+     aviso de peso o de deuda. */
   return h;
 }
 function askFight(){
@@ -4718,19 +4776,27 @@ function scrTrain(){
    '<button class="btn" onclick="strStart()">Fuerza y potencia <span class="tag on">minijuego</span><small>Carga y series. Sube potencia y velocidad. Riesgo de lesión.</small></button>'+
    '<button class="btn" onclick="drillStart()">Drills técnicos <span class="tag on">minijuego</span><small>Memorizar y ejecutar combinaciones. Sube precisión y timing.</small></button>'+
    (G.camp? '<button class="btn" onclick="gpStart()">Análisis y gameplan <span class="tag on">minijuego</span><small>Estudiar al rival y definir el plan. Afecta directamente la pelea.</small></button>':'')+
-   '</div><div class="card"><h3>Trabajo estándar</h3>';
+   '</div>';
+  /* E3: 712 px y nueve botones. Los minijuegos de arriba son el camino
+     principal de la semana; esto es la alternativa sin minijuego, y plegada
+     sigue a un toque. */
+  var estandar='';
   ['box','kick','muay','wrest','grap','cardio','str','mind','rest'].forEach(function(k){
-    h+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
+    estandar+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
   });
-  h+='</div>';
-  /* E3: el foco vive acá. Va DESPUES del trabajo de la semana porque eso es
-     lo que se viene a hacer a esta pantalla; el foco es configuración. */
-  h+=focusCard();
+  h+=CL.seccion('Trabajo estándar', '<div class="card">'+estandar+'</div>');
+  /* E3: el foco vive acá, plegado. Va DESPUES del trabajo de la semana porque
+     eso es lo que se viene a hacer a esta pantalla; el foco es configuración,
+     y con la tarjeta abierta esta pantalla daba 5,6 pantallas de alto. */
+  h+=CL.seccion('Foco de entrenamiento', focusCard());
   if(c && c.log.length){
-    h+='<div class="card"><h3>Diario del campamento</h3><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>';
+    /* plegado: 292 px de historial en la pantalla donde se decide la semana */
+    h+=CL.seccion('Diario del campamento',
+      '<div class="card"><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>');
   }
-  /* E3: las tarjetas que el mapa manda a esta pantalla (ver CL.CARD_HOME). */
-  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('train');
+  /* E3: las tarjetas que el mapa manda a esta pantalla (ver CL.CARD_HOME),
+     plegadas en secciones para que el scroll no se mude de sitio. */
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('train', 'Ajustes del entrenamiento');
   return h;
 }
 function doWeek(k){
@@ -5227,34 +5293,40 @@ function scrPeople(){
    (c.mem.length? '<div class="log" style="margin-top:8px">'+c.mem.slice(0,8).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+
    '<div class="quote" style="margin-top:8px">'+esc(coachLine(c))+'</div></div>';
   if(m){
-    h+='<div class="card"><h3>'+esc(m.name)+' <span class="tag">manager</span></h3><p class="sm dim">'+esc(m.desc)+'</p>'+
+    /* E3: la pantalla daba 2,77 de alto en carrera avanzada. El entrenador
+       principal queda abierto; manager, gimnasio y rivales van plegados. */
+    h+=CL.seccion(m.name+' · manager',
+     '<div class="card"><p class="sm dim">'+esc(m.desc)+'</p>'+
      '<div class="grid g4"><div><div class="xs dim2">Ambición</div>'+bar(m.a.amb,100,'y')+'</div>'+
      '<div><div class="xs dim2">Honestidad</div>'+bar(m.a.hon,100,'g')+'</div>'+
      '<div><div class="xs dim2">Codicia</div>'+bar(m.a.greed,100)+'</div>'+
      '<div><div class="xs dim2">Contactos</div>'+bar(m.a.net,100,'p')+'</div></div>'+
      '<p class="sm">'+relSummary(m.rel)+' · comisión '+Math.round(m.cut*100)+'%</p>'+
-     (m.mem.length? '<div class="log">'+m.mem.slice(0,6).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+'</div>';
+     (m.mem.length? '<div class="log">'+m.mem.slice(0,6).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+'</div>');
   }
-  h+='<div class="card"><h3>'+esc(g.name)+' <span class="tag">gimnasio</span></h3><p class="sm dim">'+esc(g.desc)+'</p>'+
+  h+=CL.seccion(g.name+' · gimnasio',
+   '<div class="card"><p class="sm dim">'+esc(g.desc)+'</p>'+
    '<div class="grid g2"><div><div class="xs dim2">Striking</div>'+bar(g.a.strike,100)+'</div>'+
    '<div><div class="xs dim2">Wrestling</div>'+bar(g.a.wrest,100)+'</div>'+
    '<div><div class="xs dim2">Grappling</div>'+bar(g.a.grap,100)+'</div>'+
-   '<div><div class="xs dim2">Sparring</div>'+bar(g.a.spar,100,'y')+'</div></div></div>';
+   '<div><div class="xs dim2">Sparring</div>'+bar(g.a.spar,100,'y')+'</div></div></div>');
   // rivales con memoria
   var known = Object.keys(G.fighters).filter(function(id){ var f=F(id); return f.mem && f.mem.length && !f.isPlayer; });
   known.sort(function(a,b){ return (F(b).rel? F(b).rel.rivalry:0) - (F(a).rel? F(a).rel.rivalry:0); });
   if(known.length){
-    h+='<div class="card"><h3>Gente que te recuerda</h3>';
+    /* plegado: hasta diez rivales con su historia en la pantalla que abre el
+       jugador para mirar a su equipo */
+    var filas='';
     known.slice(0,10).forEach(function(id){
       var f=F(id);
-      h+='<div class="row" onclick="go(\'fighter\',\''+id+'\')" style="cursor:pointer"><span>'+esc(fname(f))+' <span class="dim2 xs">'+recStr(f)+'</span></span>'+
+      filas+='<div class="row" onclick="go(\'fighter\',\''+id+'\')" style="cursor:pointer"><span>'+esc(fname(f))+' <span class="dim2 xs">'+recStr(f)+'</span></span>'+
        '<span class="xs '+((f.rel.rivalry>50)?'bad':'dim')+'">'+relSummary(f.rel)+'</span></div>';
     });
-    h+='</div>';
+    h+=CL.seccion('Gente que te recuerda', '<div class="card">'+filas+'</div>');
   }
   /* E3: idem para Gente (ver CL.CARD_HOME). */
   return hookFilter('screen:people', h, {}) +
-         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('people') : '');
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('people', true) : '');
 }
 function coachLine(c){
   var m=memRef(c);
@@ -5361,13 +5433,18 @@ function scrStats(){
   h+='<div class="card"><div class="sm dim">'+STYLES[p.style].n+(p.secondaryStyle?' · '+STYLES[p.secondaryStyle].n:'')+' · '+PERS[p.pers].n+(p.pers2?' + '+PERS[p.pers2].n:'')+' · '+NATNAME[p.nat]+' · '+ageOf(p)+' años</div>'+
    '<p class="xs dim2" style="margin-top:6px">Barra clara = valor actual · barra azul fina = potencial máximo.</p></div>';
   h+='<div class="card"><h3>Técnica y físico</h3>'+PHYS.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>';
-  h+='<div class="card"><h3>Mental</h3>'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>';
-  h+='<div class="card"><h3>Aprendizaje</h3><p class="sm dim">Cuánto aprovechás cada semana de trabajo en cada área.</p>'+
+  /* E3: la ficha daba 3,2 pantallas de alto a 360x640 y E3 le habia sumado
+     296 px mas. Queda abierto lo que se viene a ver —técnica y físico—; el
+     resto son secciones a un toque. Ni un dato se quita. */
+  h+=CL.seccion('Mental', '<div class="card">'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>');
+  h+=CL.seccion('Aprendizaje',
+   '<div class="card"><p class="sm dim">Cuánto aprovechás cada semana de trabajo en cada área.</p>'+
    ALLST.filter(function(s){ return p.lr[s[0]]>=62 || p.lr[s[0]]<=42; }).map(function(s){
      return hookFilter('screen:stats', '<div class="row"><span>'+STNAME[s[0]]+'</span><span class="mono '+(p.lr[s[0]]>=62?'jade':'bad')+'">'+p.lr[s[0]]+'</span></div>', {});
-   }).join('')+'</div>';
+   }).join('')+'</div>');
   if(p.styleHist.length>1){
-    h+='<div class="card"><h3>Evolución de estilo</h3><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>';
+    h+=CL.seccion('Evolución de estilo',
+      '<div class="card"><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>');
   }
   return hookFilter('screen:stats', h, {});
 }
@@ -5431,7 +5508,7 @@ function scrMenu(){
      DESPUES del filtro, para que los suscriptores de screen:menu sigan viendo
      exactamente el mismo html que veian antes. */
   return hookFilter('screen:menu', h, {}) +
-         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('menu') : '');
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('menu', 'Tu carrera y tu mundo') : '');
 }
 /* [código muerto eliminado: confirmRetire v1 — la redeclaración posterior lo pisaba por hoisting] */
 var SAVEKEY='cagelegacy_v1';
@@ -6273,8 +6350,17 @@ function focusCard(){
 function focusResumen(){
   if(!focusVisible()) return '';
   var f=focusGet();
-  return '<div class="row"><span class="sm dim">Foco: '+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+
-    ' · carga '+f.load+'</span><button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'train\')">Cambiar</button></div>';
+  /* Una linea. Medido: como fila con boton al lado ocupaba 55 px porque el
+     texto envolvia a dos lineas a 360 px de ancho. */
+  /* boton, no <a href="javascript:...">: este archivo no usa URLs javascript:
+     y ademas la red del inventario cuenta BOTONES — un enlace se le escapa. */
+  return '<div style="display:flex;align-items:center;gap:8px;margin:0 0 6px">'+
+    /* envuelve en vez de truncar: con puntos suspensivos se perdian el tercer
+       foco y la carga, que es justo lo que hay que ver antes de avanzar */
+    '<span class="xs dim2" style="flex:1;min-width:0">'+
+    'Foco: '+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+' · carga '+f.load+'</span>'+
+    '<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;min-height:44px;font-size:13px"'+
+    ' onclick="go(\'train\')">Cambiar</button></div>';
 }
 /* ==========================================================================
    E3 — UN SOLO BLOQUE PARA AVANZAR EL TIEMPO
@@ -6295,18 +6381,28 @@ function avanzarCard(){
   if(!G || !G.player || G.player.retired || (G.pending && G.pending.length)) return '';
   var enCampamento = !!(G.camp && G.nextFight);
   var maxAuto = G.nextFight? 8 : 26;
-  var h='<div class="card hi"><h3>Avanzar</h3>'+focusResumen();
+  /* Compactada contra el pliegue: medida bloque a bloque, ocupaba 312 px
+     (h3 18 · foco 55 · parrafo 39 · botones 70 · auto 80 + relleno). Lo que
+     se fue son lineas envueltas, no informacion. */
+  var CENTRO='text-align:center;white-space:nowrap;padding:12px 4px';
+  var h='<div class="card hi"><h3 style="margin:0 0 4px">Avanzar</h3>'+focusResumen();
   if(!enCampamento){
-    h+='<p class="sm dim" style="margin:0 0 8px">Se detiene ante un evento, una oferta, una lesión o un campamento.</p>'+
+    h+=
+    /* La explicacion de que interrumpe un bloque importa cuando NO hay pelea
+       firmada, que es cuando se saltan meses. Con una pelea encima, el bloque
+       ya se entiende y esos 36 px son justo los que dejaban «Avanzar» fuera
+       de pantalla en el peor caso (pelea de titulo + tres avisos). */
+    (G.nextFight? '' : '<p class="xs dim2" style="margin:0 0 6px">Se detiene ante un evento, una oferta, una lesión o un campamento.</p>')+
       '<div class="grid g3">'+
-      '<button class="btn pri" onclick="advancePeriod(4)">1 mes</button>'+
-      '<button class="btn pri" onclick="advancePeriod(13)">3 meses</button>'+
-      '<button class="btn pri" onclick="advancePeriod(52)">1 año</button>'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(4)">1 mes</button>'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(13)">3 meses</button>'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(52)">1 año</button>'+
       '</div>'+
       (G.period && G.period.left>0 && !G.camp?
         '<button class="btn go" onclick="advancePeriod('+G.period.left+')">Retomar el bloque · quedan '+G.period.left+' semanas</button>':'');
   }
-  h+='<button class="btn go" onclick="autoAdvanceToImportant('+maxAuto+')">⏩ Hasta el próximo evento importante<small>hasta '+maxAuto+' semanas</small></button>';
+  h+='<button class="btn go" style="margin-bottom:0" onclick="autoAdvanceToImportant('+maxAuto+')">'+
+     '⏩ Hasta el próximo evento <span class="dim2">(máx '+maxAuto+' sem)</span></button>';
   return h+'</div>';
 }
 function periodPanel(){
@@ -9316,7 +9412,8 @@ function insertAfterTopbar(h,block){
    se dibujaba arriba del inicio y `stats` no la tenía. */
 hookOn('screen:stats','coreScrStatsPrev', function(h){
   if(!G || !G.player) return h;
-  return insertAfterTopbar(h, coreStatsCard(G.player,false));
+  /* plegada: E3 le sumo 296 px a una pantalla que ya daba 2,9 de alto */
+  return insertAfterTopbar(h, CL.seccion('Estadísticas clave de tu estilo', coreStatsCard(G.player,false)));
 }, 10);
 
 /* En la ficha de cualquier peleador también se muestran sus claves. */
@@ -16400,6 +16497,9 @@ hookOn('screen:menu','perfScrMenuPrev', function(h){
         return '<button class="btn'+(m===k?' pri':'')+'" onclick="setPerf(\''+k+'\')">'+n+'</button>';
       }).join('')+'</div>'+
       '<p class="xs dim2" style="margin:8px 0 0">Automático mide los primeros segundos de minijuego y decide solo.</p></div>';
+    /* E3: plegado. Es un ajuste que se toca una vez y ocupaba 250 px en la
+       pantalla que recibio siete tarjetas del inicio. */
+    box = CL.seccion('Rendimiento', box);
     var anchor='<button class="btn" onclick="go(\'hall\')">🏆 Salón de la fama y recompensas</button>';
     if(h.indexOf(anchor)>=0) return h.replace(anchor, anchor+box);
     return h+box;
@@ -16492,6 +16592,22 @@ CL.hubCard = function(id, fn, order){
    Protegido por dev/tests/13-inventario.js: toda accion del inicio tiene que
    seguir alcanzable y a no mas de dos toques.
    ========================================================================== */
+/* Etiqueta de la seccion en la que se pliega cada tarjeta mudada. Si una
+   tarjeta no esta aca, se dibuja suelta (sin plegar). */
+CL.CARD_SECCION = {
+  decisiones:'Cómo estás trabajando', finanzas:'Gasto semanal',
+  pilares:'Pilares del campamento',   tecnicas:'Técnicas especiales',
+  accesos:'Ir a',                     carrera:'Tu peleador y tu mundo',
+  meta:'Tu carrera',
+  historia:'Tu historia',             inversion:'Invertir y gimnasios',
+  legado:'Legado y retiro',           casino:'Casino',
+  circulo:'Tu círculo',               publico:'Quién te sigue'
+};
+CL.seccion = function(titulo, cuerpo, abierta){
+  if(!cuerpo || !String(cuerpo).trim()) return '';
+  return '<details class="sec"'+(abierta?' open':'')+'><summary>'+esc(titulo)+'</summary>'+
+         '<div class="secBody">'+cuerpo+'</div></details>';
+};
 CL.CARD_HOME = {
   /* configuracion del entrenamiento: se elige una vez, no se decide cada semana */
   decisiones:'train',    /* enfoque y gasto semanal — 532 px, 10 botones     */
@@ -16502,7 +16618,8 @@ CL.CARD_HOME = {
   circulo:'people',      /* vinculos y grupo                                */
   publico:'bio',         /* quien te sigue: es tu ficha publica             */
   /* archivo y tienda: se visitan, no se atienden */
-  identity:'menu', threads:'menu',   /* las dos llevaban al mismo sitio     */
+  identity:'off', threads:'off',     /* fundidas: las dibuja 'carrera'      */
+  carrera:'menu',                    /* «Tu peleador» + «Tu mundo», un boton */
   meta:'menu', historia:'menu', inversion:'menu', legado:'menu',
   casino:'menu',         /* la tarjeta es del modulo 33 y no se toca: lo que
                             cambia es donde la llama el compositor          */
@@ -16518,15 +16635,21 @@ CL.CARD_HOME = {
      observado, content_team, instalaciones. */
 };
 CL.cardHome = function(id){ return CL.CARD_HOME[id] || 'hub'; };
-CL.renderCards = function(pantalla){
+CL.renderCards = function(pantalla, plegar){
   var h = '';
   for(var i=0;i<CL.hubCards.length;i++){
     var c = CL.hubCards[i];
     if(CL.cardHome(c.id) !== pantalla) continue;
     /* misma clave de error que antes ('hub/<id>'): los diagnosticos guardados
        siguen significando lo mismo aunque la tarjeta se haya mudado. */
-    h += (safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '');
+    var out = safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '';
+    if(plegar === true && CL.CARD_SECCION[c.id]) h += CL.seccion(CL.CARD_SECCION[c.id], out);
+    else h += out;
   }
+  /* Si `plegar` es un texto, las agrupa TODAS en una sola seccion con ese
+     titulo. Con una seccion por tarjeta, siete resumenes de 49 px sumaban
+     343 px de cabeceras plegadas: mas que varias de las tarjetas. */
+  if(typeof plegar === 'string') return CL.seccion(plegar, h);
   return h;
 };
 
@@ -18156,6 +18279,15 @@ CL.year = function(){
   };
 
   CL.hubCard('accesos', function(){ return accesosCard(); }, 4);
+  /* el titular del mundo, al final del inicio: informa, no avisa */
+  CL.hubCard('mundo', function(){
+    if(!G || !G.news || !G.news.length) return '';
+    return '<div class="card"><div class="hdr"><span class="b">El mundo</span>'+
+      '<button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'history\',\'news\')">Ver todo</button></div>'+
+      '<div class="log">'+
+      G.news.slice(0,1).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
+      '</div></div>';
+  }, 90);
 
   /* tarjetas recuperadas de los parches retirados, ahora registradas */
   CL.hubCard('peso', function(){
@@ -18792,18 +18924,20 @@ function clEvoReject(){
 }
 
 /* ---------- tarjetas del hub --------------------------------------------- */
-CL.hubCard('identity', function(){
+/* El cuerpo, sin tarjeta ni boton: lo compone clCarreraCard() junto con el de
+   «Tu mundo». Las dos llevaban al mismo sitio y eran dos tarjetas. */
+CL.identityBody = function(){
   var p=G.player, st=CL.stage(p), id=CL.identity(p);
   var pl=CL.primeLeft(p), a=clAge(p);
   var pct = clamp((a-18)/(42-18)*100,0,100);
-  return '<div class="card"><div class="hdr"><span class="b">'+esc(id.n)+'</span>'+
+  return '<div class="hdr"><span class="b">'+esc(id.n)+'</span>'+
     clTag(st.n, st.k==='prime'||st.k==='late'?'on':(st.k==='lvet'?'red':''))+'</div>'+
     '<p class="sm dim">'+esc(CL.styleName(p))+' · '+esc(id.tags.slice(0,3).join(' · ')||'sin rasgos marcados')+'</p>'+
     '<div class="xs dim2">'+a+' años'+(pl>0? ' · ventana de prime: '+pl+' años' : (a>36?' · fuera de la ventana':''))+'</div>'+
     clBar(pct,100, st.k==='prime'||st.k==='late'?'y':'')+
-    '<div class="ticker">'+esc(st.d)+'</div>'+
-    '<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver tu carrera</button></div>';
-}, 6);
+    '<div class="ticker">'+esc(st.d)+'</div>';
+};
+CL.hubCard('identity', function(){ return '<div class="card">'+CL.identityBody()+'</div>'; }, 6);
 
 CL.hubCard('ufc', function(){
   if(!CL.inBig()) return '';
@@ -18819,20 +18953,38 @@ CL.hubCard('ufc', function(){
       (p.weeksIdle>26? ' · <span class="bad">te estás volviendo invisible</span>':'')+'</div></div>';
 }, 8);
 
-CL.hubCard('threads', function(){
+/* idem: el cuerpo, sin tarjeta ni boton */
+CL.threadsBody = function(){
   var s=CL.S();
   var tr=CL.tracked().filter(function(f){ return !f.retired; });
   if(!s.threads.length && !tr.length) return '';
   var hot = tr.filter(function(f){ return clN((f.rel||{}).rivalry)>45; });
-  var h='<div class="card"><div class="hdr"><span class="b">Tu mundo</span>'+
+  var h='<div class="hdr" style="margin-top:10px"><span class="b">Tu mundo</span>'+
     clTag(tr.length+' personas'+(hot.length? ' · '+hot.length+' ⚔️':''), hot.length?'red':'')+'</div>';
   if(s.threads.length){
     h+='<div class="log">'+s.threads.slice(0,4).map(function(t){
       return '<div><span class="dim2 xs mono">'+t.y+'</span> '+esc(t.t)+'</div>'; }).join('')+'</div>';
   }
-  h+='<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver historias y personas</button></div>';
   return h;
+};
+CL.hubCard('threads', function(){
+  var b=CL.threadsBody();
+  return b? '<div class="card">'+b+'</div>' : '';
 }, 72);
+
+/* E3, decision 2: FUNDIDAS. «Tu peleador» y «Tu mundo» llevaban las dos a
+   clcareer y eran dos tarjetas con dos botones al mismo sitio. Ahora es una
+   tarjeta con las dos mitades y UN boton. Las dos originales siguen
+   registradas y con sus cuerpos intactos: lo unico que cambia es que su sitio
+   es 'off' y las dibuja esta. */
+CL.hubCard('carrera', function(){
+  if(!G || !G.player) return '';
+  var a=safeRun('hub/identity', CL.identityBody, function(){ return ''; }, true) || '';
+  var b=safeRun('hub/threads',  CL.threadsBody,  function(){ return ''; }, true) || '';
+  if(!a && !b) return '';
+  return '<div class="card">'+a+b+
+    '<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver tu carrera, tus historias y tu gente</button></div>';
+}, 6);
 
 /* ---------- pantalla: TU CARRERA ----------------------------------------- */
 CL.screen('clcareer', function(){
@@ -25101,19 +25253,22 @@ function scrBio(){
   if(b && b.rival) h+='<p class="sm dim" style="margin:8px 0 0">Rival principal: <b>'+esc(b.rival)+'</b> ('+b.rivalN+' peleas).</p>';
   h+='</div>';
 
-  h+='<div class="card"><div class="hdr"><h3 style="margin:0">Línea temporal</h3>'+
-     '<span class="tag">semilla '+META.seedCode()+'</span></div><div class="mtl">';
+  /* E3: plegadas. La ficha publica daba 2,07 pantallas de alto y estas dos
+     son consulta, no lo que se viene a ver. */
+  var linea='';
   tl.forEach(function(e){
-    h+='<div class="mtli"><span class="mty mono">'+e.y+'</span><span class="mtico">'+e.ico+'</span><span class="sm">'+esc(e.t)+'</span></div>';
+    linea+='<div class="mtli"><span class="mty mono">'+e.y+'</span><span class="mtico">'+e.ico+'</span><span class="sm">'+esc(e.t)+'</span></div>';
   });
-  h+='</div></div>';
+  h+=CL.seccion('Línea temporal · semilla '+META.seedCode(),
+     '<div class="card"><div class="mtl">'+linea+'</div></div>');
 
-  h+='<div class="card"><h3>Compartir</h3><pre class="mshare">'+esc(META.shareText())+'</pre>'+
+  h+=CL.seccion('Compartir',
+     '<div class="card"><pre class="mshare">'+esc(META.shareText())+'</pre>'+
      '<div class="grid g2"><button class="btn pri" onclick="META.share()">Compartir carrera</button>'+
-     '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>';
+     '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>');
 
   /* E3: las tarjetas que el mapa manda a la ficha publica (CL.CARD_HOME). */
-  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('bio');
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('bio', true);
   h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';
   return h;
 }
