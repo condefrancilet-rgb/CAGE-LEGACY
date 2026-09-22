@@ -1,0 +1,456 @@
+{
+ "generado": "dev/make-inventario.js",
+ "nota": "Inventario de story y gym ANTES de E3b.",
+ "alcance": [
+  "story",
+  "gym"
+ ],
+ "acciones": [
+  {
+   "onclick": "changeCoach('co0')",
+   "etiqueta": "Aurelio Basti estricto No negocia con la discipl",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co1')",
+   "etiqueta": "Doc Whitmore tranquilo Habla poco, y cuando habl",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co10')",
+   "etiqueta": "Javier Mendez calmado Entrenador real y fundador",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co11')",
+   "etiqueta": "Trevor Wittman técnico Entrenador real de striki",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co12')",
+   "etiqueta": "Mike Brown profesional Coach real de MMA con enf",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co13')",
+   "etiqueta": "Eugene Bareman estricto Coach real con énfasis e",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co14')",
+   "etiqueta": "Greg Jackson estratégico Coach real conocido por",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co2')",
+   "etiqueta": "Sergei Ilyin agresivo Te rompe en el gimnasio pa",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co3')",
+   "etiqueta": "Marcos Teixeira técnico Cree que toda pelea es u",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co4')",
+   "etiqueta": "Benny Kowal ambicioso Quiere el cinturón tanto c",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co5')",
+   "etiqueta": "Kru Anan tradicional Treinta años de ring. Cero ",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co6')",
+   "etiqueta": "Nora Vidal técnico Analista brutal. Ve el error ",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co7')",
+   "etiqueta": "Big Ray Colton tranquilo Ex peleador, sabe exact",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co8')",
+   "etiqueta": "Iker Mendive estricto Cronómetro en mano, siempr",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeCoach('co9')",
+   "etiqueta": "Jorge Palma ambicioso Te consigue sparrings impo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym0')",
+   "etiqueta": "Ironhill MMA $900/mes Fábrica de wrestlers con m",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym1')",
+   "etiqueta": "Casa Vermelha $1,200/mes Templo de jiu-jitsu. Se",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym10')",
+   "etiqueta": "American Kickboxing Academy $5,200/mes Gimnasio ",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym11')",
+   "etiqueta": "Jackson Wink MMA $5,000/mes Gimnasio real de Nue",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym12')",
+   "etiqueta": "American Top Team $5,600/mes Gimnasio real de MM",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym13')",
+   "etiqueta": "Tiger Muay Thai $4,300/mes Camp real de Phuket c",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym14')",
+   "etiqueta": "City Kickboxing $4,700/mes Gimnasio real de Auck",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym2')",
+   "etiqueta": "Dublin Forge $1,400/mes Striking creativo y spar",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym3')",
+   "etiqueta": "Sakura Combat $1,300/mes Técnica obsesiva, disci",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym4')",
+   "etiqueta": "Alpha Peak $4,200/mes Super gym de élite. Caro y",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym5')",
+   "etiqueta": "Sierra Nueve $700/mes Altura, cardio infinito y ",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym6')",
+   "etiqueta": "Volga Kombat $2,100/mes Sambo y presión. No se e",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym7')",
+   "etiqueta": "Bangkok Line $1,500/mes Muay thai puro. Clinch d",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym8')",
+   "etiqueta": "Atlas Lab $1,900/mes Datos, video y planificació",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeGym('gym9')",
+   "etiqueta": "Backyard Club $120/mes Un garaje, dos sacos y mu",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg0')",
+   "etiqueta": "Vince Marotta Consigue peleas grandes. Te cobra ",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg1')",
+   "etiqueta": "Elena Cardozo Honesta hasta cuando duele. Red de",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg2')",
+   "etiqueta": "Sunny Patel Negociador paciente, especialista en",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg3')",
+   "etiqueta": "Duke Halloran El mejor y el peor. Te hará rico o",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg4')",
+   "etiqueta": "Mika Lindholm Cuida la carrera larga, rechaza pe",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "changeMgr('mg5')",
+   "etiqueta": "Rafa Ocampo Regional puro, conoce a todos los pr",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('hub')",
+   "etiqueta": "Volver",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co0')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co1')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co10')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co11')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co12')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co13')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co14')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co2')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co3')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co4')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co5')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co6')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co7')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co8')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "hireCoach('co9')",
+   "etiqueta": "Sumar al equipo (asistente)",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "storyReact('*',0)",
+   "etiqueta": "Explicar cómo manejás el peso",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "storyReact('*',1)",
+   "etiqueta": "\"Peleo donde se me canta\"",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "storyReact('*',2)",
+   "etiqueta": "Admitir que estás evaluando subir",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "storyReact('*',3)",
+   "etiqueta": "Ignorarlo y volver al gimnasio",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  }
+ ]
+}

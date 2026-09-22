@@ -2034,11 +2034,48 @@ Antes de medir **abre todas las secciones plegables** de la pantalla candidata. 
 pantalla con secciones le da margen de scroll, así que E3b puede acortar `gym` y `story` sin
 dejarla ciega. Hoy mide en `train` con sus secciones abiertas.
 
+---
+
+# E3b — CERRADO. `story`, `gym` y las salidas de `stats`
+
+| pantalla, 360×640 | antes | **después** |
+|---|---|---|
+| `story` | **9,95** pantallas · 6.367 px | **1,95** · 1.245 px |
+| `gym` | **8,35** · 5.347 px · **14 táctiles <44 px** | **1,04** · 668 px · **0** |
+| `stats` | 1,85 (sin salidas) | **1,90** · con cuatro salidas |
+
+**Red antes de tocar**, como en E3: `dev/fixtures/e3/inventario-story-gym.json`, **56
+acciones** congeladas, y la misma red de `dev/tests/13-inventario.js` reutilizada — sólo
+cambia el fixture y su alcance.
+
+**Dos errores míos al congelar ese fixture, los dos atrapados por la propia red:**
+
+1. Los ids de los posts del feed (`fp3`, `fp8`…) **se generan en cada arranque**: pinchar
+   `storyReact('fp8',3)` hacía fallar la red por un post que no existía en otro arranque. Se
+   canoniza el id y se conserva la familia.
+2. Mi primer regex de canonización era **demasiado ancho** y se comía también los ids de
+   gimnasios, entrenadores y managers —que salen de tablas fijas y sí son estables—,
+   dejando el fixture del inicio en 15 acciones de 82. Y de paso **regeneré ese fixture
+   desde el código ya refactorizado**, destruyendo la línea base. Restaurado de git y
+   acotado a `'fp\d+'`. **Comprobada la estabilidad**: el fixture sale idéntico con las
+   semillas 7, 41 y 99.
+
+## Qué se movió
+
+- **`gym`**: los tres catálogos —gimnasios, entrenadores, managers— y los tres paneles de
+  estado pasan a secciones plegables. Lo que queda abierto es **el equipo que tenés**. Y los
+  **14 objetivos táctiles de 32 px** pasan a 44: eran los últimos del juego.
+- **`story`**: el feed era **5.491 px de los 6.367** (el 86 %), con 18 publicaciones. Ahora
+  arriba van **las que piden respuesta** (hasta 2) bajo «Te están hablando», y el resto se
+  pliega en «Resto del feed». Ninguna publicación desaparece.
+- **`stats`**: cuatro salidas nuevas —Entrenar · Técnicas · Pública · Inicio—. Tenía 470
+  nodos y **cero botones**.
+
+Pruebas de navegador **69 → 77** (`story` y `gym` con los mismos criterios). Suite **187**.
+
 ## Siguiente paso exacto
 
-**E3b — `story` (9,95 pantallas) y `gym` (8,35)**, con los mismos criterios que el inicio y
-**antes de E4**. Plan y medidas en **`dev/E3b-STORY-GYM.md`**. `gym` tiene además los **14
-objetivos táctiles por debajo de 44 px** que quedan en el juego.
+**E4 — rendimiento.**
 
 Y anotado para E5 (`dev/E5-AUDITORIA.md` §A-1): **`hookRun` se traga errores que la trampa
 global no ve**. Hay que contar los fallos aislados en carreras largas (tienen que ser 0 o

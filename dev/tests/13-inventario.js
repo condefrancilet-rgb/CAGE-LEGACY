@@ -21,11 +21,21 @@ const FIX = process.env.CAGE_FIX ||
 const ARCHIVO = process.env.CAGE_FILE || undefined;
 const SAVE = path.join(__dirname, '..', 'perf', 'congelado', 'save-referencia.json');
 
+/* SOLO los ids de posts del feed (fp3, fp8...), que se generan en cada
+   arranque y cambian con la semilla: pinchar storyReact('fp8',3) hacia fallar
+   la red por un post que no existia en otro arranque.
+   Los ids de gimnasios, entrenadores y managers NO se canonizan: salen de
+   tablas fijas y son estables, y generalizarlos perderia la garantia de que
+   cada opcion concreta sigue alcanzable. Mi primer regex se los comia todos. */
+function canon(oc){
+  return String(oc).replace(/'fp\d+'/g, "'*'");
+}
+
 /* Misma extraccion que el generador del fixture. */
 function acciones(html){
   const out = new Set();
   const re = /<button[^>]*onclick="([^"]*)"/g;
-  let m; while((m = re.exec(html))) out.add(m[1].trim());
+  let m; while((m = re.exec(html))) out.add(canon(m[1].trim()));
   return out;
 }
 /* Adonde lleva una pantalla: destinos de go('X') y de la barra inferior. */
@@ -67,15 +77,15 @@ function pinta(c, nombre){
   return h == null ? '' : h;
 }
 
-suite('E3 · nada se pierde (inventario del inicio)', () => {
+function redDeInventario(FIX, etiqueta, MINIMO, MIN_PELEA, MIN_SEMANA){
+suite('E3 · nada se pierde (' + etiqueta + ')', () => {
 
   test('el fixture del inventario existe y no esta vacio', () => {
-    ok(fs.existsSync(FIX), 'falta dev/fixtures/e3/inventario-inicio.json');
+    ok(fs.existsSync(FIX), 'falta el fixture ' + FIX);
     const f = JSON.parse(fs.readFileSync(FIX, 'utf8'));
-    ok(Array.isArray(f.acciones) && f.acciones.length >= 82,
-       'el fixture tiene ' + (f.acciones||[]).length + ' acciones, se esperaban >= 82');
-    ok(Array.isArray(f.alcance) && f.alcance.indexOf('hub') >= 0,
-       'el alcance tiene que incluir el inicio');
+    ok(Array.isArray(f.acciones) && f.acciones.length >= MINIMO,
+       'el fixture tiene ' + (f.acciones||[]).length + ' acciones, se esperaban >= ' + MINIMO);
+    ok(Array.isArray(f.alcance) && f.alcance.length > 0, 'el fixture no declara alcance');
     ok(f.acciones.every(a => a.onclick && a.etiqueta !== undefined),
        'hay acciones sin onclick o sin etiqueta');
   });
@@ -117,8 +127,16 @@ suite('E3 · nada se pierde (inventario del inicio)', () => {
     const f = JSON.parse(fs.readFileSync(FIX, 'utf8'));
     const soloPelea = f.acciones.filter(a => a.estados.length === 1 && a.estados[0] === 'pelea');
     const soloSemana = f.acciones.filter(a => a.estados.length === 1 && a.estados[0] === 'semana');
-    ok(soloPelea.length >= 10, 'el fixture solo tiene ' + soloPelea.length + ' acciones exclusivas de la semana de pelea');
-    ok(soloSemana.length >= 30, 'el fixture solo tiene ' + soloSemana.length + ' acciones exclusivas de la semana normal');
+    ok(soloPelea.length >= MIN_PELEA, 'el fixture solo tiene ' + soloPelea.length + ' acciones exclusivas de la semana de pelea');
+    ok(soloSemana.length >= MIN_SEMANA, 'el fixture solo tiene ' + soloSemana.length + ' acciones exclusivas de la semana normal');
   });
 
 });
+}
+
+/* El inicio (E3) y las pantallas de E3b usan la MISMA red: lo unico que
+   cambia es el fixture y su alcance. */
+redDeInventario(FIX, 'inventario del inicio', 82, 10, 30);
+if(!process.env.CAGE_FIX)
+  redDeInventario(path.join(__dirname, '..', 'fixtures', 'e3', 'inventario-story-gym.json'),
+                  'inventario de story y gym', 55, 1, 1);

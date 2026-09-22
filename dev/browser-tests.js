@@ -238,7 +238,8 @@ async function main(){
          seccion abierta es correcto que sea mayor: para eso estan. */
       UI.sec = {};
       const out = [];
-      for(const p of ['hub','train','menu','people','bio','stats']){
+      /* story y gym entran con E3b: mismos criterios que el inicio */
+      for(const p of ['hub','train','menu','people','bio','stats','story','gym']){
         go(p); await esperar(150);
         const alto = document.documentElement.scrollHeight;
         const chicos = [...document.querySelectorAll('button, .avisos a')]

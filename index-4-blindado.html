@@ -5374,28 +5374,40 @@ function coachLine(c){
 function scrGym(){
   var p=G.player;
   var h='<div class="topbar"><div class="r1"><h2>Equipo</h2><span class="sm dim">'+money(G.cash)+'</span></div></div>';
-  h+='<div class="card"><h3>Cambiar de gimnasio</h3><p class="sm dim">Cambiar mejora unas áreas y empeora otras, cuesta dinero y afecta relaciones.</p>';
+  /* E3b. Medido: esta pantalla daba 8,35 pantallas de alto a 360x640 y tres de
+     sus bloques eran catalogos —gimnasios, entrenadores y managers— que se
+     miran cuando se quiere cambiar algo, no cada vez que se entra. El equipo
+     que TENÉS queda abierto; los catalogos, plegados. */
+  var catGym='<div class="card"><p class="sm dim">Cambiar mejora unas áreas y empeora otras, cuesta dinero y afecta relaciones.</p>';
   G.gyms.forEach(function(g){
-    h+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes</span>'+
+    catGym+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes</span>'+
      '<small>'+esc(g.desc)+' · STR '+g.a.strike+' · WR '+g.a.wrest+' · GR '+g.a.grap+' · SPAR '+g.a.spar+' · prestigio '+g.prest+'</small></button>';
   });
-  h+='</div><div class="card"><h3>Equipo técnico</h3><p class="sm dim">Hasta 3 entrenadores a la vez. Cada uno aporta su especialidad al entrenamiento y su propia recomendación en el gameplan. Los ayudantes cobran aparte: '+money(teamCost())+'/semana.</p>';
+  var catGymHtml = catGym + '</div>';
+  h+='<div class="card"><h3>Equipo técnico</h3><p class="sm dim">Hasta 3 entrenadores a la vez. Cada uno aporta su especialidad al entrenamiento y su propia recomendación en el gameplan. Los ayudantes cobran aparte: '+money(teamCost())+'/semana.</p>';
   team().forEach(function(c){
     h+='<div class="row"><span>'+(c.id===p.coach?'★ ':'')+esc(c.name)+' <span class="dim2 xs">'+c.pers+' · '+c.spec+'</span></span>'+
       (team().length>1? '<a href="#" onclick="fireCoach(\''+c.id+'\');return false" class="bad xs">quitar</a>':'<span class="dim2 xs">principal</span>')+'</div>';
   });
-  h+='</div><div class="card"><h3>Contratar o cambiar de entrenador</h3>';
+  h+='</div>';
+  var catCoach='<div class="card">';
   G.coaches.forEach(function(c){
     var inT = team().filter(function(x){return x.id===c.id;}).length>0;
-    h+='<button class="btn '+(p.coach===c.id?'sel':'')+'" onclick="changeCoach(\''+c.id+'\')">'+esc(c.name)+' <span class="tag">'+c.pers+'</span>'+
+    catCoach+='<button class="btn '+(p.coach===c.id?'sel':'')+'" onclick="changeCoach(\''+c.id+'\')">'+esc(c.name)+' <span class="tag">'+c.pers+'</span>'+
      '<small>'+esc(c.desc)+' · calidad '+c.q+'</small></button>'+
-     (inT? '' : '<button class="btn ghost xs" style="min-height:32px;padding:5px 10px;margin-top:-4px" onclick="hireCoach(\''+c.id+'\')">Sumar al equipo (asistente)</button>');
+     /* E3b: 44 px. Median 32 y eran 14 de los 14 objetivos tactiles chicos que
+        quedaban en todo el juego. */
+     (inT? '' : '<button class="btn ghost" style="min-height:44px;padding:8px 10px;margin-top:-4px;font-size:13px" onclick="hireCoach(\''+c.id+'\')">Sumar al equipo (asistente)</button>');
   });
-  h+='</div><div class="card"><h3>Cambiar de manager</h3>';
+  catCoach+='</div>';
+  var catMgr='<div class="card">';
   G.mgrs.forEach(function(m){
-    h+='<button class="btn '+(G.mgId===m.id?'sel':'')+'" onclick="changeMgr(\''+m.id+'\')">'+esc(m.name)+'<small>'+esc(m.desc)+' · comisión '+Math.round(m.cut*100)+'%</small></button>';
+    catMgr+='<button class="btn '+(G.mgId===m.id?'sel':'')+'" onclick="changeMgr(\''+m.id+'\')">'+esc(m.name)+'<small>'+esc(m.desc)+' · comisión '+Math.round(m.cut*100)+'%</small></button>';
   });
-  h+='</div>';
+  catMgr+='</div>';
+  h+=CL.seccion('catGimnasios', 'Cambiar de gimnasio', catGymHtml)+
+     CL.seccion('catEntrenadores', 'Contratar o cambiar de entrenador', catCoach)+
+     CL.seccion('catManagers', 'Cambiar de manager', catMgr);
   return hookFilter('screen:gym', h, {});
 }
 function changeGym(id){
@@ -5464,8 +5476,10 @@ function scrContracts(){
 function scrStats(){
   var p=G.player;
   var h='<div class="topbar"><div class="r1"><h2>Ficha</h2><span class="sm dim">OVR '+ovr(p)+' · pot. global '+p.potGlobal+'</span></div></div>';
-  h+='<div class="card"><div class="sm dim">'+STYLES[p.style].n+(p.secondaryStyle?' · '+STYLES[p.secondaryStyle].n:'')+' · '+PERS[p.pers].n+(p.pers2?' + '+PERS[p.pers2].n:'')+' · '+NATNAME[p.nat]+' · '+ageOf(p)+' años</div>'+
-   '<p class="xs dim2" style="margin-top:6px">Barra clara = valor actual · barra azul fina = potencial máximo.</p></div>';
+  /* E3b: sin tarjeta propia. Eran 98 px para dos lineas de texto en una
+     pantalla que con sus salidas nuevas se pasaba de dos pantallas por 0,05. */
+  h+='<p class="sm dim" style="margin:0 0 4px">'+STYLES[p.style].n+(p.secondaryStyle?' · '+STYLES[p.secondaryStyle].n:'')+' · '+PERS[p.pers].n+(p.pers2?' + '+PERS[p.pers2].n:'')+' · '+NATNAME[p.nat]+' · '+ageOf(p)+' años</p>'+
+   '<p class="xs dim2" style="margin:0 0 8px">Barra clara = valor actual · barra azul fina = potencial máximo.</p>';
   h+='<div class="card"><h3>Técnica y físico</h3>'+PHYS.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>';
   /* E3: la ficha daba 3,2 pantallas de alto a 360x640 y E3 le habia sumado
      296 px mas. Queda abierto lo que se viene a ver —técnica y físico—; el
@@ -5480,6 +5494,17 @@ function scrStats(){
     h+=CL.seccion('evoEstilo', 'Evolución de estilo',
       '<div class="card"><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>');
   }
+  /* E3b, decision 5b: la Ficha tenia 470 nodos y CERO botones — se entraba y
+     solo se salia por la barra. Ahora lleva a donde uno quiere ir despues de
+     mirar sus numeros: a entrenarlos, al arbol de tecnicas y a la ficha
+     publica. */
+  var SAL='text-align:center;white-space:nowrap;padding:12px 4px;margin:0';
+  h+='<div class="card tight"><div class="grid g4">'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'train\')">Entrenar</button>'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'tq\')">Técnicas</button>'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'bio\')">Pública</button>'+
+     '<button class="btn ghost" style="'+SAL+'" onclick="go(\'hub\')">Inicio</button>'+
+     '</div></div>';
   return hookFilter('screen:stats', h, {});
 }
 
@@ -12924,7 +12949,10 @@ function coachEdgeCard(){
   return h;
 }
 hookOn('screen:gym','coachScrGymPrev', function(h){
-  return h+safeRun('coachCard', function(){ return coachEdgeCard(); }, function(){ return ''; }, true);
+  /* E3b: plegado. Son 300 px de relato sobre el entrenador en una pantalla
+     que daba 8,35 pantallas de alto. */
+  return h + CL.seccion('coachEdge', 'Tu entrenador principal',
+    safeRun('coachCard', function(){ return coachEdgeCard(); }, function(){ return ''; }, true));
 }, 20);
 
 
@@ -18768,7 +18796,9 @@ CL.year = function(){
 
   W('scrGym');
   hookOn('screen:gym','clScrGym', function(h){
-    return h + (safeRun('CL/scrGym', function(){ return CL.gymPanel(); }, function(){ return ''; }, true) || '');
+    /* E3b: plegado, por lo mismo */
+    return h + CL.seccion('gymPanel', 'Filosofía del gimnasio',
+      safeRun('CL/scrGym', function(){ return CL.gymPanel(); }, function(){ return ''; }, true) || '');
   }, 30);
 
   W('scrMenu');
@@ -19933,7 +19963,7 @@ CL.hubCard('pilares', function(){
   var prev = CL.gymPanel;
   CL.gymPanel = function(){
     var h = prev();
-    return h + (safeRun('CL/gymRepPanel', function(){
+    return h + CL.seccion('gymRep', 'Tu lugar en el gimnasio', safeRun('CL/gymRepPanel', function(){
       var p=G.player, g=gymById(p.gym); if(!g) return '';
       var rep=CL.gymRep(g.id), L=CL.gymRepLabel(g.id), perks=CL.gymPerks(g.id);
       var others=G.gyms.filter(function(x){ return x.id!==g.id && CL.S().gymRep && CL.S().gymRep[x.id]!==undefined; });
@@ -28051,17 +28081,24 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
   window.storyReact=storyReact;
   function storyScreen(){
     var s=story(),p=G.player,h='<div class="topbar"><div class="r1"><h2>📱 Mundo y memoria</h2><span class="sm dim">'+careerState()+' · '+CAT_NAMES.MEDIA+'/'+CAT_NAMES.SOCIAL+'</span></div></div>';
-    h+='<div class="card"><div class="hdr"><h3>Estado narrativo</h3><span class="tag">'+socialState()+'</span></div><p class="sm dim">'+esc(fname(p))+' está en una etapa de <b>'+careerState()+'</b>. Las decisiones importantes quedan registradas y pueden volver a aparecer con otras consecuencias.</p></div>';
+    h+=CL.seccion('estadoNarr', 'Estado narrativo',
+      '<div class="card"><p class="sm dim"><span class="tag">'+socialState()+'</span> '+esc(fname(p))+' está en una etapa de <b>'+careerState()+'</b>. Las decisiones importantes quedan registradas y pueden volver a aparecer con otras consecuencias.</p></div>');
     h+=socMeterHTML();
     if(G.socOut){
       h+='<div class="card hi"><p class="sm">'+esc(G.socOut.t)+'</p>'+
          '<button class="btn ghost" onclick="G.socOut=null;render()">Entendido</button></div>';
     }
     if(s.feed.length){
-      h+='<div class="card"><h3>Feed</h3>';
-      s.feed.slice(0,18).forEach(function(x,i){
+      /* E3b. Medido: el feed era 5.491 px de los 6.367 de esta pantalla —el
+         86 %— con 18 publicaciones y 55 botones. Lo que pide accion son las
+         que todavia no respondiste; el resto es historial.
+         Arriba van las PENDIENTES (hasta 5) y el resto se pliega. Ninguna
+         publicacion desaparece y ninguna reaccion se pierde: la red de
+         inventario de story/gym lo exige. */
+      var post = function(x, i){
+        var hp='';
         var cls = x.type==='media'?'rival' : (x.type==='rival'||x.type==='opp'?'rival' : (x.type==='mate'||x.type==='prospect'?'partner':''));
-        h+='<div class="soc-card '+cls+'"><div class="b">'+esc(x.author)+
+        hp+='<div class="soc-card '+cls+'"><div class="b">'+esc(x.author)+
            (x.type&&x.type!=='player'? ' <span class="tag">'+esc(FEED_TAG[x.type]||x.type)+'</span>':'')+'</div>'+
            '<div class="sm">'+esc(x.text)+'</div>'+
            '<div class="xs dim2">'+x.y+' · semana '+x.w+'</div>';
@@ -28069,31 +28106,53 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
         var legacy = !opts && (x.type==='media'||x.type==='fan'||x.type==='hardcore');
         if(x.type!=='player' && (opts||legacy)){
           if(x.reacted){
-            h+='<p class="xs jade" style="margin:7px 0 0">✓ Ya respondiste: '+esc(x.reacted.t||'—')+'</p>';
+            hp+='<p class="xs jade" style="margin:7px 0 0">✓ Ya respondiste: '+esc(x.reacted.t||'—')+'</p>';
           } else {
             var ref=x.uid? ("'"+x.uid+"'") : String(i);
             var why=socWhyBlocked('post:'+(x.uid||x.id||i));
             if(why){
-              h+='<p class="xs dim2" style="margin:7px 0 0">⛔ '+esc(why)+'</p>';
+              hp+='<p class="xs dim2" style="margin:7px 0 0">⛔ '+esc(why)+'</p>';
             } else if(opts){
-              h+='<div style="margin-top:7px">';
+              hp+='<div style="margin-top:7px">';
               opts.forEach(function(o,oi){
-                h+='<button class="btn" onclick="storyReact('+ref+','+oi+')">'+esc(o.t)+'</button>';
+                hp+='<button class="btn" onclick="storyReact('+ref+','+oi+')">'+esc(o.t)+'</button>';
               });
-              h+='</div>';
+              hp+='</div>';
             } else {
-              h+='<div class="grid g3" style="margin-top:7px">'+
+              hp+='<div class="grid g3" style="margin-top:7px">'+
                  '<button class="btn" onclick="storyReact('+ref+',0)">Responder</button>'+
                  '<button class="btn" onclick="storyReact('+ref+',1)">Apoyar</button>'+
                  '<button class="btn" onclick="storyReact('+ref+',2)">Ignorar</button></div>';
             }
           }
         }
-        h+='</div>';
+        hp+='</div>';
+        return hp;
+      };
+      var lista = s.feed.slice(0,18);
+      var pend = [], viejos = [];
+      lista.forEach(function(x,i){
+        var accionable = x.type!=='player' && !x.reacted &&
+          ((Array.isArray(x.opts)&&x.opts.length) || x.type==='media' || x.type==='fan' || x.type==='hardcore');
+        /* tres: con cinco, esta pantalla seguia en 3,45 pantallas de alto.
+           Cada publicacion con opciones mide ~300 px. */
+        /* dos: con tres seguia en 2,39 pantallas. Cada publicacion con
+           opciones mide unos 300 px y el criterio es <= 2 pantallas. */
+        (accionable && pend.length<2 ? pend : viejos).push([x,i]);
       });
-      h+='</div>';
+      if(pend.length){
+        h+='<div class="card"><h3>Te están hablando</h3>';
+        pend.forEach(function(par){ h+=post(par[0], par[1]); });
+        h+='</div>';
+      }
+      if(viejos.length){
+        var vh='<div class="card">';
+        viejos.forEach(function(par){ vh+=post(par[0], par[1]); });
+        h+=CL.seccion('feedViejo', 'Resto del feed · '+viejos.length, vh+'</div>');
+      }
     }
-    h+='<div class="card"><h3>Memoria de carrera</h3><div class="log">'+s.memories.slice(0,20).map(function(m){return '<div><span class="dim2 xs">'+m.y+' S'+m.w+'</span> '+esc(m.type)+(m.choice?' · '+esc(m.choice):'')+(m.identity?' · '+esc(m.identity):'')+'</div>';}).join('')+'</div></div>';
+    h+=CL.seccion('memoriaCarrera', 'Memoria de carrera',
+      '<div class="card"><div class="log"><div class="log">'+s.memories.slice(0,20).map(function(m){return '<div><span class="dim2 xs">'+m.y+' S'+m.w+'</span> '+esc(m.type)+(m.choice?' · '+esc(m.choice):'')+(m.identity?' · '+esc(m.identity):'')+'</div>';}).join('')+'</div></div>');
     h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';return h;
   }
   /* 'story' era la tercera vía de renderizado: interceptaba render() antes de

@@ -9,24 +9,6 @@
   "nombre": "cldiag"
  },
  {
-  "real": "story",
-  "alto": 6367,
-  "nodos": 224,
-  "bytes": 12140,
-  "botones": 56,
-  "chicos": 0,
-  "nombre": "story"
- },
- {
-  "real": "gym",
-  "alto": 5347,
-  "nodos": 197,
-  "bytes": 12065,
-  "botones": 50,
-  "chicos": 14,
-  "nombre": "gym"
- },
- {
   "real": "shop",
   "alto": 4108,
   "nodos": 256,
@@ -144,6 +126,15 @@
   "nombre": "hall"
  },
  {
+  "real": "stats",
+  "alto": 1271,
+  "nodos": 488,
+  "bytes": 15302,
+  "botones": 4,
+  "chicos": 0,
+  "nombre": "stats"
+ },
+ {
   "real": "hub",
   "alto": 1264,
   "nodos": 74,
@@ -198,6 +189,15 @@
   "nombre": "legacy"
  },
  {
+  "real": "story",
+  "alto": 1245,
+  "nodos": 232,
+  "bytes": 12614,
+  "botones": 56,
+  "chicos": 0,
+  "nombre": "story"
+ },
+ {
   "real": "retire",
   "alto": 1229,
   "nodos": 64,
@@ -205,6 +205,15 @@
   "botones": 2,
   "chicos": 0,
   "nombre": "retire"
+ },
+ {
+  "real": "bio",
+  "alto": 1222,
+  "nodos": 109,
+  "bytes": 3991,
+  "botones": 3,
+  "chicos": 0,
+  "nombre": "bio"
  },
  {
   "real": "history",
@@ -216,15 +225,6 @@
   "nombre": "history"
  },
  {
-  "real": "stats",
-  "alto": 1181,
-  "nodos": 483,
-  "bytes": 14440,
-  "botones": 0,
-  "chicos": 0,
-  "nombre": "stats"
- },
- {
   "real": "contracts",
   "alto": 1179,
   "nodos": 51,
@@ -234,31 +234,22 @@
   "nombre": "contracts"
  },
  {
-  "real": "train",
-  "alto": 1123,
-  "nodos": 152,
-  "bytes": 7346,
-  "botones": 29,
-  "chicos": 0,
-  "nombre": "train"
- },
- {
   "real": "people",
-  "alto": 985,
+  "alto": 1177,
   "nodos": 158,
-  "bytes": 6022,
+  "bytes": 6286,
   "botones": 2,
   "chicos": 0,
   "nombre": "people"
  },
  {
-  "real": "bio",
-  "alto": 930,
-  "nodos": 109,
-  "bytes": 3777,
-  "botones": 3,
+  "real": "train",
+  "alto": 1123,
+  "nodos": 152,
+  "bytes": 7556,
+  "botones": 29,
   "chicos": 0,
-  "nombre": "bio"
+  "nombre": "train"
  },
  {
   "real": "title",
@@ -272,11 +263,20 @@
  {
   "real": "menu",
   "alto": 776,
-  "nodos": 119,
-  "bytes": 5284,
-  "botones": 27,
+  "nodos": 117,
+  "bytes": 5357,
+  "botones": 26,
   "chicos": 0,
   "nombre": "menu"
+ },
+ {
+  "real": "gym",
+  "alto": 668,
+  "nodos": 212,
+  "bytes": 13134,
+  "botones": 50,
+  "chicos": 0,
+  "nombre": "gym"
  },
  {
   "real": "rank",
