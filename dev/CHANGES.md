@@ -2073,9 +2073,97 @@ cambia el fixture y su alcance.
 
 Pruebas de navegador **69 → 77** (`story` y `gym` con los mismos criterios). Suite **187**.
 
+---
+
+# E4 — CERRADO. `loadGame` −44 %, y una lección sobre medir
+
+## Lo que cambió
+
+1. **`loadGame` ya no reescribe lo que acaba de leer.** El `saveGame(true)` del final existe
+   para persistir la migración; si el save ya estaba al día, volvía a serializar ~950 KB
+   para escribir lo mismo. Ahora sólo se reescribe cuando hubo algo que persistir.
+2. **`repairCritical` usa `Number.isFinite`** en vez de `typeof` + `isFinite`, con el largo
+   fuera del bucle. Mismo resultado para un valor que ya pasaba el `typeof`. Corre 371 veces
+   por semana y repara **0** en juego normal: es una red, no un cálculo. 3,044 → 2,448 ms.
+
+## La medición, con las dos versiones en la misma corrida
+
+| | pre-E4 | post-E4 | |
+|---|---|---|---|
+| `advanceWeek` media | 14,94 ms | **14,25 ms** | −5 % |
+| `advanceWeek` p95 | 18,10 ms | **17,05 ms** | −6 % |
+| `saveSerialize` | 27,24 ms | **25,99 ms** | −5 % |
+| **`loadGame`** | 85,61 ms | **47,66 ms** | **−44 %** |
+
+**Y una corrección que importa más que los números.** La línea base guardada en
+`dev/perf/baseline.json` decía 24,04 ms de `advanceWeek`. Comparar contra ella daba **−42 %**.
+Es falso: esa medición es de otra corrida y esta máquina hoy va más rápida — el **mismo
+código pre-E4 da 14,94 ms hoy**. Por eso `baseline.js` acepta ahora `--file` y las dos
+versiones se miden siempre una detrás de otra. De paso, `baseline.js` medía el hub
+**colapsado** por un evento pendiente (771 bytes, 14 nodos): el mismo error que ya había
+pagado con `hub-dom.js`. Corregido.
+
+El render del inicio bajó de **1,14 ms a 0,08 ms**, pero eso lo hizo **E3**, no E4: se llevó
+la tarjeta `circulo` (`socCircle` + `socPartners` eran el 21,5 % del dibujado) fuera del hub.
+
+## Lo que NO se tocó, y por qué
+
+`TX.snapshot` es el **40,7 %** de `advanceWeek` y no tiene arreglo seguro. Medido:
+
+- **1 sola** serialización por semana, 975 KB: no hay trabajo duplicado que quitar;
+- el **91,6 %** del estado son los peleadores, y **384 de 414 cambian cada semana**: no hay
+  subconjunto cacheable;
+- `structuredClone` es **más lento** (9,45 ms contra 5,78);
+- aplanar los objetos de peleador da 6,19 → **3,82 ms**… que **se degrada solo**: 4,11 a las
+  5 semanas, **6,27 a las 25**. Y rehacerlos en caliente rompe la identidad de `G.player` con
+  el plantel — el bug exacto que atrapó el mutante MR7 de la red de rollback.
+
+Quedan dos caminos, los dos con precio, en **`dev/PENDIENTES.md` §P-2**.
+
+**Criterio de corte:** tras `TX.snapshot` (sin arreglo seguro) y `repairCritical` (16,9 % →
+13,8 %), el siguiente punto caliente de `advanceWeek` pesa **2,6 %**. Por debajo del 10 %.
+
+**Criterio de salida, cumplido:** A/B de 200 carreras × 300 semanas por brazo, pre-E4 contra
+post-E4, pareado por semilla → **200 de 200 huellas idénticas** y *«ningún campo cambia en
+ninguna carrera»*. El rendimiento cambió; lo que el juego calcula, no.
+
+---
+
+# E5 — CERRADO. Barrido completo
+
+| frente | herramienta | resultado |
+|---|---|---|
+| estático | `dev/metrics.js` | `eval` **0** · deps externas **0** · scroll **3** · `UI.screen` **8** · funciones duplicadas **0** · **1 línea duplicada** → corregida |
+| carreras largas | `dev/sim.js` 200 × 300 semanas | fallos de invariante **0** |
+| enganches aislados | `dev/e5-hooks.js` 4 × 300 semanas | **0 fallos**; sí deja escrituras parciales → **P-1** |
+| caminos a mano | `dev/tests/15-camino.js` | contrato → pelea → pesaje → combate → cobro, y guardar/cargar |
+| UI | `dev/browser-tests.js` | **77 verdes** · desborde **0/105** · táctiles <44 px **0** |
+| save/load | tests 03 · 09 · 11 | 5 fixtures + save congelado + carga idempotente |
+| mono | `dev/e5-mono.js` 4 semillas, ~2.500 toques | **0 errores JS · 0 invariantes rotas** |
+
+**El único bug nuevo fue cosmético**: `DEV.initFromUrl` tenía la misma línea dos veces, una
+sentencia muerta de un copiar-pegar. Corregido.
+
+**Las divergencias heredadas, decididas con evidencia:**
+
+- **Los tres destinos de `mgExit` NO se unifican.** Cada uno es una situación distinta, y
+  unificarlos rompe una: `'train'` sólo aparece cuando falla un minijuego de entrenamiento,
+  donde el juego promete *«Volvés al gimnasio sin perder la semana»*; con `'auto'` iría al
+  inicio y el mensaje sería mentira. Fijado con **4 pruebas** que incluyen el contraejemplo.
+- **Los enganches en 2 de 3 cierres de intercambio**: no se tocan, es balance → **P-3** y F14.
+- **Limpieza defensiva de FX**: no se retira, la prueba que lo permitiría no existe → **P-4**.
+- **`fightScreen` no se une a `go()`**: falta la prueba que conduzca a mano el minijuego de
+  finalización → **P-5**.
+
 ## Siguiente paso exacto
 
-**E4 — rendimiento.**
+**Ninguno: el encargo está terminado.** La rama `cage-legacy-rework` queda lista para
+mergear, sin mergear, con las instrucciones en **`dev/MERGE.md`**. Lo que queda abierto son
+decisiones tuyas, en **`dev/PENDIENTES.md`** (P-1 a P-6) y **`dev/F14-BALANCE.md`** (balance).
+
+---
+
+# (histórico) E4 — plan original
 
 Y anotado para E5 (`dev/E5-AUDITORIA.md` §A-1): **`hookRun` se traga errores que la trampa
 global no ve**. Hay que contar los fallos aislados en carreras largas (tienen que ser 0 o

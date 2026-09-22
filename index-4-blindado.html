@@ -28974,7 +28974,8 @@ var DEV = {
      apagado, así que un jugador normal no se topa con herramientas internas. */
   initFromUrl: function(){
     try{
-      var q = (typeof location!=='undefined' && location) ? (String(location.search||'')+String(location.hash||'')) : '';
+      /* E5-1: esta linea estaba DOS VECES, identica. La segunda era una
+         sentencia muerta de un copiar-pegar. */
       var q = (typeof location!=='undefined' && location) ? (String(location.search||'')+String(location.hash||'')) : '';
       /* Sin \\b: se comprueba el final del parámetro a mano, para que
          "?developer=1" o "?dev=10" no activen el modo por accidente. */

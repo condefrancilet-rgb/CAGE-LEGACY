@@ -195,3 +195,62 @@ suite('E2 · navegacion: lo que hace hoy', () => {
   });
 
 });
+
+/* ==========================================================================
+   E5 · LOS TRES DESTINOS DE mgExit NO SE UNIFICAN — y esta es la evidencia
+   --------------------------------------------------------------------------
+   Quedaron marcados como "divergencia heredada" desde E2. Mirados de cerca,
+   cada uno corresponde a una situacion distinta y unificarlos rompe una:
+
+     'auto'  cierre normal de un minijuego -> la pelea si esta viva, si no el
+             inicio. Es el caso general.
+     'train' SOLO en la recuperacion de un fallo de minijuego de
+             ENTRENAMIENTO, donde el juego le dice al jugador «Volvés al
+             gimnasio sin perder la semana». Con 'auto' iria al INICIO y el
+             mensaje seria mentira.
+     'hub'   fallos de las actividades de vida y prensa (fameStart), que no
+             son entrenamiento ni combate.
+
+   Esta prueba fija los tres para que nadie los "simplifique" sin leer esto.
+   ========================================================================== */
+suite('E5 · mgExit conserva sus tres destinos por un motivo', () => {
+
+  function conMinijuego(tipo){
+    const h = H.boot({ seed: 31 });
+    H.startCareer(h, { metaSeed: 3131, style:'mma', div:'LW', age:22 });
+    const c = h.ctx;
+    for(let i=0;i<6;i++){ try{ c.advanceWeek(); }catch(e){} }
+    c.G.pending = [];
+    c.G.mg = { type: tipo, live: true };
+    c.UI.screen = 'mg';
+    return c;
+  }
+
+  test("'train' manda al gimnasio, que es lo que el mensaje promete", () => {
+    const c = conMinijuego('train');
+    c.mgExit('train', false);
+    eq(c.UI.screen, 'train', "un minijuego de entrenamiento interrumpido no volvio al gimnasio");
+    eq(c.G.mg, null, 'no se cerro el minijuego');
+  });
+
+  test("'auto' NO sirve para ese caso: manda al inicio", () => {
+    /* el contraejemplo que justifica que 'train' exista */
+    const c = conMinijuego('train');
+    c.mgExit('auto', false);
+    eq(c.UI.screen, 'hub', "'auto' dejo de mandar al inicio sin pelea viva");
+  });
+
+  test("'auto' manda a la pelea cuando hay una viva", () => {
+    const c = conMinijuego('finish');
+    c.G.fight = { over:false, opp:'f2' };
+    c.mgExit('auto', false);
+    eq(c.UI.screen, 'fight', "'auto' no volvio a la pelea viva");
+  });
+
+  test("'hub' es el destino de los fallos de vida y prensa", () => {
+    const c = conMinijuego('fame');
+    c.mgExit('hub', false);
+    eq(c.UI.screen, 'hub', 'un fallo de actividad no volvio al inicio');
+  });
+
+});
