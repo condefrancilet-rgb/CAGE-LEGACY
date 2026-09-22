@@ -174,7 +174,7 @@
   "pantallas": 1
  },
  {
-  "alto": 1511,
+  "alto": 1525,
   "vh": 640,
   "navAlto": 57,
   "fold": 583,
@@ -189,86 +189,86 @@
    {
     "t": "avisos",
     "top": 73,
-    "bottom": 106,
-    "px": 34,
+    "bottom": 121,
+    "px": 48,
     "visible": true
    },
    {
     "t": "PELEA DE TÍTULO",
-    "top": 114,
-    "bottom": 323,
+    "top": 129,
+    "bottom": 337,
     "px": 209,
     "visible": true
    },
    {
     "t": "Avanzar",
-    "top": 333,
-    "bottom": 547,
+    "top": 347,
+    "bottom": 561,
     "px": 214,
     "visible": true
    },
    {
     "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
-    "top": 557,
-    "bottom": 691,
+    "top": 571,
+    "bottom": 705,
     "px": 134,
     "visible": false
    },
    {
     "t": "⚖️ Peso",
-    "top": 701,
-    "bottom": 811,
+    "top": 715,
+    "bottom": 825,
     "px": 110,
     "visible": false
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 821,
-    "bottom": 1069,
+    "top": 835,
+    "bottom": 1083,
     "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1079,
-    "bottom": 1210,
+    "top": 1093,
+    "bottom": 1224,
     "px": 131,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1220,
-    "bottom": 1391,
+    "top": 1234,
+    "bottom": 1405,
     "px": 171,
     "visible": false
    }
   ],
   "avanzar": {
    "t": "Avanzar",
-   "top": 333,
-   "bottom": 547,
+   "top": 347,
+   "bottom": 561,
    "px": 214,
    "visible": true
   },
   "avisos": [
    {
     "t": "⚖️ Peso",
-    "top": 701,
-    "bottom": 811,
+    "top": 715,
+    "bottom": 825,
     "px": 110,
     "visible": false
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 821,
-    "bottom": 1069,
+    "top": 835,
+    "bottom": 1083,
     "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1079,
-    "bottom": 1210,
+    "top": 1093,
+    "bottom": 1224,
     "px": 131,
     "visible": false
    }
@@ -276,8 +276,8 @@
   "strip": {
    "t": "franja de avisos",
    "top": 73,
-   "bottom": 106,
-   "px": 34,
+   "bottom": 121,
+   "px": 48,
    "visible": true
   },
   "tactiles": 16,
@@ -285,10 +285,10 @@
   "desborde": false,
   "estado": "peor",
   "vp": "360x640",
-  "pantallas": 2.36
+  "pantallas": 2.38
  },
  {
-  "alto": 1460,
+  "alto": 1474,
   "vh": 844,
   "navAlto": 57,
   "fold": 787,
@@ -303,86 +303,86 @@
    {
     "t": "avisos",
     "top": 73,
-    "bottom": 106,
-    "px": 34,
+    "bottom": 121,
+    "px": 48,
     "visible": true
    },
    {
     "t": "PELEA DE TÍTULO",
-    "top": 114,
-    "bottom": 305,
+    "top": 129,
+    "bottom": 320,
     "px": 191,
     "visible": true
    },
    {
     "t": "Avanzar",
-    "top": 315,
-    "bottom": 530,
+    "top": 330,
+    "bottom": 544,
     "px": 214,
     "visible": true
    },
    {
     "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
-    "top": 540,
-    "bottom": 656,
+    "top": 554,
+    "bottom": 670,
     "px": 116,
     "visible": true
    },
    {
     "t": "⚖️ Peso",
-    "top": 666,
-    "bottom": 776,
+    "top": 680,
+    "bottom": 790,
     "px": 110,
-    "visible": true
+    "visible": false
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 786,
-    "bottom": 1034,
+    "top": 800,
+    "bottom": 1048,
     "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1044,
-    "bottom": 1159,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1169,
-    "bottom": 1340,
+    "top": 1183,
+    "bottom": 1354,
     "px": 171,
     "visible": false
    }
   ],
   "avanzar": {
    "t": "Avanzar",
-   "top": 315,
-   "bottom": 530,
+   "top": 330,
+   "bottom": 544,
    "px": 214,
    "visible": true
   },
   "avisos": [
    {
     "t": "⚖️ Peso",
-    "top": 666,
-    "bottom": 776,
+    "top": 680,
+    "bottom": 790,
     "px": 110,
-    "visible": true
+    "visible": false
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 786,
-    "bottom": 1034,
+    "top": 800,
+    "bottom": 1048,
     "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1044,
-    "bottom": 1159,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    }
@@ -390,8 +390,8 @@
   "strip": {
    "t": "franja de avisos",
    "top": 73,
-   "bottom": 106,
-   "px": 34,
+   "bottom": 121,
+   "px": 48,
    "visible": true
   },
   "tactiles": 16,
@@ -399,10 +399,10 @@
   "desborde": false,
   "estado": "peor",
   "vp": "390x844",
-  "pantallas": 1.73
+  "pantallas": 1.75
  },
  {
-  "alto": 1424,
+  "alto": 1439,
   "vh": 915,
   "navAlto": 57,
   "fold": 858,
@@ -417,86 +417,86 @@
    {
     "t": "avisos",
     "top": 73,
-    "bottom": 106,
-    "px": 34,
+    "bottom": 121,
+    "px": 48,
     "visible": true
    },
    {
     "t": "PELEA DE TÍTULO",
-    "top": 114,
-    "bottom": 305,
+    "top": 129,
+    "bottom": 320,
     "px": 191,
     "visible": true
    },
    {
     "t": "Avanzar",
-    "top": 315,
-    "bottom": 530,
+    "top": 330,
+    "bottom": 544,
     "px": 214,
     "visible": true
    },
    {
     "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
-    "top": 540,
-    "bottom": 656,
+    "top": 554,
+    "bottom": 670,
     "px": 116,
     "visible": true
    },
    {
     "t": "⚖️ Peso",
-    "top": 666,
-    "bottom": 776,
+    "top": 680,
+    "bottom": 790,
     "px": 110,
     "visible": true
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 786,
-    "bottom": 1019,
+    "top": 800,
+    "bottom": 1033,
     "px": 233,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1029,
-    "bottom": 1144,
+    "top": 1043,
+    "bottom": 1158,
     "px": 115,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1154,
-    "bottom": 1304,
+    "top": 1168,
+    "bottom": 1319,
     "px": 151,
     "visible": false
    }
   ],
   "avanzar": {
    "t": "Avanzar",
-   "top": 315,
-   "bottom": 530,
+   "top": 330,
+   "bottom": 544,
    "px": 214,
    "visible": true
   },
   "avisos": [
    {
     "t": "⚖️ Peso",
-    "top": 666,
-    "bottom": 776,
+    "top": 680,
+    "bottom": 790,
     "px": 110,
     "visible": true
    },
    {
     "t": "📹 Equipo de contenido",
-    "top": 786,
-    "bottom": 1019,
+    "top": 800,
+    "bottom": 1033,
     "px": 233,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1029,
-    "bottom": 1144,
+    "top": 1043,
+    "bottom": 1158,
     "px": 115,
     "visible": false
    }
@@ -504,8 +504,8 @@
   "strip": {
    "t": "franja de avisos",
    "top": 73,
-   "bottom": 106,
-   "px": 34,
+   "bottom": 121,
+   "px": 48,
    "visible": true
   },
   "tactiles": 16,
@@ -513,6 +513,6 @@
   "desborde": false,
   "estado": "peor",
   "vp": "412x915",
-  "pantallas": 1.56
+  "pantallas": 1.57
  }
 ]

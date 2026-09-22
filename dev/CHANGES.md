@@ -1960,11 +1960,85 @@ exigencia sino **medir donde de verdad hay scroll**: ahora las candidatas empiez
 pantallas largas (`gym`, `story`, `rank`) y el desplazamiento se calcula del margen real.
 Verificada otra vez con tres mutantes, tres rojos.
 
+---
+
+# E3, TERCERA RONDA — un bug que metí yo, y dos pruebas que pasaban sin probar
+
+## 1. Las secciones plegables **se cerraban solas**. Era cierto.
+
+`render()` reescribe `APP.innerHTML`, así que un `<details>` abierto se destruía y volvía a
+nacer **cerrado** en cuanto tocabas un botón de dentro. Medido antes del arreglo, con el
+foco abierto y pulsando «Wrestling»:
+
+> la sección se cerraba · el botón pasaba de **y=298 a y=673** · el scroll caía de **615 a
+> 240** · después de un toque, el botón que acababas de pulsar **no se veía**.
+
+**La primera sonda que escribí decía que todo estaba bien.** Había pulsado el botón **ya
+seleccionado**: el HTML salía idéntico, el DOM no se reescribía y la sección sobrevivía.
+Una sonda que no cambia nada no prueba nada.
+
+**Arreglado** guardando qué secciones están abiertas en **`UI.sec`** —no en `G`: es estado
+de pantalla, no de partida, y en `G` viajaría a cada save— y dibujándolas con `open`. El
+`<details>` avisa con `ontoggle`, que es HTML nativo: sin JS de escucha y sin tocar
+`render()`. Cada sección tiene un id estable, porque su título puede ser dinámico.
+
+**Abierta por defecto:** `circulo` en `people` y `publico` en `bio`. En `train`, `menu` y
+`stats` **lo más usado no está plegado** —el trabajo de la semana, los botones del menú y la
+hoja de stats ya están abiertos—, y abrir además la sección más pesada las devolvía por
+encima de dos pantallas: medido, `train` 4,51 y `menu` 3,78.
+
+## 2. La red de las 82 acciones pasaba contando botones que no se ven
+
+Tenías razón y el motivo es peor de lo que parecía. Un botón dentro de un `<details>`
+**cerrado** sigue midiendo **66×44 px** y tiene `offsetParent`: Chromium le conserva la
+caja. Filtrar por `rect > 0` no sirve de nada. Lo único que dice la verdad es
+**`checkVisibility()`**.
+
+La red nueva recorre el camino real en el navegador: sólo cuenta elementos que
+`checkVisibility()` da por visibles, y **abre las secciones con un click en su resumen**,
+contando ese toque. Resultado:
+
+> **82/82 alcanzables · 19 visibles de entrada · 63 tras abrir su sección.**
+
+Y se recorre en **los dos estados** (carrera nueva y save congelado): con uno solo daba 12
+acciones «perdidas» que simplemente no existen en ese estado —el pesaje, los pilares, las
+actividades de prensa—. Otra vez el fallo era de la prueba, no del juego.
+
+## 3. La franja de avisos, tappable con anclas nativas
+
+Chips `<a href="#aviso-…">`: el salto lo hace el navegador, no JS, así que no hay scroll
+programático que discutir con I1. El destino lo envuelve **el compositor**, no las tarjetas,
+así que ningún módulo tuvo que abrirse para darles un id. `scroll-margin-top:68px` deja la
+tarjeta por debajo de la cabecera pegajosa. Los chips miden 44 px.
+
+**Tercera categoría en la red de I1:** *el salto que pide el jugador*. Medido en las cuatro
+configuraciones: la tarjeta queda visible y la cabecera no la tapa.
+
+## 4. Pruebas de navegador: 28 → **69**, y el trinquete dentro
+
+- Dos por viewport para las secciones (sigue abierta · el botón no se mueve).
+- Una por viewport y por pantalla nueva (`hub`, `train`, `menu`, `people`, `bio`, `stats`):
+  alto, táctiles y desborde. El límite de 2 pantallas se aplica **en vertical**; en apaisado
+  el viewport mide 360 px de alto y no entra nada, así que ahí se exigen desborde y táctiles.
+- Una por viewport para el camino real de las 82 acciones.
+- Una por viewport para el salto del aviso.
+- **`dev/perf/inicio.js` corre dentro de la suite de navegador**: si el inicio vuelve a
+  pasarse del pliegue, la suite se pone en rojo.
+
+**Verificado con 4 mutantes válidos, 4 rojos** — incluido uno que reproduce el síntoma
+original (`y 298->673`). Un quinto quedó inválido por un patrón mal escrito y se descartó.
+
+## 5. La red de I1 ya no depende del diseño
+
+Antes de medir **abre todas las secciones plegables** de la pantalla candidata. Cualquier
+pantalla con secciones le da margen de scroll, así que E3b puede acortar `gym` y `story` sin
+dejarla ciega. Hoy mide en `train` con sus secciones abiertas.
+
 ## Siguiente paso exacto
 
-**E3b — `story` (9,95 pantallas) y `gym` (8,35)**, con los mismos criterios que el inicio.
-`gym` tiene además los **14 objetivos táctiles por debajo de 44 px** que quedan en el juego.
-Está en `dev/E5-AUDITORIA.md` §A-2 con la lista completa de pantallas por encima de 2.
+**E3b — `story` (9,95 pantallas) y `gym` (8,35)**, con los mismos criterios que el inicio y
+**antes de E4**. Plan y medidas en **`dev/E3b-STORY-GYM.md`**. `gym` tiene además los **14
+objetivos táctiles por debajo de 44 px** que quedan en el juego.
 
 Y anotado para E5 (`dev/E5-AUDITORIA.md` §A-1): **`hookRun` se traga errores que la trampa
 global no ve**. Hay que contar los fallos aislados en carreras largas (tienen que ser 0 o
