@@ -73,9 +73,16 @@ const ETIQ = process.argv.includes('--etiqueta')
                bytes: el.innerHTML.length, botones: btns };
     });
     /* que tarjeta registrada dibuja y cual se calla en este estado */
+    /* OJO: que la fn devuelva algo no quiere decir que el INICIO la dibuje.
+       Desde E3 cada tarjeta tiene un sitio (CL.CARD_HOME) y el inicio solo
+       dibuja las suyas. Sin esta distincion la tabla decia que auto_advance
+       "dibuja" cuando su sitio es 'off'. */
     const tarjetas = (typeof CL!=='undefined' && CL.hubCards ? CL.hubCards : []).map(c => {
       let out = ''; try{ out = c.fn() || ''; }catch(e){ out = '!!error: '+e.message; }
-      return { id: c.id, orden: c.o, bytes: out.length, dibuja: out.trim().length > 0 };
+      const sitio = (typeof CL!=='undefined' && CL.cardHome) ? CL.cardHome(c.id) : 'hub';
+      return { id: c.id, orden: c.o, bytes: out.length, sitio: sitio,
+               tieneContenido: out.trim().length > 0,
+               dibuja: sitio === 'hub' && out.trim().length > 0 };
     });
     return { bloques, tarjetas, total: Math.round(document.documentElement.scrollHeight),
              semanaJuego: (typeof G!=='undefined'&&G)? (G.year+'/'+G.week) : '?',
@@ -99,10 +106,14 @@ const ETIQ = process.argv.includes('--etiqueta')
   }
   console.log('\ntotal', inv.total, 'px ·', inv.bloques.length, 'bloques ·',
               inv.accionesUnicas.length, 'acciones unicas (onclick distintos)');
-  const dib = inv.tarjetas.filter(t=>t.dibuja), mudas = inv.tarjetas.filter(t=>!t.dibuja);
-  console.log('tarjetas registradas', inv.tarjetas.length, '· dibujan', dib.length, '· mudas', mudas.length);
-  console.log('  dibujan:', dib.map(t=>t.id).join(' '));
-  console.log('  mudas  :', mudas.map(t=>t.id).join(' '));
+  const enHub = inv.tarjetas.filter(t=>t.sitio==='hub');
+  const dib = enHub.filter(t=>t.dibuja), mudas = enHub.filter(t=>!t.dibuja);
+  const fuera = inv.tarjetas.filter(t=>t.sitio!=='hub');
+  console.log('tarjetas registradas', inv.tarjetas.length, '· con sitio en el inicio', enHub.length,
+              '(dibujan', dib.length + ', mudas ' + mudas.length + ')');
+  console.log('  dibujan en el inicio:', dib.map(t=>t.id).join(' ') || '—');
+  console.log('  mudas en el inicio  :', mudas.map(t=>t.id).join(' ') || '—');
+  console.log('  mudadas por E3      :', fuera.map(t=>t.id+'→'+t.sitio).join(' ') || '—');
   inv.semanas = SEM; inv.etiqueta = ETIQ;
   fs.writeFileSync(path.join(SALIDA,'hub-inventario-'+ETIQ+'.json'), JSON.stringify(inv, null, 1));
 })();

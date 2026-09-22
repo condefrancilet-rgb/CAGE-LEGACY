@@ -4266,10 +4266,16 @@ function scrTitleBase(){
    '<div class="card"><button class="btn pri" onclick="go(\'create\')">Empezar una carrera</button>'+
    (saves.length? '<button class="btn" onclick="go(\'menu\',\'load\')">Cargar partida <small>'+saves.length+' guardadas</small></button>':'')+
    '</div>'+
-   '<div class="card"><h3>Cómo funciona</h3><p class="sm dim">Elegís un año de inicio y el mundo arranca ahí: solo existen los peleadores que ya habían llegado. '+
+   /* E3. Medido: la portada daba 1,58 pantallas a 360x640 —se pasaba del
+      objetivo por 53 px— y estos dos párrafos son 150 de esos píxeles. No se
+      borra una palabra: se pliegan. Quien ya sabe cómo funciona no los
+      scrollea; quien no, los abre. <details> es HTML plano, sin JS. */
+   '<div class="card"><details><summary class="b" style="cursor:pointer;list-style:none">Cómo funciona</summary>'+
+   '<p class="sm dim">Elegís un año de inicio y el mundo arranca ahí: solo existen los peleadores que ya habían llegado. '+
    'Desde tu primera pelea el universo se separa de su línea original y reacciona a lo que hacés. '+
    'Cada semana entrenás, negociás, hablás con prensa y peleás. Todo se recuerda.</p>'+
-   '<p class="sm dim">El resto del mundo pelea sin vos: hay rankings que cambian, campeones que caen, peleadores que envejecen, se lesionan y se retiran, y prospectos que debutan cada año.</p></div>';
+   '<p class="sm dim">El resto del mundo pelea sin vos: hay rankings que cambian, campeones que caen, peleadores que envejecen, se lesionan y se retiran, y prospectos que debutan cada año.</p>'+
+   '</details></div>';
 }
 
 /* ================= CREACIÓN ================= */
@@ -4608,10 +4614,12 @@ function scrHub(){
    '<div style="flex:1"><div class="b">'+recStr(p)+' <span class="dim sm">('+p.rec.ko+' KO · '+p.rec.sub+' SUB · '+p.rec.dec+' DEC)</span></div>'+
    '<div class="sm dim">'+ageOf(p)+' años · OVR '+ovr(p)+' · Potencial '+p.potGlobal+'</div></div>'+
    '<div class="center"><div class="mono b gold">'+money(G.cash)+'</div><div class="xs dim2">en caja</div></div></div>'+
+   /* E3: etiqueta y número en la misma línea que antes ocupaban dos. Los tres
+      valores siguen estando; lo que se fue es una fila de texto. */
    '<hr><div class="grid g3">'+
-   '<div><div class="xs dim2">Popularidad</div>'+bar(p.pop,100,'y')+'<div class="xs mono">'+Math.round(p.pop)+'</div></div>'+
-   '<div><div class="xs dim2">Fatiga</div>'+bar(p.fatigue,100)+'<div class="xs mono">'+Math.round(p.fatigue)+'</div></div>'+
-   '<div><div class="xs dim2">Daño</div>'+bar(p.dmg,100)+'<div class="xs mono">'+Math.round(p.dmg)+'</div></div></div>';
+   '<div><div class="xs dim2">Popularidad <b class="mono">'+Math.round(p.pop)+'</b></div>'+bar(p.pop,100,'y')+'</div>'+
+   '<div><div class="xs dim2">Fatiga <b class="mono">'+Math.round(p.fatigue)+'</b></div>'+bar(p.fatigue,100)+'</div>'+
+   '<div><div class="xs dim2">Daño <b class="mono">'+Math.round(p.dmg)+'</b></div>'+bar(p.dmg,100)+'</div></div>';
   if(p.inj) h+='<p class="sm bad" style="margin-top:8px">Lesionado: '+esc(p.inj)+' — '+p.injWeeks+' semanas restantes.</p>';
   h+='</div>';
 
@@ -4637,30 +4645,30 @@ function scrHub(){
     h+='</div>';
   } else if(G.offers.length){
     h+='<div class="card gold"><div class="hdr"><h3 style="margin:0">Ofertas sobre la mesa</h3><span class="tag on">'+G.offers.length+'</span></div>'+
-      '<p class="sm dim">Tu manager tiene propuestas.</p><button class="btn pri" onclick="go(\'offers\')">Ver ofertas</button></div>';
+      '<button class="btn pri" onclick="go(\'offers\')">Ver ofertas</button></div>';
   } else {
     h+='<div class="card"><h3>Sin pelea firmada</h3><p class="sm dim">Entrená y esperá. Las ofertas llegan según tu ranking, tu actividad y tu popularidad.</p>'+
       '<button class="btn" onclick="askFight()">Pedirle una pelea a tu manager</button></div>';
   }
 
-  h+='<div class="grid g2">'+
-    '<button class="btn" onclick="go(\'train\')">Entrenar<small>'+(G.camp?'Campamento activo':'Semana libre')+'</small></button>'+
-    '<button class="btn" onclick="go(\'stats\')">Ficha completa<small>Stats, potencial, estilo</small></button>'+
-    '<button class="btn" onclick="go(\'rank\')">Rankings<small>Divisiones y campeones</small></button>'+
-    '<button class="btn" onclick="go(\'people\')">Personajes<small>Equipo y rivales</small></button>'+
-    '<button class="btn" onclick="go(\'gym\')">Gimnasio<small>Cambiar equipo</small></button>'+
-    '<button class="btn" onclick="go(\'contracts\')">Contratos<small>Dinero y patrocinios</small></button>'+
-    '</div>';
+  /* E3: la rejilla de seis accesos se fue al menú (256 px). Cuatro de los
+     seis ya estaban en la barra inferior; tenerlos dos veces en la pantalla
+     más larga del juego no ayudaba a nadie. Ver accesosCard(). */
   if(G.camp && G.nextFight){
     h+='<button class="btn go" onclick="skipWeek()">Pasar la semana sin entrenar</button>';
   } else if(!G.player.retired){
     h+=periodPanel();
   }
+  h+=avanzarCard();   /* en las dos caras: ver el comentario de avanzarCard */
   // noticias
   if(G.news.length){
-    h+='<div class="card"><h3>El mundo</h3><div class="log">'+
-      G.news.slice(0,12).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
-      '</div><button class="btn ghost sm" onclick="go(\'history\',\'news\')">Ver todo el historial del mundo</button></div>';
+    /* E3: el último titular, no doce. Ocupaba 316 px del inicio para repetir
+       lo que ya está entero en `history`, a un toque de acá. */
+    h+='<div class="card"><div class="hdr"><span class="b">El mundo</span>'+
+      '<button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'history\',\'news\')">Ver todo</button></div>'+
+      '<div class="log">'+
+      G.news.slice(0,1).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
+      '</div></div>';
   }
   return h;
 }
@@ -4669,6 +4677,20 @@ function askFight(){
   makeOffers();
   if(G.offers.length){ addMem(m,'le pediste que te consiguiera pelea',1); go('offers'); }
   else toast('No hay nada disponible todavía.');
+}
+
+/* E3: los seis accesos que estaban repetidos en el inicio. Se registran como
+   tarjeta para que el mapa (CL.CARD_HOME) decida dónde se dibujan. */
+function accesosCard(){
+  if(!G || !G.player) return '';
+  return '<div class="card"><h3>Ir a</h3><div class="grid g2">'+
+    '<button class="btn" onclick="go(\'train\')">Entrenar<small>'+(G.camp?'Campamento activo':'Semana libre')+'</small></button>'+
+    '<button class="btn" onclick="go(\'stats\')">Ficha completa<small>Stats, potencial, estilo</small></button>'+
+    '<button class="btn" onclick="go(\'rank\')">Rankings<small>Divisiones y campeones</small></button>'+
+    '<button class="btn" onclick="go(\'people\')">Personajes<small>Equipo y rivales</small></button>'+
+    '<button class="btn" onclick="go(\'gym\')">Gimnasio<small>Cambiar equipo</small></button>'+
+    '<button class="btn" onclick="go(\'contracts\')">Contratos<small>Dinero y patrocinios</small></button>'+
+    '</div></div>';
 }
 
 /* ================= ENTRENAMIENTO ================= */
@@ -6244,28 +6266,52 @@ function focusCard(){
   h+='<p class="xs dim2">Carga dura sube más rápido pero acumula fatiga y riesgo de lesión. Ligera conserva el cuerpo y desarrolla menos.</p></div>';
   return h;
 }
-/* Lo que queda en el inicio: qué elegiste, y por dónde cambiarlo. */
+/* Lo que queda en el inicio: qué elegiste, y por dónde cambiarlo. No es una
+   tarjeta suelta: vive DENTRO de «Avanzar», porque el foco es exactamente en
+   qué se va el tiempo que ese botón hace pasar. Tenerlos separados costaba
+   141 px y no decía nada que junto no diga mejor. */
 function focusResumen(){
   if(!focusVisible()) return '';
   var f=focusGet();
-  return '<div class="card"><div class="hdr"><span class="b">Foco</span>'+
-    '<span class="tag on">'+({ligera:'carga ligera',normal:'carga normal',dura:'carga dura'})[f.load]+'</span></div>'+
-    '<p class="sm dim" style="margin:0 0 6px">'+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+'</p>'+
-    '<button class="btn" onclick="go(\'train\')">Cambiar el foco</button></div>';
+  return '<div class="row"><span class="sm dim">Foco: '+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+
+    ' · carga '+f.load+'</span><button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'train\')">Cambiar</button></div>';
+}
+/* ==========================================================================
+   E3 — UN SOLO BLOQUE PARA AVANZAR EL TIEMPO
+   --------------------------------------------------------------------------
+   Había dos tarjetas que hacían lo mismo con distinta granularidad, separadas
+   por otras seis: «Dejar correr el tiempo» (191 px, dentro de periodPanel) y
+   «⏩ Tiempo» (237 px, tarjeta registrada). Ahora es una sola.
+
+   OJO con la condición, que ya me costó un rojo: periodPanel() NO se dibuja en
+   semana de pelea (ahí el inicio muestra «Pasar la semana sin entrenar»), pero
+   la tarjeta ⏩ SÍ se dibujaba, con un tope de 8 semanas en vez de 26. Si el
+   bloque fundido viviera dentro de periodPanel, en semana de pelea se perdería
+   el avance automático. Por eso vive aparte y el inicio lo dibuja en sus dos
+   caras; lo que depende del campamento son los saltos por meses.
+   dev/tests/13-inventario.js lo pilló: «desapareció autoAdvanceToImportant(8)».
+   ========================================================================== */
+function avanzarCard(){
+  if(!G || !G.player || G.player.retired || (G.pending && G.pending.length)) return '';
+  var enCampamento = !!(G.camp && G.nextFight);
+  var maxAuto = G.nextFight? 8 : 26;
+  var h='<div class="card hi"><h3>Avanzar</h3>'+focusResumen();
+  if(!enCampamento){
+    h+='<p class="sm dim" style="margin:0 0 8px">Se detiene ante un evento, una oferta, una lesión o un campamento.</p>'+
+      '<div class="grid g3">'+
+      '<button class="btn pri" onclick="advancePeriod(4)">1 mes</button>'+
+      '<button class="btn pri" onclick="advancePeriod(13)">3 meses</button>'+
+      '<button class="btn pri" onclick="advancePeriod(52)">1 año</button>'+
+      '</div>'+
+      (G.period && G.period.left>0 && !G.camp?
+        '<button class="btn go" onclick="advancePeriod('+G.period.left+')">Retomar el bloque · quedan '+G.period.left+' semanas</button>':'');
+  }
+  h+='<button class="btn go" onclick="autoAdvanceToImportant('+maxAuto+')">⏩ Hasta el próximo evento importante<small>hasta '+maxAuto+' semanas</small></button>';
+  return h+'</div>';
 }
 function periodPanel(){
-  var h=focusResumen();
+  var h='';
 
-  h+='<div class="card hi"><h3>Dejar correr el tiempo</h3>'+
-    '<p class="sm dim">Se interrumpe solo si aparece un evento, una oferta, una lesión o el inicio de un campamento.</p>'+
-    '<div class="grid g3">'+
-    '<button class="btn pri" onclick="advancePeriod(4)">1 mes</button>'+
-    '<button class="btn pri" onclick="advancePeriod(13)">3 meses</button>'+
-    '<button class="btn pri" onclick="advancePeriod(52)">1 año</button>'+
-    '</div>'+
-    (G.period && G.period.left>0 && !G.pending.length && !G.camp?
-      '<button class="btn go" onclick="advancePeriod('+G.period.left+')">Retomar el bloque · quedan '+G.period.left+' semanas</button>':'')+
-    '</div>';
 
   if(G.period){
     var s=G.period, gk=Object.keys(s.gains).sort(function(a,b){return s.gains[b]-s.gains[a];}).slice(0,6);
@@ -9265,6 +9311,13 @@ function insertAfterTopbar(h,block){
 /* La tarjeta va arriba de todo en la pantalla principal. */
 /* [consolidado en el núcleo v2: hub/stats clave] */
 
+
+/* E3: y en la Ficha del jugador, que es de donde vienen: hasta E3 esta tarjeta
+   se dibujaba arriba del inicio y `stats` no la tenía. */
+hookOn('screen:stats','coreScrStatsPrev', function(h){
+  if(!G || !G.player) return h;
+  return insertAfterTopbar(h, coreStatsCard(G.player,false));
+}, 10);
 
 /* En la ficha de cualquier peleador también se muestran sus claves. */
 hookOn('screen:fighter','coreScrFighterPrev', function(h){
@@ -16451,8 +16504,14 @@ CL.CARD_HOME = {
   /* archivo y tienda: se visitan, no se atienden */
   identity:'menu', threads:'menu',   /* las dos llevaban al mismo sitio     */
   meta:'menu', historia:'menu', inversion:'menu', legado:'menu',
-  casino:'menu'          /* la tarjeta es del modulo 33 y no se toca: lo que
+  casino:'menu',         /* la tarjeta es del modulo 33 y no se toca: lo que
                             cambia es donde la llama el compositor          */
+  accesos:'menu',        /* los seis accesos que estaban repetidos          */
+  /* 'off' = ninguna pantalla la dibuja. auto_advance no desaparece: su boton
+     se fundio con «Avanzar» en el inicio, que es donde ya estaban los otros
+     tres. La red exige que la accion siga alcanzable, asi que si algun dia se
+     borrara de verdad, se pondria roja. */
+  auto_advance:'off'
   /* Se quedan en el inicio, y por eso no estan aca: auto_advance (avanzar la
      semana), vida (las actividades que consumen la semana) y los avisos que
      solo aparecen cuando tienen algo que decir — peso, deuda, ufc, sagas,
@@ -18090,13 +18149,13 @@ CL.year = function(){
   scrHub = function(){
     var h = CL_BASE_SCRHUB();
     if(G.pending && G.pending.length) return h;
-    /* las estadísticas clave del estilo se insertan arriba, no al final */
-    h = safeRun('hub/coreStats', function(){
-      return insertAfterTopbar(h, coreStatsCard(G.player,false));
-    }, function(){ return h; }, true) || h;
+    /* E3: las estadísticas clave del estilo se fueron a la Ficha (296 px, el
+       15 % del inicio, y cero botones: es una ficha, no una decisión). */
     h += CL.renderCards('hub');
     return h;
   };
+
+  CL.hubCard('accesos', function(){ return accesosCard(); }, 4);
 
   /* tarjetas recuperadas de los parches retirados, ahora registradas */
   CL.hubCard('peso', function(){

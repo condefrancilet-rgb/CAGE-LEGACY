@@ -13,25 +13,15 @@
   {
    "i": 1,
    "tag": "div",
-   "clase": "card core-card",
-   "titulo": "Estadísticas clave de tu estiloBoxeador · prom",
-   "altoPx": 296,
-   "nodos": 48,
-   "bytes": 1473,
+   "clase": "card",
+   "titulo": "7-4 (1 KO · 0 SUB · 6 DEC)",
+   "altoPx": 134,
+   "nodos": 26,
+   "bytes": 723,
    "botones": []
   },
   {
    "i": 2,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "7-4 (1 KO · 0 SUB · 6 DEC)",
-   "altoPx": 152,
-   "nodos": 26,
-   "bytes": 741,
-   "botones": []
-  },
-  {
-   "i": 3,
    "tag": "div",
    "clase": "card hi",
    "titulo": "PRÓXIMA PELEASEMANA DE PELEA",
@@ -47,48 +37,7 @@
    ]
   },
   {
-   "i": 4,
-   "tag": "div",
-   "clase": "grid g2",
-   "titulo": "",
-   "altoPx": 256,
-   "nodos": 12,
-   "bytes": 568,
-   "botones": [
-    {
-     "txt": "EntrenarCampamento activo",
-     "onclick": "go('train')",
-     "alto": 77
-    },
-    {
-     "txt": "Ficha completaStats, potencial, estilo",
-     "onclick": "go('stats')",
-     "alto": 77
-    },
-    {
-     "txt": "RankingsDivisiones y campeones",
-     "onclick": "go('rank')",
-     "alto": 77
-    },
-    {
-     "txt": "PersonajesEquipo y rivales",
-     "onclick": "go('people')",
-     "alto": 77
-    },
-    {
-     "txt": "GimnasioCambiar equipo",
-     "onclick": "go('gym')",
-     "alto": 62
-    },
-    {
-     "txt": "ContratosDinero y patrocinios",
-     "onclick": "go('contracts')",
-     "alto": 62
-    }
-   ]
-  },
-  {
-   "i": 5,
+   "i": 3,
    "tag": "button",
    "clase": "btn go",
    "titulo": "",
@@ -98,225 +47,39 @@
    "botones": []
   },
   {
-   "i": 6,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "El mundo",
-   "altoPx": 346,
-   "nodos": 27,
-   "bytes": 1417,
-   "botones": [
-    {
-     "txt": "Ver todo el historial del mundo",
-     "onclick": "go('history','news')",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 7,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "Peleador completoANTESALA DEL PRIME",
-   "altoPx": 238,
-   "nodos": 9,
-   "bytes": 456,
-   "botones": [
-    {
-     "txt": "Ver tu carrera",
-     "onclick": "go('clcareer')",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 8,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "💰 Gasto semanal−$330/sem",
-   "altoPx": 153,
-   "nodos": 11,
-   "bytes": 385,
-   "botones": []
-  },
-  {
-   "i": 9,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "Cómo estás trabajando○ Sin enfoque",
-   "altoPx": 532,
-   "nodos": 30,
-   "bytes": 1423,
-   "botones": [
-    {
-     "txt": "○Sin enfoque",
-     "onclick": "clSetFocus('none')",
-     "alto": 77
-    },
-    {
-     "txt": "◎Técnica pura",
-     "onclick": "clSetFocus('tech')",
-     "alto": 77
-    },
-    {
-     "txt": "🫁Motor",
-     "onclick": "clSetFocus('engine')",
-     "alto": 77
-    },
-    {
-     "txt": "⚔️Guerra",
-     "onclick": "clSetFocus('war')",
-     "alto": 62
-    },
-    {
-     "txt": "🧠Estudio",
-     "onclick": "clSetFocus('smart')",
-     "alto": 62
-    },
-    {
-     "txt": "🌿Descarga",
-     "onclick": "clSetFocus('recover')",
-     "alto": 62
-    },
-    {
-     "txt": "🪙 Austero$0 · Vivís con lo mínimo",
-     "onclick": "clSetSpend('lean')",
-     "alto": 92
-    },
-    {
-     "txt": "⚖️ Normal$180 · Lo justo: comida, fisio y supl",
-     "onclick": "clSetSpend('normal')",
-     "alto": 92
-    },
-    {
-     "txt": "💠 Profesional$620 · Nutricionista, fisio sema",
-     "onclick": "clSetSpend('pro')",
-     "alto": 110
-    },
-    {
-     "txt": "🔥 Todo adentro$1,500 · Equipo completo alrede",
-     "onclick": "clSetSpend('allin')",
-     "alto": 110
-    }
-   ]
-  },
-  {
-   "i": 10,
-   "tag": "div",
-   "clase": "card gold",
-   "titulo": "⚡ Técnicas especiales🔷 15",
-   "altoPx": 160,
-   "nodos": 6,
-   "bytes": 308,
-   "botones": [
-    {
-     "txt": "VER ÁRBOL DE TÉCNICAS",
-     "onclick": "go('tq')",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 11,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "🎯 Tu carrera1,039 pts",
-   "altoPx": 141,
-   "nodos": 8,
-   "bytes": 333,
-   "botones": [
-    {
-     "txt": "Mi peleador",
-     "onclick": "go('bio')",
-     "alto": 46
-    },
-    {
-     "txt": "Desafíos",
-     "onclick": "go('challenges')",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 12,
+   "i": 4,
    "tag": "div",
    "clase": "card hi",
-   "titulo": "Pilares del campamento0/2",
-   "altoPx": 366,
-   "nodos": 15,
-   "bytes": 804,
+   "titulo": "Avanzar",
+   "altoPx": 140,
+   "nodos": 3,
+   "bytes": 150,
    "botones": [
     {
-     "txt": "🔪 AfilarSparring de calidad y ritmo de pelea.",
-     "onclick": "clTogglePillar('sharp')",
-     "alto": 92
-    },
-    {
-     "txt": "🫁 MotorLlegar entero al quinto round.",
-     "onclick": "clTogglePillar('gas')",
-     "alto": 92
-    },
-    {
-     "txt": "🎯 PlanEstudiar al rival hasta aburrirse.",
-     "onclick": "clTogglePillar('plan')",
-     "alto": 92
-    },
-    {
-     "txt": "🛡️ CuerpoPeso, fuerza y prevención de lesione",
-     "onclick": "clTogglePillar('body')",
-     "alto": 92
-    }
-   ]
-  },
-  {
-   "i": 13,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "⏩ Tiemposin semanas vacías",
-   "altoPx": 237,
-   "nodos": 6,
-   "bytes": 412,
-   "botones": [
-    {
-     "txt": "⏩ Avanzar hasta el próximo evento importanteha",
+     "txt": "⏩ Hasta el próximo evento importantehasta 8 se",
      "onclick": "autoAdvanceToImportant(8)",
      "alto": 80
     }
    ]
   },
   {
-   "i": 14,
+   "i": 5,
    "tag": "div",
    "clase": "card",
-   "titulo": "Tu círculo10 vínculos",
-   "altoPx": 180,
-   "nodos": 7,
-   "bytes": 340,
+   "titulo": "El mundoVer todo",
+   "altoPx": 151,
+   "nodos": 6,
+   "bytes": 282,
    "botones": [
     {
-     "txt": "👥 Ver relaciones",
-     "onclick": "go('social')",
-     "alto": 62
-    },
-    {
-     "txt": "📱 Abrir el grupo",
-     "onclick": "chatStart()",
-     "alto": 62
+     "txt": "Ver todo",
+     "onclick": "go('history','news')",
+     "alto": 46
     }
    ]
   },
   {
-   "i": 15,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "Quién te sigue🧠 Hardcore",
-   "altoPx": 279,
-   "nodos": 25,
-   "bytes": 948,
-   "botones": []
-  },
-  {
-   "i": 16,
+   "i": 6,
    "tag": "div",
    "clase": "card",
    "titulo": "Vida y prensa5",
@@ -350,99 +113,15 @@
      "alto": 95
     }
    ]
-  },
-  {
-   "i": 17,
-   "tag": "div",
-   "clase": "card story-hub-card",
-   "titulo": "📖 Tu historiacontender",
-   "altoPx": 201,
-   "nodos": 6,
-   "bytes": 318,
-   "botones": [
-    {
-     "txt": "Abrir mundo y memoria100 recuerdos · 60 public",
-     "onclick": "go('story')",
-     "alto": 63
-    }
-   ]
-  },
-  {
-   "i": 18,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "",
-   "altoPx": 96,
-   "nodos": 5,
-   "bytes": 210,
-   "botones": [
-    {
-     "txt": "💳 Invertir$0 disponible",
-     "onclick": "go('shop')",
-     "alto": 62
-    },
-    {
-     "txt": "🏠 Gimnasiosvisitar o mudarte",
-     "onclick": "go('gyms')",
-     "alto": 62
-    }
-   ]
-  },
-  {
-   "i": 19,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "🎰 Casino🎟️ 0",
-   "altoPx": 160,
-   "nodos": 5,
-   "bytes": 251,
-   "botones": [
-    {
-     "txt": "Entrar al casino",
-     "onclick": "CAS.enterScreen()",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 20,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "Tu mundo17 personas",
-   "altoPx": 334,
-   "nodos": 13,
-   "bytes": 612,
-   "botones": [
-    {
-     "txt": "Ver historias y personas",
-     "onclick": "go('clcareer')",
-     "alto": 46
-    }
-   ]
-  },
-  {
-   "i": 21,
-   "tag": "div",
-   "clase": "card",
-   "titulo": "LegadoPROFESIONAL",
-   "altoPx": 199,
-   "nodos": 16,
-   "bytes": 531,
-   "botones": [
-    {
-     "txt": "🏆 Salón de la fama",
-     "onclick": "go('hall')",
-     "alto": 62
-    },
-    {
-     "txt": "🏁 Anunciar el retiro",
-     "onclick": "go('retire')",
-     "alto": 62
-    }
-   ]
   }
  ],
  "tarjetas": [
+  {
+   "id": "accesos",
+   "orden": 4,
+   "bytes": 632,
+   "dibuja": true
+  },
   {
    "id": "identity",
    "orden": 6,
@@ -576,49 +255,17 @@
    "dibuja": true
   }
  ],
- "total": 5336,
+ "total": 1294,
  "semanaJuego": "2018/47",
  "record": "7-4",
  "accionesUnicas": [
-  "CAS.enterScreen()",
   "autoAdvanceToImportant(8)",
-  "chatStart()",
-  "clSetFocus('engine')",
-  "clSetFocus('none')",
-  "clSetFocus('recover')",
-  "clSetFocus('smart')",
-  "clSetFocus('tech')",
-  "clSetFocus('war')",
-  "clSetSpend('allin')",
-  "clSetSpend('lean')",
-  "clSetSpend('normal')",
-  "clSetSpend('pro')",
-  "clTogglePillar('body')",
-  "clTogglePillar('gas')",
-  "clTogglePillar('plan')",
-  "clTogglePillar('sharp')",
   "fameStart('photo')",
   "fameStart('reel')",
   "fameStart('titlerun')",
   "fameStart('walkout')",
   "fameStart('weekplan')",
-  "go('bio')",
-  "go('challenges')",
-  "go('clcareer')",
-  "go('contracts')",
-  "go('gym')",
-  "go('gyms')",
-  "go('hall')",
   "go('history','news')",
-  "go('people')",
-  "go('rank')",
-  "go('retire')",
-  "go('shop')",
-  "go('social')",
-  "go('stats')",
-  "go('story')",
-  "go('tq')",
-  "go('train')",
   "weighStart()"
  ],
  "semanas": 12,
