@@ -1,0 +1,28 @@
+{
+ "juego": "juego-base.html",
+ "md5": "1ce1589017f3890d1023cef3c0b97438",
+ "commit": "00be0a4",
+ "seed": 4100,
+ "metaSeed": 953300,
+ "semanas": 150,
+ "rec": {
+  "w": 8,
+  "l": 6,
+  "d": 0,
+  "ko": 5,
+  "sub": 0,
+  "dec": 3,
+  "kol": 1,
+  "subl": 0,
+  "decl": 5
+ },
+ "titulos": 1,
+ "year": 2018,
+ "week": 47,
+ "cash": 204479,
+ "kb": 772.6,
+ "huella": "01e4cd7b",
+ "huellaTrasCargar": "4dfbf46d",
+ "huellaTras120": "14c1aa99",
+ "recTras120": "13-9"
+}

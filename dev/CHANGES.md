@@ -2180,3 +2180,115 @@ en `G`.
 
 Estado: **suite 183 verdes**, navegador 28 verdes, golden master idéntico, desborde cero,
 las 82 acciones del inventario alcanzables y ninguna a más de dos toques.
+
+---
+
+# RONDA 2 — OPTIMIZACIÓN Y AUDITORÍA (sobre `00be0a4`)
+
+## Arranque
+
+**Estado real:** rama `claude/cage-legacy-optimize-audit-pfhusg` = `00be0a4`, árbol limpio.
+**Totales de partida:** suite **193/0** (7 min 48 s) · navegador **77/0** · `metrics.js` exit 0
+(eval 0 · deps externas 0 · escrituras de scroll 3 · escrituras de `UI.screen` 8).
+
+**Referencia congelada** (`dev/perf/congelado-r2/`): `juego-base.html` = `00be0a4`, md5
+`1ce1589017f3890d1023cef3c0b97438`; `save-r2.json` hecho con ella (semilla 4100, 150 semanas,
+8-6-0 con un título, 2018/47, 772,6 KB). `dev/tests/16-congelado-r2.js` exige a la versión
+actual que lo cargue **con la misma huella que la copia congelada** (`4dfbf46d`) y que, jugado
+120 semanas más, llegue **a la misma huella** (`14c1aa99`, 13-9): un golden master del camino de
+carga, que el golden de las trazas no recorre.
+
+> Medido al escribirla: la huella tras cargar **no** es la del momento de guardar (`01e4cd7b`).
+> No es un bug: la carga inicializa `cl` en 22 peleadores (perezoso) y recorta `story.feed` de 62
+> a su tope de 60, que el saneo semanal habría aplicado igual. Mi primera aserción suponía lo
+> contrario y era falsa; la prueba exige ahora la huella de la copia congelada.
+
+### El instrumento mentía otra vez: node:vm infla todo lo que lee globales
+
+El harness corre el juego dentro de `node:vm`, y ahí **cada lectura de una variable global pasa
+por un interceptor**. Medido con el mismo hash FNV sobre 131.060 caracteres: **0,35 ms en node
+plano, 17-25 ms dentro de vm (×50)**, con el `Math` real o con el sembrado. El juego lee globales
+en todos sus bucles calientes (`Math.imul`, `safeNum`, `clamp`, `STKEY`), así que los perfiles de
+node **sobrerrepresentan justo ese código**: en node `STATE.fingerprint()` costaba 15-17 ms; en
+Chromium, **1,96 ms**. Los reparto de E4 (`TX.snapshot` 40,7 %…) salieron de ese instrumento.
+
+Por eso esta ronda mide en **Chromium real** (`dev/perf/r2-navegador.js`): abre el juego por
+`file://`, siembra `Math.random` con el mismo mulberry32 del harness, inyecta `dev/autopilot.js`
+tal cual y juega. **Los dos instrumentos juegan la misma partida**: semilla 700 → huella
+`8223d107`, récord 3-2, en node y en Chromium. Node sigue sirviendo para lo que no es tiempo
+(huellas, golden, invariantes).
+
+### Línea base (medida ahora; toda comparación final se mide junto a la copia congelada)
+
+**Chromium, 3 carreras × 300 semanas jugadas** (`dev/perf/r2/base-navegador.json`):
+
+| medida | media | p95 | llamadas |
+|---|---|---|---|
+| **semana completa** (`doWeek`: entrenar + semana + guardado + render) | **49,23 ms** | 81,8 | 830 |
+| `advanceWeek` | 13,73 ms | 20,7 | 900 |
+| `saveGame` | **33,38 ms** | 65,3 | **1.554 (1,7 por semana)** |
+| `saveSerialize` | 12,16 ms | 17,6 | 1.539 |
+| `STATE.fingerprint()` | 1,96 ms | 3,4 | 2.965 (3,3 por semana) |
+| `normalizeWorldState` (dentro de cada guardado) | 2,87 ms | 4,4 | 1.539 |
+| `loadGame` | 13,82 ms | 18,3 | 15 |
+| heap vivo tras 300 semanas (gc forzado) | **5,64 MB** | | |
+| save a las 300 semanas | 787-811 KB | | |
+
+**Perfil de CPU en Chromium, 120 semanas jugadas:** `saveGame` **67 %** inclusivo —
+`saveSerialize` **31,8 %** · `localStorage.setItem` 17,1 % · `STATE.fingerprint` 13,3 % ·
+`normalizeFull` 6,9 %— y `TX.snapshot` 17,6 %. El render es **1,1 %** (`set innerHTML`).
+**El jugador espera al guardado, no a la simulación.**
+
+**Node (`dev/perf/r2/base-node.json`, inflado por vm, sólo para comparar node con node):**
+`advanceWeek` 23,17 ms · semana 97,97 · save 70,76 · load 76,23 · save 770/768/794 KB en las
+semanas 50/150/300 · heap 9,93 → 11,45 MB · peleadores al final 387-399.
+
+**Archivo:** 1.596.346 bytes.
+
+**Pantallas** (`dev/perf/r2-pantallas.js`, Chromium, alto en pantallas con las secciones como
+vienen; «→hub» = no dibujable en ese estado). **Doce pantallas pasan de 2 alturas a 360×640 en
+el archivo de partida**: la frontera de este encargo no se cumple de antemano. Las pruebas de
+navegador sólo medían ocho pantallas. → **P-7**.
+
+| pantalla | 360×640 temprano | 360×640 avanzado | 390×844 av. | 412×915 av. | nodos av. | render ms av. |
+|---|---|---|---|---|---|---|
+| ach | **4.44** | **4.44** | 3.32 | 3.03 | 198 | 0.4 |
+| bio | 1.66 | 1.73 | 1.27 | 1.17 | 100 | 0.5 |
+| casino | 1.89 | **2.27** | 1.47 | 1.36 | 90 | 0.4 |
+| challenges | **3.98** | **3.98** | 2.97 | 2.70 | 151 | 0.6 |
+| clcareer | **2.88** | **4.90** | 3.63 | 3.30 | 266 | 1 |
+| cldiag | **11.46** | **11.46** | 8.07 | 7.13 | 394 | 22.4 |
+| contracts | 1.92 | **2.29** | 1.68 | 1.45 | 57 | 0.3 |
+| create | **3.54** | **3.54** | 2.60 | 2.35 | 79 | 0.6 |
+| endgame | **2.83** | **2.83** | 2.04 | 1.74 | 92 | 0.2 |
+| fighter | 1.58 | **2.40** | 1.78 | 1.62 | 167 | 0.4 |
+| gym | 1.04 | 1.04 | 1.00 | 1.00 | 218 | 1 |
+| gyms | **2.36** | **2.36** | 1.71 | 1.57 | 171 | 0.4 |
+| hall | **2.03** | **2.03** | 1.52 | 1.36 | 75 | 0.2 |
+| history | 1.04 | **2.07** | 1.57 | 1.43 | 237 | 0.5 |
+| hub | 1.45 | **2.21** | 1.61 | 1.43 | 85 | 0.3 |
+| legacy | 1.34 | 1.96 | 1.46 | 1.36 | 68 | 0.2 |
+| load | 1.00 | 1.00 | 1.00 | 1.00 | 22 | 0.2 |
+| menu | 1.21 | 1.21 | 1.00 | 1.00 | 117 | 1 |
+| offers | 1.01 | 1.00 | 1.00 | 1.00 | 7 | 0.1 |
+| people | 1.45 | 1.84 | 1.39 | 1.24 | 158 | 1 |
+| race | **2.17** | **2.17** | 1.64 | 1.52 | 63 | 0.4 |
+| rank | 1.53 | 1.32 | 1.00 | 1.00 | 106 | 0.3 |
+| records | 1.00 | 1.00 | 1.00 | 1.00 | 7 | 0.1 |
+| retire | 1.48 | **2.10** | 1.55 | 1.44 | 73 | 0.3 |
+| shop | **6.42** | **6.69** | 4.68 | 4.15 | 262 | 0.8 |
+| social | 1.27 | **2.69** | 2.01 | 1.86 | 186 | 1 |
+| stats | 1.99 | **2.08** | 1.55 | 1.41 | 649 | 1.4 |
+| story | 1.00 | 1.97 | 1.41 | 1.30 | 233 | 1.1 |
+| title | 1.30 | 1.30 | 1.00 | 1.00 | 27 | 0.2 |
+| tq | **5.24** | **5.24** | 3.84 | 3.30 | 170 | 0.5 |
+| train | 1.38 | 1.75 | 1.31 | 1.19 | 144 | 0.9 |
+
+`ending`, `fight`, `fightresult` y `mg` no son dibujables sin su estado (redirigen al inicio);
+se miden en la auditoría, conduciendo una pelea a mano.
+
+**Y los táctiles, medidos con visibilidad real** (`checkVisibility()`, secciones abiertas): hay
+objetivos **visibles de menos de 44 px** en `rank` (filas de 33 px), `people` y `clcareer`
+(filas de 30 px), `create`/`race` (campo de 42 px) y `title` (un `<summary>` de 23 px). La prueba
+de navegador que decía «0 táctiles <44 px» medía sólo el inicio y **siempre pasaba**
+(`anota(..., true, ...)`). → auditoría.

@@ -1,0 +1,360 @@
+{
+ "cuando": "2026-09-22T23:25:30.037Z",
+ "semanas": 300,
+ "copias": [
+  {
+   "file": "dev/perf/congelado-r2/juego-base.html",
+   "md5": "1ce1589017f3890d1023cef3c0b97438",
+   "bytes": 1596346,
+   "huellas": [
+    "640e1157",
+    "03af8158",
+    "d12c83a1"
+   ],
+   "recs": [
+    "16-8-2",
+    "19-3-1",
+    "18-3"
+   ],
+   "kbFinal": [
+    810.58,
+    791.72,
+    787.07
+   ],
+   "heapMB": [
+    5.65,
+    5.64,
+    5.62
+   ],
+   "errores": [],
+   "semana": {
+    "n": 830,
+    "media": 49.23,
+    "p50": 40.1,
+    "p95": 81.8,
+    "max": 122.1,
+    "total": 40862.2
+   },
+   "aw": {
+    "n": 900,
+    "media": 13.73,
+    "p50": 12.9,
+    "p95": 20.7,
+    "max": 48.2,
+    "total": 12359.9
+   },
+   "save": {
+    "n": 1554,
+    "media": 33.38,
+    "p50": 25.4,
+    "p95": 65.3,
+    "max": 100.9,
+    "total": 51878.8
+   },
+   "load": {
+    "n": 15,
+    "media": 13.82,
+    "p50": 12.5,
+    "p95": 18.3,
+    "max": 18.3,
+    "total": 207.3
+   },
+   "fp": {
+    "n": 2965,
+    "media": 1.96,
+    "p50": 1.7,
+    "p95": 3.4,
+    "max": 11.3,
+    "total": 5803.2
+   },
+   "ser": {
+    "n": 1539,
+    "media": 12.16,
+    "p50": 11.5,
+    "p95": 17.6,
+    "max": 83,
+    "total": 18713.3
+   },
+   "norm": {
+    "n": 1539,
+    "media": 2.87,
+    "p50": 2.6,
+    "p95": 4.4,
+    "max": 8.7,
+    "total": 4417.4
+   }
+  }
+ ],
+ "perfil": [
+  {
+   "file": "dev/perf/congelado-r2/juego-base.html",
+   "semanas": 120,
+   "ms": 9643,
+   "msSemana": 80.36,
+   "inclusivo": [
+    {
+     "f": "(root)",
+     "pc": 100
+    },
+    {
+     "f": "(anon)",
+     "pc": 98.6
+    },
+    {
+     "f": "evaluate",
+     "pc": 98.6
+    },
+    {
+     "f": "correrCarrera",
+     "pc": 98.5
+    },
+    {
+     "f": "wrapper:3828",
+     "pc": 98.4
+    },
+    {
+     "f": "safeRun:11419",
+     "pc": 70.9
+    },
+    {
+     "f": "saveGame:13207",
+     "pc": 67
+    },
+    {
+     "f": "(anon):13209",
+     "pc": 67
+    },
+    {
+     "f": "doWeek:4846",
+     "pc": 54.4
+    },
+    {
+     "f": "finishWeek:4879",
+     "pc": 54.1
+    },
+    {
+     "f": "closeWeek:4872",
+     "pc": 38.7
+    },
+    {
+     "f": "autosaveNow:13653",
+     "pc": 35.2
+    },
+    {
+     "f": "saveSerialize:14476",
+     "pc": 31.8
+    },
+    {
+     "f": "(anon):13661",
+     "pc": 31.4
+    },
+    {
+     "f": "TX.run:4162",
+     "pc": 21.8
+    },
+    {
+     "f": "advanceWeek:1313",
+     "pc": 20.2
+    },
+    {
+     "f": "TX.snapshot:4122",
+     "pc": 17.6
+    },
+    {
+     "f": "setItem",
+     "pc": 17.1
+    },
+    {
+     "f": "hookEmit:3728",
+     "pc": 14.3
+    },
+    {
+     "f": "STATE.fingerprint:4084",
+     "pc": 13.3
+    },
+    {
+     "f": "acceptFight:3456",
+     "pc": 8.3
+    },
+    {
+     "f": "stHash:4000",
+     "pc": 7.8
+    },
+    {
+     "f": "confirmFight:5220",
+     "pc": 7.1
+    },
+    {
+     "f": "normalizeFull:6733",
+     "pc": 6.9
+    },
+    {
+     "f": "(anon):7102",
+     "pc": 6.9
+    },
+    {
+     "f": "(anon):6739",
+     "pc": 6.1
+    },
+    {
+     "f": "normalizeFighterState:6512",
+     "pc": 5.6
+    },
+    {
+     "f": "(anon):13679",
+     "pc": 4.2
+    },
+    {
+     "f": "advanceWeekCore:1343",
+     "pc": 4.1
+    },
+    {
+     "f": "stStable:4015",
+     "pc": 4
+    },
+    {
+     "f": "render:18353",
+     "pc": 2
+    },
+    {
+     "f": "savePrune:14517",
+     "pc": 1.9
+    },
+    {
+     "f": "eachPrunableFighter:13171",
+     "pc": 1.8
+    },
+    {
+     "f": "saveReplacer:14446",
+     "pc": 1.8
+    },
+    {
+     "f": "clDraw:18327",
+     "pc": 1.6
+    },
+    {
+     "f": "applyPlayerFight:3499",
+     "pc": 1.6
+    },
+    {
+     "f": "(anon):14519",
+     "pc": 1.5
+    },
+    {
+     "f": "worldTick:1528",
+     "pc": 1.4
+    },
+    {
+     "f": "(anon):9313",
+     "pc": 1.2
+    },
+    {
+     "f": "(anon):9365",
+     "pc": 1.2
+    }
+   ],
+   "propio": [
+    {
+     "f": "saveSerialize:14476",
+     "pc": 30.1
+    },
+    {
+     "f": "TX.snapshot:4122",
+     "pc": 17.6
+    },
+    {
+     "f": "setItem",
+     "pc": 17.1
+    },
+    {
+     "f": "stHash:4000",
+     "pc": 7.8
+    },
+    {
+     "f": "stStable:4015",
+     "pc": 4
+    },
+    {
+     "f": "normalizeFighterState:6512",
+     "pc": 3.8
+    },
+    {
+     "f": "(anon):13209",
+     "pc": 2.2
+    },
+    {
+     "f": "saveReplacer:14446",
+     "pc": 1.8
+    },
+    {
+     "f": "(anon):6739",
+     "pc": 1.4
+    },
+    {
+     "f": "STATE.fingerprint:4084",
+     "pc": 1.3
+    },
+    {
+     "f": "eachPrunableFighter:13171",
+     "pc": 1.3
+    },
+    {
+     "f": "(anon):9313",
+     "pc": 1.2
+    },
+    {
+     "f": "set innerHTML",
+     "pc": 1.1
+    },
+    {
+     "f": "(garbage collector)",
+     "pc": 0.9
+    },
+    {
+     "f": "(program)",
+     "pc": 0.4
+    },
+    {
+     "f": "(anon):12474",
+     "pc": 0.4
+    },
+    {
+     "f": "revisar:6634",
+     "pc": 0.3
+    },
+    {
+     "f": "(anon):14521",
+     "pc": 0.3
+    },
+    {
+     "f": "get innerHTML",
+     "pc": 0.3
+    },
+    {
+     "f": "recalcRank:1246",
+     "pc": 0.3
+    },
+    {
+     "f": "normalizeFull:6733",
+     "pc": 0.3
+    },
+    {
+     "f": "STATE.worldFingerprint:4076",
+     "pc": 0.2
+    },
+    {
+     "f": "worldTick:1528",
+     "pc": 0.2
+    },
+    {
+     "f": "autosaveNow:13653",
+     "pc": 0.2
+    },
+    {
+     "f": "(anon):1530",
+     "pc": 0.1
+    }
+   ]
+  }
+ ]
+}
