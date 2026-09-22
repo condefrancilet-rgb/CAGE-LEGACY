@@ -15,11 +15,43 @@
 | save/load | `dev/tests/03`, `09`, `11` | las 5 fixtures + el save congelado, carga idempotente |
 | mono | `dev/e5-mono.js`, 4 semillas, ~2.500 toques | **0 errores de JavaScript · 0 invariantes rotas**; sigue guardando y cargando |
 
+### La evidencia, con sus números
+
+| prueba | cobertura | resultado |
+|---|---|---|
+| **carreras largas** (`dev/e5-largas.js`) | **50 carreras × 300 semanas**, `metaSeed` distinto en cada una (700.000 … 1.088.031), **invariantes después de CADA semana** (17 sistemas) | **15.000 semanas · 50/50 carreras sin un solo fallo** |
+| **texto visible** (`dev/e5-texto.js`) | 35 pantallas × 2 estados × 3 resoluciones, leyendo `innerText` y **abriendo las secciones plegadas** | **1 hallazgo → corregido**; ahora sin hallazgos |
+| **save congelado pre-refactor** | hecho con `juego-base.html` (1.519 KB, antes del refactor) | carga · **record 7-4 y 2018/47 intactos** · **120 semanas más sin excepciones ni invariantes rotas** · llega a 2020/23 · se vuelve a guardar y cargar |
+| **`try`/`catch`** (`dev/e5-catch.js`) | los **108** del archivo, clasificados leyendo el cuerpo | **0 vacíos sin explicación** (eran 5) · 7 explicados · 66 anotan · 3 relanzan |
+| **mono** (`dev/e5-mono.js`) | **3 resoluciones × 2 semillas × 600 toques = 3.600 toques**, 164-167 acciones distintas | **0 errores de JavaScript · 0 invariantes rotas** · sigue guardando y cargando en las 6 corridas |
+| **enganches aislados** (`dev/e5-hooks.js`) | 4 × 300 semanas | **0 fallos aislados**; sí deja escrituras parciales → **P-1** |
+
+**Sobre el mono y las resoluciones:** con la misma semilla, las tres resoluciones dan
+**exactamente el mismo recorrido** (164 acciones, misma semana final). Es honesto decirlo:
+el camino no depende del ancho de pantalla, así que las tres resoluciones **no multiplican
+la cobertura** — lo que sí cubren es que ninguna se rompe.
+
 ### Bugs encontrados y corregidos en E5
 
 | id | qué | severidad | estado |
 |---|---|---|---|
+| **E5-2** | La cabecera de `story` decía **«undefined/undefined»** en cada visita: el código leía `CAT_NAMES.MEDIA`/`.SOCIAL` y la tabla tiene las claves **en minúscula**. Visible para el jugador. | **grave** (texto roto a la vista) | **corregido** |
+| **E5-3** | `acceptFight(i)` sobre una oferta de **contrato** la trataba como «pelea caducada»: avisaba «esa oferta ya no está disponible» y **la borraba**. Ninguna vía de la interfaz llega así (los contratos van a `negoStart`), pero la batería de autotest llama `acceptFight(0)` a ciegas. | menor (latente) | **corregido** |
+| **E5-4** | El reset de emergencia de `UI` reponía `{screen, sub, tmp}` **sin `sec`**, dejando `UI` con otra forma que la declarada. | menor | **corregido** |
+| **E5-5** | **5 `catch` vacíos sin una línea que dijera por qué.** Ninguno tapa un error funcional —son introspección, el propio registrador de errores, la reposición de `localStorage` tras la prueba de cuota y la lectura de `?dev=1`—, pero un `catch(e){}` pelado no se distingue de un descuido. | cosmético | **corregido** (y `dev/e5-catch.js` falla si vuelve a aparecer uno) |
 | **E5-1** | `DEV.initFromUrl` tenía la **misma línea dos veces** (`var q = …`): una sentencia muerta, resto de un copiar-pegar. | cosmético | **corregido** |
+
+### Qué pasó con `acceptFight(0)`
+
+Apareció escribiendo `dev/tests/15-camino.js`: la prueba llamaba `acceptFight(0)` y no se
+firmaba ninguna pelea. **El primer fallo era mío** —`G.offers` mezcla contratos y peleas, y
+al empezar una carrera lo que llega son contratos—, así que la prueba se reescribió para
+recorrer el orden real: **contrato → `negoStart` → `negoClose` → ofertas de pelea**.
+
+Pero al mirarlo apareció **E5-3**, que sí es del juego: pasarle a `acceptFight` una oferta
+que no es de pelea la **borraba** con un mensaje falso. Hoy ninguna vía del jugador llega
+ahí, pero la batería de autotest sí. Corregido: una oferta que no es de pelea se deja donde
+está y se explica por qué.
 
 ### Lo que se buscó y NO apareció
 

@@ -3455,7 +3455,17 @@ function makeOffers(){
    ========================================================================== */
 function acceptFight(i){
   var o = G && G.offers && G.offers[i];
-  if(!o || !o.oppId || !F(o.oppId)){
+  /* E5-3. G.offers mezcla ofertas de PELEA y de CONTRATO. Si llegaba aqui una
+     de contrato —no tiene oppId— se la trataba como "pelea caducada": se le
+     decia al jugador que la oferta ya no estaba disponible y SE LA BORRABA.
+     Hoy ninguna via de la interfaz llega asi (scrOffers manda los contratos a
+     negoStart), pero la bateria de autotest llama acceptFight(0) a ciegas.
+     Ahora una oferta que no es de pelea se deja donde esta. */
+  if(o && !o.oppId){
+    errNote('Esa oferta es un contrato: se negocia, no se acepta.');
+    return false;
+  }
+  if(!o || !F(o.oppId)){
     errNote('Esa oferta ya no está disponible.');
     if(G && G.offers && i>=0) G.offers.splice(i,1);
     render();
@@ -3911,7 +3921,7 @@ GATE.audit = function(){
   }
   var host = (typeof window!=='undefined') ? window : null;
   if(host) Object.keys(host).forEach(function(k){
-    try{ if(typeof host[k]==='function') escanear(host[k]); }catch(e){}
+    try{ if(typeof host[k]==='function') escanear(host[k]); }catch(e){ /* leer una propiedad del objeto global puede lanzar (getters del navegador): este escaner es diagnostico, se salta esa clave */ }
   });
   /* las pantallas registradas por módulos no son globales */
   if(typeof CL!=='undefined' && CL.screens) Object.keys(CL.screens).forEach(function(k){ escanear(CL.screens[k]); });
@@ -3919,7 +3929,7 @@ GATE.audit = function(){
     (typeof CL!=='undefined'?CL:null),  (typeof FX!=='undefined'?FX:null),
     (typeof META!=='undefined'?META:null) ].forEach(function(o){
     if(o && typeof o==='object') Object.keys(o).forEach(function(k){
-      try{ if(typeof o[k]==='function') escanear(o[k]); }catch(e){}
+      try{ if(typeof o[k]==='function') escanear(o[k]); }catch(e){ /* idem: una clave que lanza al leerse no rompe el escaner */ }
     });
   });
   var destinos = Object.keys(vistos).sort();
@@ -11397,7 +11407,7 @@ function errRecord(where,e,sev){
     try{
       console.error('[CAGE ' + sev.toUpperCase() + '] ' + where + ' :: ' + m,
                     '\ncontexto:', rec.ctx, '\n' + (rec.stack||''));
-    }catch(x){}
+    }catch(x){ /* si console.error lanza, no hay donde registrarlo: es el propio registrador de errores */ }
     if(ERR.STOP_ON_CRITICAL && sev===ERR.SEV.CRITICAL) throw e;
   }
   return m;
@@ -28094,7 +28104,7 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
   }
   window.storyReact=storyReact;
   function storyScreen(){
-    var s=story(),p=G.player,h='<div class="topbar"><div class="r1"><h2>📱 Mundo y memoria</h2><span class="sm dim">'+careerState()+' · '+CAT_NAMES.MEDIA+'/'+CAT_NAMES.SOCIAL+'</span></div></div>';
+    var s=story(),p=G.player,h='<div class="topbar"><div class="r1"><h2>📱 Mundo y memoria</h2><span class="sm dim">'+careerState()+' · '+CAT_NAMES.media+'/'+CAT_NAMES.social+'</span></div></div>';   /* E5-2: eran .MEDIA/.SOCIAL y la tabla tiene las claves en minuscula: la cabecera decia «undefined/undefined» en cada visita */
     h+=CL.seccion('estadoNarr', 'Estado narrativo',
       '<div class="card"><p class="sm dim"><span class="tag">'+socialState()+'</span> '+esc(fname(p))+' está en una etapa de <b>'+careerState()+'</b>. Las decisiones importantes quedan registradas y pueden volver a aparecer con otras consecuencias.</p></div>');
     h+=socMeterHTML();
@@ -28351,7 +28361,7 @@ TESTS.restore = function(snap){
   if(!snap) return;
   if(snap.tx===null){ G=null; }
   else TX.restore(snap.tx);
-  try{ UI = JSON.parse(snap.ui); }catch(e){ UI = {screen:'title', sub:null, tmp:{}}; }
+  try{ UI = JSON.parse(snap.ui); }catch(e){ UI = {screen:'title', sub:null, tmp:{}, sec:{}}; }   /* E5-4: sin `sec` el reset dejaba UI con otra forma que la declarada */
 };
 /* Ejecuta fn() sobre una copia. Durante la ejecución:
      · saveGame/autosave quedan neutralizados (ningún test escribe en disco);
@@ -28419,7 +28429,7 @@ TESTS.sandbox = function(fn){
     if(ls){
       ls.setItem = setReal; ls.removeItem = remReal;
       Object.keys(tocadas).forEach(function(k){
-        try{ if(tocadas[k]===null || tocadas[k]===undefined) remReal.call(ls,k); else setReal.call(ls,k,tocadas[k]); }catch(e){}
+        try{ if(tocadas[k]===null || tocadas[k]===undefined) remReal.call(ls,k); else setReal.call(ls,k,tocadas[k]); }catch(e){ /* reponer una clave tras la prueba de cuota puede fallar por la misma cuota; no hay nada mejor que hacer */ }
       });
     }
     /* LEG_CACHE es un var global: se repone por el objeto window para que la
@@ -28980,7 +28990,7 @@ var DEV = {
       /* Sin \\b: se comprueba el final del parámetro a mano, para que
          "?developer=1" o "?dev=10" no activen el modo por accidente. */
       if(/(^|[?&#])dev=1($|[&#])/.test(q) || /(^|[?&#])dev($|[&#])/.test(q)) DEV.set(true);
-    }catch(e){}
+    }catch(e){ /* leer la direccion puede lanzar en contextos raros; sin ?dev=1 el modo queda apagado, que es lo correcto */ }
     return DEV.on;
   },
   run: function(weeks){

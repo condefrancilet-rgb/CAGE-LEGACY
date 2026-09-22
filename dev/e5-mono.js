@@ -8,7 +8,7 @@
      · que la partida siga siendo jugable al final (se puede guardar y cargar).
    No es un test de que algo funcione: es un test de que NADA revienta por un
    camino que a nadie se le ocurrio recorrer.
-     node dev/e5-mono.js [--toques 400] [--semilla 7] [--file otra.html]     */
+     node dev/e5-mono.js [--toques 400] [--semilla 7] [--vp 360x640]        */
 const path = require('node:path');
 const fs = require('node:fs');
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -17,6 +17,7 @@ const arg = (k,d) => { const i = process.argv.indexOf('--'+k); return i>=0 ? pro
 const ARCH = path.resolve(arg('file', path.join(__dirname, '..', 'index-4-blindado.html')));
 const TOQUES = parseInt(arg('toques','400'),10);
 const SEMILLA = parseInt(arg('semilla','7'),10);
+const VP = (arg('vp','390x844')).split('x').map(Number);
 
 function sembrar(seed){
   return '(function(){ var a = ' + (seed|0) + ' | 0;' +
@@ -32,7 +33,7 @@ function sembrar(seed){
   }
   const { chromium } = require(PW);
   const browser = await chromium.launch({ executablePath: CHROME, headless: true });
-  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, isMobile:true, hasTouch:true });
+  const ctx = await browser.newContext({ viewport:{ width:VP[0], height:VP[1] }, isMobile:true, hasTouch:true });
   const page = await ctx.newPage();
   const errores = [];
   page.on('pageerror', e => errores.push(String(e).slice(0,140)));
@@ -91,7 +92,7 @@ function sembrar(seed){
   }, { toques: TOQUES });
 
   await browser.close();
-  console.log('MONO · ' + TOQUES + ' toques · semilla ' + SEMILLA + ' · ' + r.distintos + ' acciones distintas');
+  console.log('MONO · ' + VP[0] + 'x' + VP[1] + ' · ' + TOQUES + ' toques · semilla ' + SEMILLA + ' · ' + r.distintos + ' acciones distintas');
   console.log('pantallas visitadas: ' + Object.entries(r.visitadas).sort((a,b)=>b[1]-a[1]).map(x=>x[0]+':'+x[1]).join(' '));
   console.log('llego a ' + r.semana + ' · sigue guardando y cargando: ' + (r.sobrevive ? 'SI' : 'NO'));
   console.log('errores de JavaScript: ' + errores.length);
