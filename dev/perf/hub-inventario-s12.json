@@ -1,0 +1,308 @@
+{
+ "bloques": [
+  {
+   "i": 0,
+   "tag": "div",
+   "clase": "topbar",
+   "titulo": "",
+   "altoPx": 55,
+   "nodos": 7,
+   "bytes": 225,
+   "botones": []
+  },
+  {
+   "i": 1,
+   "tag": "div",
+   "clase": "card gold",
+   "titulo": "Ofertas sobre la mesa2",
+   "altoPx": 115,
+   "nodos": 4,
+   "bytes": 166,
+   "botones": [
+    {
+     "txt": "Ver ofertas",
+     "onclick": "go('offers')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 2,
+   "tag": "div",
+   "clase": "card hi",
+   "titulo": "Avanzar",
+   "altoPx": 256,
+   "nodos": 11,
+   "bytes": 1095,
+   "botones": [
+    {
+     "txt": "Cambiar",
+     "onclick": "go('train')",
+     "alto": 44
+    },
+    {
+     "txt": "1 mes",
+     "onclick": "advancePeriod(4)",
+     "alto": 46
+    },
+    {
+     "txt": "3 meses",
+     "onclick": "advancePeriod(13)",
+     "alto": 46
+    },
+    {
+     "txt": "1 año",
+     "onclick": "advancePeriod(52)",
+     "alto": 46
+    },
+    {
+     "txt": "⏩ Hasta el próximo evento (máx 26 sem)",
+     "onclick": "autoAdvanceToImportant(26)",
+     "alto": 62
+    }
+   ]
+  },
+  {
+   "i": 3,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "0-0 (0 KO · 0 SUB · 0 DEC)",
+   "altoPx": 134,
+   "nodos": 26,
+   "bytes": 719,
+   "botones": []
+  },
+  {
+   "i": 4,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "El mundoVer todo",
+   "altoPx": 171,
+   "nodos": 6,
+   "bytes": 318,
+   "botones": [
+    {
+     "txt": "Ver todo",
+     "onclick": "go('history','news')",
+     "alto": 46
+    }
+   ]
+  }
+ ],
+ "tarjetas": [
+  {
+   "id": "accesos",
+   "orden": 4,
+   "bytes": 627,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "identity",
+   "orden": 6,
+   "bytes": 452,
+   "sitio": "off",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "carrera",
+   "orden": 6,
+   "bytes": 956,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "finanzas",
+   "orden": 6,
+   "bytes": 409,
+   "sitio": "train",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "ufc",
+   "orden": 8,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "peso",
+   "orden": 10,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "decisiones",
+   "orden": 12,
+   "bytes": 1447,
+   "sitio": "train",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "deuda",
+   "orden": 12,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "tecnicas",
+   "orden": 12,
+   "bytes": 302,
+   "sitio": "train",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "meta",
+   "orden": 12,
+   "bytes": 350,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "pilares",
+   "orden": 14,
+   "bytes": 0,
+   "sitio": "train",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "auto_advance",
+   "orden": 18,
+   "bytes": 438,
+   "sitio": "off",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "circulo",
+   "orden": 30,
+   "bytes": 363,
+   "sitio": "people",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "sagas",
+   "orden": 34,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "publico",
+   "orden": 36,
+   "bytes": 957,
+   "sitio": "bio",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "observado",
+   "orden": 38,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "vida",
+   "orden": 40,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "historia",
+   "orden": 40,
+   "bytes": 322,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "content_team",
+   "orden": 42,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "inversion",
+   "orden": 44,
+   "bytes": 234,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "casino",
+   "orden": 46,
+   "bytes": 275,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "instalaciones",
+   "orden": 48,
+   "bytes": 0,
+   "sitio": "hub",
+   "tieneContenido": false,
+   "dibuja": false
+  },
+  {
+   "id": "threads",
+   "orden": 72,
+   "bytes": 425,
+   "sitio": "off",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "legado",
+   "orden": 80,
+   "bytes": 551,
+   "sitio": "menu",
+   "tieneContenido": true,
+   "dibuja": false
+  },
+  {
+   "id": "mundo",
+   "orden": 90,
+   "bytes": 342,
+   "sitio": "hub",
+   "tieneContenido": true,
+   "dibuja": true
+  }
+ ],
+ "total": 898,
+ "semanaJuego": "2016/13",
+ "record": "0-0",
+ "accionesUnicas": [
+  "advancePeriod(13)",
+  "advancePeriod(4)",
+  "advancePeriod(52)",
+  "autoAdvanceToImportant(26)",
+  "go('history','news')",
+  "go('offers')",
+  "go('train')"
+ ],
+ "semanas": 12,
+ "etiqueta": "s12"
+}

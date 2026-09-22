@@ -1,34 +1,24 @@
 # WORKLOG — CAGE LEGACY
 
 ## Estado
-**Fase actual:** F2 — Consolidación y corrección (3 de 14 bugs corregidos).
+**Fase actual:** F2 — Consolidación y corrección. **Los 14 bugs de la lista están cerrados** (13 corregidos, C-002 reconducido a la parte estructural con justificación en D-011). Pendiente: la parte estructural.
 **Rama:** `cage-legacy-rework` · **Tags:** `baseline-original` · `fase-0-ok` · `fase-1-ok`
 
 ## Siguiente paso exacto
-Seguir con **F2**, por la lista priorizada de `dev/AUDIT.md` → "Lista priorizada de
-correcciones para F2". Hechos los tres primeros (F-001, I-001, D-003). **El siguiente es el #4, D-001**:
-`confirmFight()` no tiene guarda de idempotencia — tres llamadas dan récord 0-3, tres
-entradas de `career` y tres bolsas para una sola pelea. Arreglo indicado en
-`dev/audit/D-combate.md`: guarda al principio de `confirmFight`. Ojo: el test debe
-comprobar también que la llamada legítima **sí** sigue cobrando.
+**Abrir la parte estructural de F2**, planificada en `dev/PLAN-F2-consolidacion.md`.
+Empezar por el **punto 0: el cierre de semana** (viene de C-002). Está duplicado a mano en
+los nueve llamadores de `advanceWeek`, cada uno con un subconjunto distinto —la tabla está
+en `dev/DECISIONS.md`, D-011—. Extraer una función con contrato explícito y que cada
+llamador declare qué parte quiere. **Sí cambia comportamiento** en los llamadores a los que
+hoy les falta algo, así que necesita evidencia de simulación, no golden master idéntico.
 
-**Protocolo por cada bug, ya rodado dos veces:**
-1. Escribir el test en `dev/tests/06-f2-fixes.js` **incluyendo las pruebas que vigilan que
-   el arreglo no desactive lo que la función debía hacer**.
-2. Correrlo contra el archivo sin corregir y **guardar la salida en rojo** (va a CHANGES.md).
-3. Aplicar la corrección de raíz.
-4. Suite completa. Si cambia el golden master, **aislar qué arreglo lo causó** revirtiendo
-   uno solo, y medir el efecto con `dev/sim.js` antes/después.
-5. Entrada en `CHANGES.md` con la evidencia. Commit `[F2] fix:`.
+Después, por orden del encargo: `startCareer` → `loadGame`/save → `advanceWeek` →
+combate → entrenamiento → navegación/render → minijuegos → eventos → progresión de rivales.
+El candidato más claro sigue siendo **`rollEvent`**: 4 capas, 3 constructores duplicados
+del mismo objeto, y dos reglas (`important` en G-001, puerta de drama en G-002) que hubo
+que arreglar en más de un sitio por culpa de los caminos de respaldo.
 
-**Importante sobre las fixtures**: `dev/fixtures/` son saves de la versión **original** y
-son la evidencia de I3. **No se regeneran nunca.** Las golden traces sí, cuando un fix
-cambia el juego a propósito.
-
-Tras los bugs vienen las consolidaciones estructurales (mismo orden del encargo:
-startCareer → loadGame → advanceWeek → combate → entrenamiento → navegación/render →
-minijuegos → save/load → eventos → progresión de rivales), que **no** deben cambiar
-comportamiento y se demuestran con golden master idéntico.
+Al cerrar la consolidación: tag `fase-2-ok` (local; los tags no suben, D-009) y abrir F3.
 
 ## Comandos
 ```
@@ -84,6 +74,38 @@ node dev/make-baseline.js        regenera TODA la línea base
 - **D-003** · la pantalla de resultado ya no se abandona sin resolver: `fightresult` se
   añadió a la lista de pantallas sin barra de navegación. Cerraba el re-roll infinito del
   resultado. Verificado en Chromium real. Golden master sin cambios.
+- **D-001 + D-006** · cobrar una pelea es idempotente. `G.paid` pasa de ser decoración de
+  interfaz a cerrojo real: el reset se mudó a `fightStart` (atómico con la creación de la
+  pelea) y `confirmFight` abre con condición explícita. Golden master sin cambios.
+- **A-001** · un solo escritor de `contract.left`. El duplicado además no comprobaba la
+  organización —lo destapó el test—. Cambian 2 de 5 trazas.
+- **H-005** · el reescalado de patrocinios deja de componer (sólo el bug; el apilado queda
+  intacto por decisión tuya, D-008). Ingreso de patrocinios a 7 años: mediana −61%.
+  **Corrigió una atribución errónea de la auditoría**: H-005 NO causaba la cola pesada de
+  la economía; esa causa sigue sin identificar y queda para F5.
+- **C-001** · el avance en bloque aplica el campamento. Antes consumía semanas con
+  `camp.i`, `sharp` y el corte de peso clavados. A/B: `camp.i` 0→2, `sharp` 35→45,
+  peso −2,7 lb en un bloque de 8 semanas.
+- **B-001** (pendiente de evidencia) · `cornerAdvice` y `postFightQuote` pasan a
+  `pickStable`, el molde que el archivo ya usaba en `memRef`. **`render()` deja de alterar
+  la partida**: stubearlo ya da la misma huella. Era H-001 desde F0.
+- **G-001** · la marca `important` viaja con el evento, en los **tres** constructores
+  (`rollEvent` tiene 4 capas). Mecanismo corregido; **efecto extremo a extremo NO MEDIDO
+  como significativo**: los bloques se detienen por `cl_dyn`, que se adelantan al banco.
+  Cambian 3 de 5 trazas, pero el estado observable y la traza semana a semana son
+  idénticos: sólo cambió la forma del estado.
+
+## Aprendizajes de método (valen para los que quedan)
+- **La media miente en la economía.** En A-001 la media de dinero cayó un 24% y la
+  mediana no se movió, con el máximo idéntico: era la cola pesada de H-005
+  redistribuyéndose. Mirar siempre mediana y máximo antes de atribuir un efecto.
+- **Un test que falla puede ser el test.** Pasó dos veces: el de punto fijo en save/load
+  (F0) y el de `important` (G-001, exigía un evento que no es elegible en una carrera
+  nueva). Preguntarse primero si la prueba está bien planteada.
+- **Aislar qué arreglo cambió el golden master** revirtiendo uno solo. Así se supo que
+  F-001 no tiene impacto jugable y que G-001 sólo cambia la forma del estado.
+- **Cada arreglo lleva pruebas que vigilan que no desactive lo que la función debía
+  hacer** (p. ej. `repairCritical` sigue vacando cinturones realmente inválidos).
 
 ## Bloqueos
 - Los subagentes de auditoría corren en modo sólo lectura y **no pueden escribir**
@@ -104,3 +126,173 @@ node dev/make-baseline.js        regenera TODA la línea base
 - Sim en 4 workers: ≈ 33 ms/semana agregados. 1000 carreras × 150 semanas
   ≈ 1,4 h. Aceptable en segundo plano; si hace falta bajarlo, el objetivo es
   `normalizeWorldState` en cada autosave (F2+).
+
+## Resumen de F2 — bugs corregidos (13)
+
+| # | id | qué rompía | evidencia del efecto |
+|---|---|---|---|
+| 1 | F-001 | borraba partidas al arrancar si no cabían | impacto jugable nulo (aislado) |
+| 2 | I-001 | el jugador no podía ser campeón | carreras con título 12,5% → 67,5% |
+| 3 | D-003 | re-roll infinito del resultado | verificado en Chromium real |
+| 4 | D-001+D-006 | cobrar duplicaba récord, bolsa y semanas | golden master sin cambios |
+| 5 | A-001 | el contrato duraba la mitad | medianas sin mover |
+| 6 | G-001 | `important` no llegaba a la cola | efecto NO MEDIDO como significativo |
+| 7 | H-005 | patrocinios componían sin techo | ingreso a 7 años: mediana −61% |
+| 8 | C-001 | el bloque quemaba el campamento | `camp.i` 0→2, `sharp` 35→45 |
+| 9 | B-001 | dibujar consumía el RNG del mundo | **no equivalente**, documentado |
+| 10 | D-002 | resultado aplicado a medias | golden master sin cambios |
+| 11 | G-002 | la puerta de drama no se aplicaba | 4/328 → 0/321 · equivalencia aceptada |
+| 12 | F-002 | la copia pre-migración no existía | impacto jugable nulo (aislado) |
+| 13 | I-002 | campeón fantasma congelaba divisiones | equivalencia aceptada · 172/250 idénticas |
+
+**Suite: 82 pruebas verdes · navegador: 28 verdes · 0 fallos de invariante.**
+Métricas de control planas: 43 redefiniciones, 42 wrappers, 3 escrituras de scroll,
+0 dependencias externas, 0 `eval`.
+
+
+---
+
+## F2 — parte estructural (sesión en curso)
+
+### Hecho
+
+| # | qué | evidencia |
+|---|---|---|
+| F2-15 | `closeWeek(opts)`: el cierre de semana vive en un sitio (C-002) | 5/5 trazas idénticas |
+| F2-16 | el filtro de eventos: dos niveles, no dos copias | golden idéntico · suite 93 |
+| F2-17 | `rollEvent`: 4 capas encadenadas → 1 función | golden idéntico · suite 93 · A/B en curso |
+
+**Suite: 93 verdes · navegador: 28 verdes.** Métricas: redefiniciones 43 → **42**,
+wrappers 42 → **40**, escrituras de scroll **3** (I1 intacto), `eval` 0, deps externas 0.
+`rollEvent` ha desaparecido del mapa de redefiniciones.
+
+### Cómo se hizo `rollEvent`, que es el método a repetir
+
+1. **Medir primero, con una señal que no mienta.** Sólo la capa ganadora escribe
+   `G.story.eventHistory`, así que contar su crecimiento dice qué capa resolvió cada
+   sorteo: **328 de 328 por la capa 4, 0 por las de abajo**.
+2. **Forzar el camino muerto** (llenar el historial con los 66 eventos) y **caracterizar
+   lo que hace**, no lo que debería hacer: 7 pruebas en `dev/tests/07-rollevent.js`,
+   escritas **contra las cuatro capas**, commit aparte y **antes** de tocar nada.
+3. **Demostrar que las capas viejas eran un nivel más de la misma escalera**: si el evento
+   que devolvían hubiera pasado la veda corta, la capa 4 lo habría tenido en su mazo y no
+   habría caído. Luego devolvían contexto + drama + `c()` **sin veda**.
+4. **Fundir**, y dejar la política declarada en tres líneas en vez de repartida en cuatro
+   capas.
+5. **Hacer medible lo que antes se deducía**: `CL.evNivel()` (fuera de `G`, no se guarda)
+   convierte "el respaldo no se usa" en una prueba permanente en vez de una medición de
+   una vez.
+6. **Nombrar las diferencias en vez de esconderlas**: D-012 deja escritas las dos, por qué
+   caen en el nivel inalcanzable, y qué las volvería inaceptables.
+
+### Dos trampas que costaron tiempo y conviene recordar
+
+- **`Array.filter` pasa `(elemento, índice, array)`.** Un predicado `eventAllowed(e,
+  relajado)` pasado directo a `filter` recibe el índice como segundo argumento: todo el
+  banco en modo relajado salvo el primer elemento. Los predicados van envueltos.
+- **`e.c()` no es puro.** Tres condiciones del banco hacen inicialización perezosa
+  (`x1_parking` crea `G.flags.seen`; `sg_callout` y `sg_invcamp` crean su registro de
+  saga). Medido: llamar a las 66 mueve la huella en la primera pasada (`95ab9be9` →
+  `ce51317e`) y ya no en la segunda. **Adelantar una comprobación barata delante de
+  `e.c()` cambia el estado que se guarda**, así que el orden de los filtros es carga útil,
+  no estilo.
+
+### Siguiente: combate — y por qué no es tan mecánico como parecía
+
+Hay **tres** cierres de intercambio con tres relojes distintos y sólo uno emite
+`exchange:pre/post` (adenda F2 de `dev/audit/D-combate.md`). Pero medido: en 5 carreras x
+200 semanas el autopiloto cierra **1433 intercambios por `fightAct` y 0 por
+`fightFinishResolve` y `TQ.apply`**. Eso **no** dice que esos caminos no se usen — dice que
+el autopiloto no los pisa, porque resuelve las peleas a `fightAct` y nunca abre el
+minijuego de finalización ni el árbol de técnicas. Un humano sí los recorre.
+
+Consecuencia: **el golden master no puede validar ese refactor**. Necesita primero una red
+de caracterización que conduzca esos dos puntos de entrada desde el harness, igual que hubo
+que forzar el mazo vacío para `rollEvent`.
+
+---
+
+# F2 — CERRADA
+
+## Las dos mitades
+
+**Mitad 1 — bugs (13).** Tabla arriba. De ellos, dos destruían datos: `F-001` borraba
+partidas al arrancar si no cabían, e `I-001` impedía que el jugador fuera campeón (carreras
+con título: 12,5% → 67,5%).
+
+**Mitad 2 — consolidación estructural.** Nueve candidatos en el plan. El resultado no fue el
+que el plan esperaba:
+
+| | candidato | veredicto |
+|---|---|---|
+| ✅ | cierre de semana | `closeWeek(opts)` — F2-15 |
+| ✅ | filtro de eventos | `eventCore()` + dos niveles — F2-16 |
+| ✅ | `rollEvent` | 4 capas → 1 función — F2-17 |
+| ✅ | cierre de round | `roundOver(f)`, 3 copias → 1 — F2-19 |
+| ✅ | `savePrune` | sólo el recorrido — F2-20 (D-014) |
+| ❌ | `fightFinishResolve` / `sparFinishResolve` | descomposición sana, no duplicación |
+| ❌ | `pruneWorld` | D-013 · la fusión cambia qué luchadores existen → F4 |
+| ❌ | `cardioStart`/`strStart`/`drillStart` | D-015 · el camino vivo ya es una función |
+| ❌ | cierre de intercambio | D-016 · lo compartido ya se extrajo |
+| → | navegación / render, `UI.screen`, cierre de minijuego | F3 |
+
+**Cuatro candidatos se descartaron midiendo, no leyendo.** Y en tres casos la medición
+contradijo lo que el plan daba por hecho.
+
+## Verificación final
+
+- **Suite: 107 verdes**, 0 fallos. Golden master idéntico en las **cuatro** trazas.
+- **Navegador: 28 verdes** en tres resoluciones, I1 intacto (400→400 en sitio, 400→0 al navegar).
+- **Dos A/B de 200 carreras x 300 semanas por brazo** (`rollEvent` y `savePrune`): los dos
+  salieron **idénticos, no sólo equivalentes** — deltas exactamente cero en las seis medias
+  y las cinco proporciones, 0 fallos de invariante, **200 de 200 huellas idénticas** en cada
+  uno.
+- Métricas de control, inicio → cierre de F2:
+
+| métrica | inicio | cierre | objetivo |
+|---|---|---|---|
+| nombres definidos >1 vez | 43 | **42** | bajar, no subir ✅ |
+| wrappers que capturan la previa | 42 | **40** | bajar, no subir ✅ |
+| escrituras de scroll | 3 | **3** | no tocar (I1) ✅ |
+| `eval` funcional | 0 | **0** | 0 ✅ |
+| dependencias externas | 0 | **0** | 0 ✅ |
+
+Las métricas se movieron poco **a propósito**: cuatro de los nueve candidatos resultaron no
+ser duplicación, y forzarlas a bajar habría significado fundir cosas que no debían fundirse.
+
+## El método, que es lo que hay que llevarse a F3
+
+1. **Mapear**: dónde vive cada copia, quién la llama, qué escribe en `G`.
+2. **Medir con una señal que no mienta**, antes de decidir nada.
+3. **Red de caracterización commiteada ANTES** de tocar el juego. Describe lo que hace hoy,
+   no lo que debería hacer.
+4. **Mutación**: romper a propósito cada regla protegida. Una prueba que no se vio caer no
+   vale nada.
+5. **Refactor mínimo**, en commit propio.
+6. **Verificación completa**: golden, suite, navegador, métricas, y A/B si toca lógica viva.
+7. **Diferencias aceptadas en una D-xxx**, y cuando se pueda, la medición puntual convertida
+   en prueba permanente (`CL.evNivel()`).
+
+## Las cuatro veces que el instrumento mintió antes que el código
+
+Están en `dev/DEUDAS-F4.md` con detalle. En corto:
+
+1. **Medir el estado final** de algo que corre en cada autoguardado da 0 y miente:
+   `savePrune` daba 0 redondeos al final y **3400** instrumentando cada llamada. Casi borro
+   código vivo.
+2. **`metaSeed` fijo** hace que "25 seeds" sean 25 copias de la misma muestra: la prueba de
+   reloj salía verde con el mutante puesto.
+3. **El autopiloto no pisa** el minijuego de finalización ni el árbol de técnicas: 1433
+   cierres por `fightAct` y 0 por los otros dos. Lo que el golden master no recorre, no lo
+   valida.
+4. **Los mutantes por línea de órdenes** los silencia el escapado del shell, y las pruebas
+   salen verdes sin mutante. Van en un script con los literales dentro.
+
+## Lo que queda abierto
+
+- `dev/DEUDAS-F4.md` — las cuatro deudas de fuentes de la verdad, cada una con la medición
+  que la descartó.
+- **Decisión de producto pendiente**: `G.retiredList` es estado de sólo escritura que viaja
+  en el save (A-012). O se le da un consumidor, o se retira con su migración.
+- Tag `fase-2-ok`: **sólo local**. El proxy git devuelve HTTP 403 para refs de tag (D-009).
+  El commit del gate es el que cierra esta sección.

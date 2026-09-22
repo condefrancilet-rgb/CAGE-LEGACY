@@ -182,3 +182,54 @@ Carrera completa instrumentada (seed 7, 400 semanas): 33 peleas → 33 `confirmF
 **condicionales** (segunda pulsación, excepción, navegación, crash), no sistemáticas.
 **La guarda que el comentario de `go()` 4014-4022 da por completa tiene dos huecos:
 `confirmFight` sin cerrojo propio, y la salida sin confirmar.**
+
+---
+
+## Adenda F2 · Los tres cierres de intercambio (preparación de la consolidación)
+
+Al buscar el siguiente candidato estructural de F2, el archivo resulta tener **tres sitios
+distintos que cierran un intercambio**, cada uno con sus propias constantes:
+
+| sitio | línea | reloj | qué hace al cerrar | emite `exchange:pre/post` |
+|---|---|---|---|---|
+| `fightAct` | 1837 | `ri(38,62)` | si hay KO no cierra round ni redibuja; si no, `endRound` + `render` | **sí**, vía `resolveExchange` |
+| `fightFinishResolve` | 6468 | `ri(24,46)` | `drain('p',10\|9)`, `endRound`, `render` — **sin comprobar KO** | **no** |
+| `TQ.apply` | 20783 | `ri(30,52)` | `finishFight` si cae cualquiera, `drain` 1,2 a ambos, `endRound`, `render` | **no** |
+
+Es el mismo patrón que hizo falta consolidar en `rollEvent`: una regla —cómo se cierra un
+intercambio— escrita tres veces y ya divergida. Los tres suscriptores de
+`exchange:pre/post` (`danoAcumulado`, `tqPasivas`, `saneoRecursos`) **no corren** para dos
+de los tres caminos.
+
+### Lo que la medición dice, y lo que NO dice
+
+5 carreras x 200 semanas con el autopiloto:
+
+```
+fightAct (intercambio normal) .... 1433
+fightFinishResolve (minijuego) ...    0
+TQ.apply (tecnica) ...............    0
+hook exchange:pre disparado ......  1433
+hook exchange:post disparado .....  1433
+```
+
+**Esto NO prueba que esos dos caminos no se usen en juego real.** Prueba que *el
+autopiloto* no los pisa: su política resuelve las peleas llamando a `fightAct` y nunca abre
+el minijuego de finalización ni el árbol de técnicas. Es una limitación del instrumento,
+no un hallazgo sobre el juego. Un jugador humano sí los recorre.
+
+### Consecuencia para el plan
+
+La consolidación de combate **no se puede validar con el golden master**, porque las trazas
+del autopiloto no entran en dos de los tres caminos — exactamente el mismo problema que
+tuvo el respaldo de `rollEvent`. Necesita primero su propia red de caracterización que
+conduzca `TQ.apply` y `fightFinishResolve` directamente desde el harness, como se hizo en
+`dev/tests/07-rollevent.js` forzando el mazo vacío.
+
+Y hay una frontera que respetar: **unificar las tres constantes de reloj es balance, no
+consolidación** (hoy una técnica cuesta menos reloj que un intercambio normal, y eso puede
+ser deliberado). Lo que sí es consolidación es que la *estructura* del cierre —comprobar
+KO, cerrar round, redibujar, y qué se emite— viva en un solo sitio con el coste de reloj
+como parámetro. Hacer que los hooks se emitan en los tres caminos **cambia
+comportamiento** (empezaría a correr el TKO por daño acumulado en técnicas y minijuegos):
+es un arreglo con su propia evidencia, no un refactor.

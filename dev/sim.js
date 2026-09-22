@@ -15,7 +15,7 @@ const { Worker, isMainThread, parentPort, workerData } = require('node:worker_th
 function unaCarrera(cfg){
   const H = require(path.join(__dirname, 'harness.js'));
   const A = require(path.join(__dirname, 'autopilot.js'));
-  const h = H.boot({ seed: cfg.seed });
+  const h = H.boot({ seed: cfg.seed, file: cfg.file });
   /* saveSerialize solo produce la cadena que va a localStorage: no toca el
      mundo (savePrune y normalizeWorldState, que si lo tocan, siguen corriendo).
      Verificado: la huella del estado es identica con y sin esta sustitucion.  */
@@ -107,6 +107,9 @@ async function main(){
   const workers  = Math.max(1, Math.min(parseInt(arg('workers', String(os.cpus().length)), 10), n));
   const out      = arg('out', null);
   const io       = flag('io');
+  /* --file permite medir OTRA version del archivo (p. ej. una copia congelada
+     de antes de un arreglo) sin tocar el arbol de trabajo. */
+  const file     = arg('file', null);
 
   /* Se varia estilo, division, edad y personalidad para que las metricas por
      estilo y por division sean representativas. La eleccion es determinista:
@@ -119,7 +122,7 @@ async function main(){
     const estilo = ESTILOS[i % ESTILOS.length];
     let segundo = ESTILOS[(i * 3 + 1) % ESTILOS.length];
     if(segundo === estilo) segundo = ESTILOS[(i * 3 + 2) % ESTILOS.length];
-    trabajos.push({ seed: 1000 + i, metaSeed: 500000 + i * 7919, weeks, politica, io,
+    trabajos.push({ seed: 1000 + i, metaSeed: 500000 + i * 7919, weeks, politica, io, file,
       style: estilo, style2: segundo,
       div: DIVS[Math.floor(i / ESTILOS.length) % DIVS.length],
       age: 20 + (i % 7),

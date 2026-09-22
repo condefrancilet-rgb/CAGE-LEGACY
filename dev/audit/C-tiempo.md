@@ -143,7 +143,37 @@ asigna **50** por defecto, no 100. Corre en posición 16 de 30, **antes** de `de
 `apodos`(70), `meta`(80) y `descubierto`(99). La normalización "final" no ve nada de lo
 que esos diez hooks mutan.
 
-### C-008 · La semana del aviso financiero no se cobra — MEDIA · CONFIRMADO
+### C-008 · La semana del aviso financiero no se cobra — **NO REPRODUCE** (revisado en F2-bis)
+
+> **Corrección del veredicto, medida.** La semana **no queda gratis**: la economía se
+> *difiere*, no se salta. `CL.finWarn` tiene dos caminos y los dos la aplican —
+> el de enfriamiento la aplica en el acto (`G.cash += sponsorIncome - burn`, bajada a
+> `gym9`, `CL.overdraft`), y el otro se la pasa al manejador `cl_finwarn`, que cobra según
+> la opción elegida.
+>
+> **Medido, 1 carrera x 250 semanas arrancando con 40 de caja:**
+> ```
+> avisos financieros ................... 60
+> preguntaron al jugador (CL.ask) ...... 25
+> aplicaron por enfriamiento ........... 35
+> NI una NI otra (semana gratis real) ...  0
+> rechazos de queueEvent ................  0
+> ```
+>
+> **Un error de medición propio, anotado para no repetirlo.** La primera sonda contaba
+> "semana inerte" como *no encoló y la caja no cambió*, y dio **275 de 527 (52%)**. Es
+> falso: `CL.overdraft` convierte el descubierto en deuda y devuelve la caja a 0, así que
+> "la caja no cambió" es compatible con que la economía SÍ se haya aplicado. La señal
+> válida es instrumentar `CL.ask` y `CL.overdraft`, que distinguen los dos caminos.
+>
+> **Riesgo residual, no corregido porque no se puede demostrar.** `s.lastFinWarn = now` se
+> escribe *antes* de `CL.ask`. Si algún día `queueEvent` rechazara ese `cl_dyn`, se
+> quemaría el enfriamiento **y** la economía no se aplicaría. Medido: 0 rechazos en 60
+> avisos. No se toca sin evidencia.
+
+Texto original de la auditoría, conservado:
+
+### C-008 (original) · La semana del aviso financiero no se cobra — MEDIA
 **1313-1315**. Cuando `CL.finWarn` encola la pregunta, la rama `else` (1317-1328) no se
 ejecuta: no se resta `burn`, no se acreditan patrocinios, no se aplica la caída a `gym9`
 ni `CL.overdraft`. Con `G.cash=50`, la semana del aviso da `delta 0`. El enfriamiento de

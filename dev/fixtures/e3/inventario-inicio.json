@@ -1,0 +1,616 @@
+{
+ "generado": "dev/make-inventario.js",
+ "nota": "Inventario del inicio ANTES de E3. Cada accion tiene que seguir alcanzable despues.",
+ "alcance": [
+  "hub",
+  "train",
+  "menu",
+  "people",
+  "bio"
+ ],
+ "acciones": [
+  {
+   "onclick": "advancePeriod(13)",
+   "etiqueta": "3 meses",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "advancePeriod(4)",
+   "etiqueta": "1 mes",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "advancePeriod(52)",
+   "etiqueta": "1 año",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "autoAdvanceToImportant(26)",
+   "etiqueta": "⏩ Avanzar hasta el próximo evento importante has",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "autoAdvanceToImportant(8)",
+   "etiqueta": "⏩ Avanzar hasta el próximo evento importante has",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "CAS.enterScreen()",
+   "etiqueta": "Entrar al casino",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "chatStart()",
+   "etiqueta": "📱 Abrir el grupo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('engine')",
+   "etiqueta": "🫁 Motor",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('none')",
+   "etiqueta": "○ Sin enfoque",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('recover')",
+   "etiqueta": "🌿 Descarga",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('smart')",
+   "etiqueta": "🧠 Estudio",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('tech')",
+   "etiqueta": "◎ Técnica pura",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetFocus('war')",
+   "etiqueta": "⚔️ Guerra",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetSpend('allin')",
+   "etiqueta": "🔥 Todo adentro $1,500 · Equipo completo alreded",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetSpend('lean')",
+   "etiqueta": "🪙 Austero $0 · Vivís con lo mínimo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetSpend('normal')",
+   "etiqueta": "⚖️ Normal $180 · Lo justo: comida, fisio y suple",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clSetSpend('pro')",
+   "etiqueta": "💠 Profesional $620 · Nutricionista, fisio seman",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clTogglePillar('body')",
+   "etiqueta": "🛡️ Cuerpo Peso, fuerza y prevención de lesiones",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clTogglePillar('gas')",
+   "etiqueta": "🫁 Motor Llegar entero al quinto round.",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clTogglePillar('plan')",
+   "etiqueta": "🎯 Plan Estudiar al rival hasta aburrirse.",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "clTogglePillar('sharp')",
+   "etiqueta": "🔪 Afilar Sparring de calidad y ritmo de pelea.",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "fameStart('photo')",
+   "etiqueta": "📸 Sesión de fotos Popularidad y dinero",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "fameStart('reel')",
+   "etiqueta": "🎬 Highlight reel Editá tu mejor video",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "fameStart('titlerun')",
+   "etiqueta": "🏆 Camino al título Cuatro pruebas seguidas",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "fameStart('walkout')",
+   "etiqueta": "🎵 Preparar la entrada Ritmo · sube el hype",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "fameStart('weekplan')",
+   "etiqueta": "🗓️ Organizar la semana Equilibrá carga y descan",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','box')",
+   "etiqueta": "Boxeo",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','cardio')",
+   "etiqueta": "Cardio",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','grap')",
+   "etiqueta": "Grappling / BJJ",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','kick')",
+   "etiqueta": "Kickboxing",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','mind')",
+   "etiqueta": "Trabajo mental",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','muay')",
+   "etiqueta": "Muay Thai / clinch",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','rest')",
+   "etiqueta": "Recuperación",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','spar')",
+   "etiqueta": "Sparring",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','str')",
+   "etiqueta": "Fuerza y potencia",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','tech')",
+   "etiqueta": "Técnica / drills",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('a','wrest')",
+   "etiqueta": "Wrestling",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','box')",
+   "etiqueta": "Boxeo",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','cardio')",
+   "etiqueta": "Cardio",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','grap')",
+   "etiqueta": "Grappling / BJJ",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','kick')",
+   "etiqueta": "Kickboxing",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','mind')",
+   "etiqueta": "Trabajo mental",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','muay')",
+   "etiqueta": "Muay Thai / clinch",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','rest')",
+   "etiqueta": "Recuperación",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','spar')",
+   "etiqueta": "Sparring",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','str')",
+   "etiqueta": "Fuerza y potencia",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','tech')",
+   "etiqueta": "Técnica / drills",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('b','wrest')",
+   "etiqueta": "Wrestling",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','box')",
+   "etiqueta": "Boxeo",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','cardio')",
+   "etiqueta": "Cardio",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','grap')",
+   "etiqueta": "Grappling / BJJ",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','kick')",
+   "etiqueta": "Kickboxing",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','mind')",
+   "etiqueta": "Trabajo mental",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','muay')",
+   "etiqueta": "Muay Thai / clinch",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','rest')",
+   "etiqueta": "Recuperación",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','spar')",
+   "etiqueta": "Sparring",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','str')",
+   "etiqueta": "Fuerza y potencia",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','tech')",
+   "etiqueta": "Técnica / drills",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('c','wrest')",
+   "etiqueta": "Wrestling",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('load','dura')",
+   "etiqueta": "dura",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('load','ligera')",
+   "etiqueta": "ligera",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "focusSet('load','normal')",
+   "etiqueta": "normal",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "go('bio')",
+   "etiqueta": "Mi peleador",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('challenges')",
+   "etiqueta": "Desafíos",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('clcareer')",
+   "etiqueta": "Ver tu carrera",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('contracts')",
+   "etiqueta": "Contratos Dinero y patrocinios",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('gym')",
+   "etiqueta": "Gimnasio Cambiar equipo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('gyms')",
+   "etiqueta": "🏠 Gimnasios visitar o mudarte",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('hall')",
+   "etiqueta": "🏆 Salón de la fama",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('history','news')",
+   "etiqueta": "Ver todo el historial del mundo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('offers')",
+   "etiqueta": "Ver ofertas",
+   "estados": [
+    "semana"
+   ]
+  },
+  {
+   "onclick": "go('people')",
+   "etiqueta": "Personajes Equipo y rivales",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('rank')",
+   "etiqueta": "Rankings Divisiones y campeones",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('retire')",
+   "etiqueta": "🏁 Anunciar el retiro",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('shop')",
+   "etiqueta": "💳 Invertir $0 disponible",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('social')",
+   "etiqueta": "👥 Ver relaciones",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('stats')",
+   "etiqueta": "Ficha completa Stats, potencial, estilo",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('story')",
+   "etiqueta": "Abrir mundo y memoria 0 recuerdos · 15 publicaci",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('tq')",
+   "etiqueta": "🌳 Árbol de técnicas",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "go('train')",
+   "etiqueta": "Entrenar Semana libre",
+   "estados": [
+    "semana",
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "skipWeek()",
+   "etiqueta": "Pasar la semana sin entrenar",
+   "estados": [
+    "pelea"
+   ]
+  },
+  {
+   "onclick": "weighStart()",
+   "etiqueta": "Ir al pesaje",
+   "estados": [
+    "pelea"
+   ]
+  }
+ ]
+}

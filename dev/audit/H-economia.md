@@ -58,9 +58,26 @@ Corolario que lo confirma: la deuda media **deja de crecer justo en ese tramo**
 a cubrir el gasto fijo y `CL.runwayWeeks()` devuelve `Infinity`.
 
 **H-005 sube de ALTO a CRÍTICO**: es el único hallazgo que se manifiesta sin que el jugador
-haga nada deliberado, y es el que deforma la distribución de la simulación masiva.
-H-001/H-002/H-003 siguen siendo exploits confirmados y mucho más rápidos, pero son
-**adicionales** a esta cola, no su causa.
+haga nada deliberado. H-001/H-002/H-003 siguen siendo exploits confirmados y mucho más
+rápidos, pero son **adicionales** a esta cola.
+
+> ### CORRECCIÓN tras el arreglo (F2-07) — la atribución de la cola era errónea
+> Al corregir el compuesto se midió el A/B real (8 carreras × 400 semanas ≈ 7 años, mismas
+> semillas, cargando la versión anterior del archivo en el harness):
+>
+> | | antes | después |
+> |---|---|---|
+> | ingreso semanal de patrocinios, mediana | 1.218 | **472** (−61%) |
+> | ingreso semanal de patrocinios, máximo | 3.756 | **1.673** (−55%) |
+> | `cash` mediana | 1.746.795 | 1.727.067 (−1%) |
+> | `careerEarn` | 2.011.922 | **2.011.922 (idéntico)** |
+>
+> El compuesto desaparece, pero **la cola de dinero no se mueve**: los patrocinios no eran
+> su causa. El mecanismo lo explica: el ingreso de `G.spons` se suma **sólo a `G.cash`**
+> (1323), mientras que `careerEarn` lo alimenta `G.flags.sponsorW` (15131), que es el
+> **artículo de tienda** H-004, otra cosa distinta con el mismo nombre coloquial.
+> Confundirlos fue el error de atribución. **La causa de la cola sigue sin identificar** y
+> queda abierta para F5.
 
 ## Hallazgos
 

@@ -50,9 +50,15 @@ p{margin:0 0 10px}
 .btn small{display:block;color:var(--dim);font-size:12.5px;font-weight:400;margin-top:3px}
 .btn:disabled{opacity:.45}
 .grid{display:grid;gap:8px}
-.g2{grid-template-columns:1fr 1fr}
-.g3{grid-template-columns:repeat(3,1fr)}
-.g4{grid-template-columns:repeat(4,1fr)}
+/* minmax(0,1fr) y no 1fr: por defecto una celda de grid no baja de su
+   contenido (min-width:auto), asi que una palabra larga -«Automatico»,
+   «Peso Pluma»- ensancha la columna y la rejilla desborda la pantalla. Medido:
+   el menu desbordaba 15 px a 360 px de ancho, y el ranking hasta 83 px cuando
+   le tocaba una division de nombre largo. Venia de antes de E3; aparecio al
+   barrer las 35 pantallas en las tres resoluciones. */
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:520px){.g4{grid-template-columns:repeat(2,1fr)}}
 .row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #1f2a36;font-size:14px}
 .row:last-child{border-bottom:0}
@@ -75,7 +81,10 @@ p{margin:0 0 10px}
 .log div:last-child{border:0}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#0b0e12;border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(5,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
-.nav button{background:none;border:0;color:var(--dim2);font-size:10.5px;font-family:inherit;padding:6px 2px;cursor:pointer}
+/* 44 px tambien aca: la barra es el menu persistente del juego, no decoracion.
+   Median 43x70 y por un pixel no llegaban al minimo tactil. */
+.nav button{background:none;border:0;color:var(--dim2);font-size:10.5px;font-family:inherit;
+  padding:6px 2px;cursor:pointer;min-height:44px;display:grid;align-content:center}
 .nav button b{display:block;font-size:17px;line-height:1.1;font-weight:600}
 .nav button.on{color:var(--gold)}
 .split{display:flex;gap:10px;align-items:center}
@@ -102,6 +111,27 @@ label{display:block;font-size:12px;color:var(--dim);margin:0 0 3px}
   opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .ticker{font-size:12.5px;color:var(--dim);border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+/* SECCIONES PLEGABLES (E3). Las pantallas que recibieron bloques del inicio
+   pasaban de dos pantallas de alto: el scroll se habria mudado de sitio en
+   vez de desaparecer. <details> es HTML plano: sin JS, sin estado que
+   guardar y sin dependencias. El resumen es el objetivo tactil, por eso
+   min-height 44px. */
+.sec{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 10px;overflow:hidden}
+.sec>summary{list-style:none;cursor:pointer;padding:12px 14px;min-height:44px;display:flex;
+  align-items:center;justify-content:space-between;gap:8px;font-weight:600;font-size:15px}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::after{content:'▾';color:var(--dim2);font-size:13px;transition:transform .15s}
+.sec[open]>summary::after{transform:rotate(180deg)}
+.sec>summary:hover{color:var(--gold)}
+.sec>.secBody{padding:0 10px 2px}
+.sec>.secBody>.card{margin-bottom:10px}
+/* FRANJA DE AVISOS. Los chips son anclas nativas: el salto lo hace el
+   navegador, no JS, asi que no hay scroll programatico que discutir con I1.
+   scroll-margin-top deja la tarjeta por debajo de la cabecera pegajosa
+   (.topbar mide ~55 px y es sticky), que si no la taparia. */
+.avisos a{display:inline-flex;align-items:center;min-height:44px;padding:6px 12px;margin:0 6px 4px 0;
+  border-radius:999px;text-decoration:none;font-size:12.5px}
+.avisoAncla{scroll-margin-top:68px}
 .mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .mini-tile{position:relative;border:1px solid var(--line2);border-radius:12px;background:linear-gradient(145deg,#18222d,#10161e);padding:10px;min-height:72px;text-align:left;cursor:pointer;color:var(--txt);font:inherit}
 .mini-tile:active{transform:scale(.985)}
@@ -569,7 +599,34 @@ body.hasdebt #app{padding-top:30px}
    CAGE LEGACY — 1. UTIL + DATA
    ========================================================================== */
 var G = null;          // estado global de la partida
-var UI = { screen:'title', sub:null, tmp:{} };
+var UI = { screen:'title', sub:null, tmp:{}, sec:{} };
+
+/* ==========================================================================
+   SECCIONES PLEGABLES — QUE NO SE CIERREN SOLAS
+   --------------------------------------------------------------------------
+   MEDIDO, y era un bug que yo mismo habia metido: render() reescribe
+   APP.innerHTML, asi que un <details> abierto se destruia y volvia a nacer
+   CERRADO en cuanto tocabas un boton de adentro. Con el foco de entrenamiento
+   abierto y pulsando «Wrestling»: la seccion se cerraba, el boton pasaba de
+   y=298 a y=673 y el scroll caia de 615 a 240. Despues de un toque, el boton
+   que acababas de pulsar no se veia.
+   (La primera sonda que escribi decia que todo estaba bien: habia pulsado el
+   boton YA seleccionado, el html salia identico y el DOM no se reescribia.
+   Una sonda que no cambia nada no prueba nada.)
+
+   Que estado abierto/cerrado vive en UI y NO en G: es estado de pantalla, no
+   de partida. En G viajaria a cada save y volveria al cargar otra partida.
+   El <details> avisa de sus cambios con ontoggle, que es HTML nativo: no hace
+   falta JS de escucha ni tocar render().
+   ========================================================================== */
+function secAbierta(id, porDefecto){
+  if(!UI.sec) UI.sec = {};
+  return Object.prototype.hasOwnProperty.call(UI.sec, id) ? !!UI.sec[id] : !!porDefecto;
+}
+function secToggle(id, abierta){
+  if(!UI.sec) UI.sec = {};
+  UI.sec[id] = !!abierta;
+}
 
 /* FIX RAIZ: rnd() con G=null se llamaba a si misma -> desbordamiento de pila.
    startCareer() pide un seed ANTES de que exista G, asi que arrancar una carrera
@@ -1204,7 +1261,14 @@ function recalcRank(orgId, div){
     return d!==0 ? d : (a<b? -1 : (a>b? 1 : 0));   /* desempate estable por id */
   });
   var ch = G.champs[orgId][div];
-  if(ch && (G.fighters[ch].retired || !G.fighters[ch].active || G.fighters[ch].div!==div)){
+  /* El campeon tiene que seguir militando en ESTA organizacion. Faltaba esa
+     comprobacion: yearTick asciende de organizacion (f.org = up) sin vaciar el
+     cinturon, asi que el mismo peleador quedaba como campeon de la que
+     abandono y a la vez retador de la nueva. El dano no es cosmetico: worldTick
+     solo organiza pelea por titulo vacante si G.champs[org][div] es falsy, de
+     modo que la division abandonada se congelaba para siempre. */
+  if(ch && (!G.fighters[ch] || G.fighters[ch].retired || !G.fighters[ch].active ||
+            G.fighters[ch].div!==div || G.fighters[ch].org!==orgId)){
     G.champs[orgId][div]=null; ch=null;
   }
   if(ch) arr = arr.filter(function(i){return i!==ch;});
@@ -1289,7 +1353,9 @@ function advanceWeekCore(){
   var p = G.player;
   p.weeksIdle++;
   if(p.injWeeks>0){ p.injWeeks--; if(p.injWeeks===0){ p.inj=null; newsWeek.push('Recibiste el alta médica.'); } }
-  p.fatigue = clamp(p.fatigue - (8 + p.st.recovery/12), 0, 100);
+  /* H-011: la casa de campeon prometia "descanso" por 300.000 y su flag no se
+     leia. Entra aqui, que es el descanso semanal. */
+  p.fatigue = clamp(p.fatigue - (8 + p.st.recovery/12) * (G.flags.penthouse?1.2:1), 0, 100);
   p.dmg = clamp(p.dmg-5,0,100);
   if(p.weeksIdle>12 && typeof changePopularity==='function') changePopularity(-0.18,'inactividad',true);
   else if(p.weeksIdle>12) p.pop = clamp(p.pop - 0.18, 1, 100);
@@ -1646,7 +1712,7 @@ function fightStart(oppId, cfg){
     G.nextFight=null; G.camp=null; G.fight=null;
     pushNews('La pelea se cayó: tu rival quedó fuera del evento.');
     if(typeof toast==='function') toast('La pelea se cayó. Buscá otro rival.');
-    UI.screen='hub'; if(typeof render==='function') render();
+    go('hub');
     return;
   }
   G.fight = {
@@ -1658,6 +1724,12 @@ function fightStart(oppId, cfg){
     cards:[], log:[], purse: cfg.purse||0, event: cfg.event||'',
     subLock:0, oppSubLock:0, momentum:0
   };
+  /* Una pelea nueva nace SIN cobrar. El reset vivia en goFight(), que no es la
+     funcion canonica de arranque: cualquier pelea empezada por otra via
+     heredaba el "ya cobrada" de la anterior y su resultado no se podia cobrar
+     nunca. Aqui es atomico con la creacion de G.fight, que es lo que hace de
+     G.paid un cerrojo fiable para confirmFight(). */
+  G.paid = false;
   // condición inicial: sharpness del campamento, fatiga, corte de peso
   var camp = G.camp;
   if(camp){
@@ -1668,7 +1740,7 @@ function fightStart(oppId, cfg){
   G.fight.o.stam = clamp(100 - o.fatigue*.3, 60, 100);
   hookEmit('fight:start', {oppId:oppId, cfg:cfg});
   flog('Comienza el combate. '+fname(p)+' vs '+fname(o)+'.');
-  UI.screen='fight'; render();
+  fightScreen('fight');
 }
 function flog(t){ G.fight.log.unshift(t); if(G.fight.log.length>60) G.fight.log.pop(); }
 
@@ -1813,6 +1885,18 @@ function wpick(w){
    El orden de ejecución es el mismo que tenía la cadena de capas, y el early
    return por combate terminado se conserva intacto.
    ========================================================================== */
+/* ¿Este intercambio cierra el round? La regla estaba escrita igual en los TRES
+   sitios que cierran un intercambio (fightAct, TQ.apply y fightFinishResolve),
+   constante 20 incluida, así que cambiarla pedía tres ediciones y bastaba
+   olvidar una para que un camino cerrara el round con otro criterio.
+   Lo que NO se unifica aquí es el coste de reloj: hoy son tres distintos
+   —ri(38,62) un intercambio normal, ri(30,52) una técnica, ri(24,46) un
+   minijuego de finalización— y eso puede ser deliberado. Igualarlos es una
+   decisión de balance, no de estructura; queda fijado en
+   dev/tests/08-intercambio.js y anotado en la adenda F2 de dev/audit/D-combate.md. */
+function roundOver(f){
+  return f.ex >= f.exPer || f.clock <= 20;
+}
 function fightAct(key){
   var f = G.fight; if(!f || f.over) return;
   var base = hookFilter('act:translate', key, {key:key, fight:f});
@@ -1826,7 +1910,7 @@ function fightAct(key){
      ni se redibuja acá. 'act:post' se emite igualmente al final, porque la capa
      externa que se consolidó aquí también corría en ese caso. */
   if(!(f.p.hp<=0 || f.o.hp<=0)){
-    if(f.ex >= f.exPer || f.clock<=20){ endRound(); }
+    if(roundOver(f)){ endRound(); }
     render();
   }
   hookEmit('act:post', ctx);
@@ -1841,6 +1925,37 @@ function gpMod(kind){
   if(kind==='counter'){ if(gp.prio==='counter') m+=6; if(gp.dist==='larga') m+=3; }
   if(kind==='ground'){ if(gp.prio==='grappling') m+=5; }
   return hookFilter('gp:mod', m, {kind:kind});
+}
+/* ==========================================================================
+   LA AGRESIVIDAD DEL JUGADOR HACE ALGO (E-001)
+   --------------------------------------------------------------------------
+   Medido con un proxy sobre p.st a lo largo de 40 peleas y 637 intercambios:
+   23 de los 26 atributos se leen durante una pelea. La agresividad del JUGADOR
+   no. Y sin embargo varios eventos la suben (2766, 2959, 3110, 3115, 17697) y
+   el estilo Pressure Fighter la trae de serie a +14: se escribia y no se leia,
+   un sumidero visible en la hoja de personaje.
+   La del RIVAL si se leia —o.st.aggression en 1771, 2596, 16885 y 26131— para
+   que la IA decida como pelea y para el scouting. El jugador no tenia
+   equivalente porque elige sus propias acciones, asi que el atributo no tenia
+   por donde entrar.
+   Entra por 'combat:eff', que es el punto de extension que el archivo ya tiene
+   para esto (la suscripcion vive junto al resto de hooks de combate, porque el
+   bus se declara en 3602 y aqui todavia no existe).
+   Es de SUMA CERO a proposito: empuja el ataque y descuida la defensa en la
+   misma medida, de modo que no infla el poder general. Un peleador muy
+   agresivo pega mas y encaja mas; uno contenido, al reves. La escala es corta
+   (+-2,2 puntos de eff en los extremos) para que se note sin rehacer el
+   balance. Medido en A/B de 200 carreras x 300 semanas: win rate -0,22 pp con
+   un ruido de 1,17 pp, o sea que la suma cero se cumple.
+   ========================================================================== */
+var AGGR_DEF = ['defense','footwork','fightiq','composure','tdd'];
+function aggrShift(f, keys){
+  if(!f || !f.isPlayer || !f.st) return 0;
+  var a = safeNum(f.st.aggression, 50);
+  var t = (clamp(a, 1, 99) - 50) / 49;          /* -1 contenido · +1 agresivo */
+  var defensivo = false;
+  for(var i=0;i<keys.length;i++){ if(AGGR_DEF.indexOf(keys[i])>=0){ defensivo = true; break; } }
+  return (defensivo ? -1 : 1) * t * 2.2;
 }
 function hitDamage(atk, dfn, base, powerStat){
   var d = base * (1 + (atk-dfn)/70) * (0.75 + powerStat/200);
@@ -2096,7 +2211,10 @@ function endRound(){
   var p=G.player,o=F(f.opp);
   if(typeof RES!=='undefined' && RES.betweenRounds){ RES.betweenRounds('p'); RES.betweenRounds('o'); }
   else {
-    rest('p', 12 + p.st.recovery/8); rest('o', 12 + o.st.recovery/8);
+    /* H-011: el laboratorio prometia "mejora la recuperacion entre rounds" y
+       su flag no se leia. Entra aqui, que es la recuperacion entre rounds. */
+    rest('p', (12 + p.st.recovery/8) * (G.flags.recoveryLab?1.25:1));
+    rest('o', 12 + o.st.recovery/8);
     f.p.hp = clamp(f.p.hp + 1.0 + p.st.recovery/35,0,100);
     f.o.hp = clamp(f.o.hp + 1.0 + o.st.recovery/35,0,100);
   }
@@ -2114,7 +2232,12 @@ function cornerAdvice(){
   if(f.p.score<f.o.score) tips.push('Vas perdiendo en las tarjetas. Necesitás arriesgar.');
   if(!tips.length) tips.push('Vas bien. Mantené la estructura y no te enamores del intercambio.');
   var pre = c.pers==='agresivo'? '¡Escuchame! ' : (c.pers==='tranquilo'? 'Respirá. ' : (c.pers==='estricto'?'Hacé lo que entrenamos. ':''));
-  return pre + pick(tips);
+  /* Eleccion ESTABLE por rival y round: dibujar el panel de esquina no puede
+     consumir el flujo aleatorio del mundo. Con pick() cada redibujado avanzaba
+     G.rs, asi que abrir "Entre rounds" alteraba todo el desarrollo posterior de
+     la carrera y los codigos de semilla no reproducian la partida. Es el mismo
+     molde que memRef() ya usaba (ver dispHash). */
+  return pre + pickStable(tips, (f.opp||'?')+':r'+f.round+':'+tips.length);
 }
 
 /* ==========================================================================
@@ -2127,6 +2250,14 @@ function cornerAdvice(){
    implementación que el juego usaba de verdad y el despacho se hace explícito.
    ========================================================================== */
 function finishFight(method, who){
+  /* D-007. Faltaba la guarda que SI tienen fightAct, tkoCheck y tqPasivas: una
+     segunda llamada sobrescribia f.result, volvia a consumir RNG —chance(.5)
+     para KO/TKO, o tres rnd() para la decision— y redibujaba. Es el mismo
+     agujero que D-001 y D-002 ya costaron en la via de cobro, y estaba tapado
+     solo por la disciplina de los llamadores.
+     Va ANTES del hook: sobre una pelea terminada no hay nada que anunciar, y
+     los suscriptores ya comprueban f.over por su cuenta. */
+  if(!G || !G.fight || G.fight.over) return false;
   var ctx = {method:method, who:who, handled:false};
   hookEmit('fight:finish:pre', ctx);
   if(ctx.handled) return false;
@@ -2154,7 +2285,7 @@ function finishFightCore(method, who){
     res = {winner:who, method:method, methodEs: method==='ko'? (chance(.5)?'KO':'TKO') : 'sumisión', round:f.round};
   }
   f.result = res;
-  UI.screen='fightresult'; render();
+  fightScreen('fightresult');
 }
 /* ==========================================================================
    4. TRAINING / CAMP / MINIJUEGOS
@@ -2315,7 +2446,7 @@ function mgSlotBusy(){ return !!(G && G.mg && !G.mg.done); }
 function sparStart(){
   if(mgSlotBusy()) return;
   G.mg = {type:'spar', step:0, sits:shuffle(SPAR_SIT.slice()).slice(0,5), score:0, log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function sparPick(i){
   var mg=G.mg;
@@ -2389,7 +2520,7 @@ function finishMiniStart(kind,returnTo,diff,parent){
   } else {
     mg.rounds=3; mg.level=50;
   }
-  G.mg=mg; UI.screen='mg'; render();
+  G.mg=mg; mgOpen();
   hookEmit('mini:start', ctx);
 }
 function finishTap(i){
@@ -2442,7 +2573,7 @@ var fightFinishResolve = null;   /* lo asigna su modulo, mas abajo */
 /* =============== MINIJUEGO 2: CARDIO =============== */
 function cardioStart(){
   G.mg={type:'cardio',step:0,blocks:5,int:[],hr:60,perf:0,burn:0,log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function cardioPick(pct){
   var mg=G.mg,p=G.player;
@@ -2470,7 +2601,7 @@ function cardioEnd(){
 /* =============== MINIJUEGO 3: FUERZA =============== */
 function strStart(){
   G.mg={type:'str',step:0,sets:5,load:70,done:false,reps:0,fail:0,log:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function strPick(delta){
   var mg=G.mg,p=G.player;
@@ -2500,7 +2631,7 @@ function drillStart(){
   var shuffled=shuffle(cols.slice()); var colors={};
   DRILL_MOVES.forEach(function(m,i){ colors[m]=shuffled[i%shuffled.length]; });
   G.mg={type:'drill',seq:seq,input:[],phase:'show',done:false,log:[],colors:colors};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function drillGo(){
   var mg=G.mg;
@@ -2540,7 +2671,7 @@ function scoutReport(o){
 }
 function gpStart(){
   G.mg={type:'gp',dist:null,pace:null,prio:null,def:null,done:false,council:false,consensus:null};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function gpSet(k,v){ G.mg[k]=v; render(); }
 /* La reunion de esquina base quedo inalcanzable: la version con compatibilidad de entrenadores la reemplazo sin llamarla. */
@@ -2590,7 +2721,7 @@ function weighStart(){
   if(mgSlotBusy()) return;
   var p=G.player, lim=DIVS[p.div].lb;
   G.mg={type:'weigh',step:0,w:p.weightNow,lim:lim,pen:0,log:[],done:false};
-  UI.screen='mg'; render();
+  mgOpen();
   hookEmit('weigh:start', {});
 }
 /* Cada accion del pesaje: la base la aplica, los modulos ajustan despues. */
@@ -2688,7 +2819,7 @@ function pressStart(){
   var qs = hookFilter('press:questions', shuffle(PRESSQ.slice()).slice(0,4), {});
   G.mg={type:'press',step:0,qs:qs,pop:0,heat:0,resp:0,log:[],done:false};
   hookEmit('press:start', {});
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function pressPick(i){
   /* FIX RAÍZ del "Cannot read properties of undefined (reading 'o')":
@@ -2737,7 +2868,7 @@ function pressEnd(){
 function recStart(){
   if(mgSlotBusy()) return;
   G.mg={type:'rec',step:0,weeks:0,done:false,log:[],picked:[]};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function recPick(k){
   var mg=G.mg,p=G.player;
@@ -2757,6 +2888,7 @@ function recPick(k){
   mg.picked.push(k); mg.log.unshift(o.t);
   mg.step++;
   advanceWeek(); // cada bloque = 1 semana
+  closeWeek({save:false});   /* el guardado lo pone GATE sobre recPick */
   if(mg.step>=3){ mg.done=true; mg.result='Fatiga '+Math.round(p.fatigue)+' · Daño '+Math.round(p.dmg)+'. '+(p.dmg<25?'Estás listo para volver al gimnasio.':'Todavía cargás la pelea en el cuerpo.'); }
   render();
 }
@@ -2766,7 +2898,7 @@ function negoStart(offer){
   if(mgSlotBusy()) return;
   G.mg={type:'nego',offer:offer,round:0,ask:{purse:offer.purse,bonus:offer.bonus||0,fights:offer.fights||4,excl:true},
     mood:60,done:false,log:[],closed:false};
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function negoAsk(k,v){
   var mg=G.mg, m=mgrById(G.mgId), p=G.player;
@@ -3078,8 +3210,11 @@ var EVENTS = [
     {t:'Volver a dormir',f:function(){return 'Mañana hay entrenamiento.';}}]}
 ];
 
-/* La implementacion base de rollEvent quedo inalcanzable: el selector por personalidad la reemplazo sin llamarla nunca. */
-var rollEvent = null;   /* lo asigna su modulo, mas abajo */
+/* rollEvent tenia cuatro implementaciones encadenadas y hoy tiene una sola: la
+   del modulo de narrativa, al final del archivo, con su politica de tres
+   niveles declarada en un solo sitio. El hueco se declara aqui porque hay
+   codigo intermedio que la nombra. */
+var rollEvent = null;   /* lo asigna el modulo de narrativa, mas abajo */
 /* ==========================================================================
    FASE 25 — COHERENCIA DE CONTEXTO DE LOS EVENTOS
    --------------------------------------------------------------------------
@@ -3137,10 +3272,17 @@ function eventAdmissible(e){
   if(String(e.id).indexOf('cl_')===0 && e.id!=='cl_dyn' && !e.h) return {ok:false, motivo:'evento dinámico sin manejador'};
   return {ok:true};
 }
-function queueEvent(e){
+/* ¿Hay sitio en la cola? Lo preguntan dos: queueEvent, para rechazar lo que le
+   llega, y fireEvent, para NO SORTEAR EN BALDE. Escrito una sola vez, porque
+   tenerlo repetido es justo lo que dejó el agujero de G-004 abierto durante
+   tanto tiempo: la guarda estaba en los llamadores, no en la función. */
+function queueHasRoom(){
   if(!G) return false;
   if(!Array.isArray(G.pending)) G.pending = [];
-  if(G.pending.length) return false;                  /* ya hay uno en pantalla */
+  return G.pending.length === 0;                      /* si hay uno, está en pantalla */
+}
+function queueEvent(e){
+  if(!queueHasRoom()) return false;
   var ad = eventAdmissible(e);
   if(!ad.ok){
     if(e && e.id && ad.motivo!=='carrera terminada' && ad.motivo!=='sin partida')
@@ -3151,7 +3293,20 @@ function queueEvent(e){
   return true;
 }
 function fireEvent(){
-  queueEvent(rollEvent());
+  /* G-004. Esto era `queueEvent(rollEvent())`, y JS evalúa el sorteo ANTES de
+     que queueEvent mire si hay sitio. Sortear no es gratis: escribe la veda de
+     26 semanas en eventHistory y `sel.x()` muta los temporales compartidos
+     —G.tmpOpp, G.tmpSpon, G.tmpAmt— que el evento YA EN PANTALLA va a leer
+     cuando el jugador elija una opción. O sea, dos daños: una veda quemada por
+     un evento que nadie llegó a ver, y el pendiente resolviéndose contra el
+     peleador equivocado.
+     Medido antes de arreglarlo: en 4 carreras x 300 semanas, 378 llamadas y 0
+     con la cola ocupada, porque los dos llamadores de hoy comprueban la cola
+     por su cuenta. Era un defecto LATENTE, y por eso el arreglo no mueve el
+     golden master. Lo que cambia es de quién es la regla: ahora vive aquí, y un
+     tercer llamador ya no puede equivocarse. */
+  if(!queueHasRoom()) return false;
+  return queueEvent(rollEvent());
 }
 /* ==========================================================================
    RESOLUCIÓN DE EVENTOS — IMPLEMENTACIÓN CANÓNICA ÚNICA
@@ -3300,7 +3455,17 @@ function makeOffers(){
    ========================================================================== */
 function acceptFight(i){
   var o = G && G.offers && G.offers[i];
-  if(!o || !o.oppId || !F(o.oppId)){
+  /* E5-3. G.offers mezcla ofertas de PELEA y de CONTRATO. Si llegaba aqui una
+     de contrato —no tiene oppId— se la trataba como "pelea caducada": se le
+     decia al jugador que la oferta ya no estaba disponible y SE LA BORRABA.
+     Hoy ninguna via de la interfaz llega asi (scrOffers manda los contratos a
+     negoStart), pero la bateria de autotest llama acceptFight(0) a ciegas.
+     Ahora una oferta que no es de pelea se deja donde esta. */
+  if(o && !o.oppId){
+    errNote('Esa oferta es un contrato: se negocia, no se acepta.');
+    return false;
+  }
+  if(!o || !F(o.oppId)){
     errNote('Esa oferta ya no está disponible.');
     if(G && G.offers && i>=0) G.offers.splice(i,1);
     render();
@@ -3332,12 +3497,27 @@ function acceptFight(i){
    ========================================================================== */
 var applyDrawResult = null;   /* la define el módulo de empates, más abajo */
 function applyPlayerFight(){
-  var f = G && G.fight;
-  var ctx = {f:f, draw: !!(f && f.result && f.result.winner==='d')};
-  hookEmit('fight:pre', ctx);
-  var r = ctx.draw ? applyDrawResult() : applyWinLossResult();
-  hookEmit('fight:applied', ctx);
-  return r;
+  /* ======================================================================
+     TODO-O-NADA
+     ----------------------------------------------------------------------
+     Aplicar el resultado toca record, bolsa, popularidad, lesion, titulos,
+     ranking, historial y la limpieza de nextFight/camp, y ademas emite dos
+     hooks con seis suscriptores cada uno. Sin transaccion, una excepcion a
+     mitad dejaba aplicado todo el prefijo que si funciono -record y bolsa ya
+     sumados- y sin aplicar el resto, con el boton de cobrar todavia vivo.
+     Reproducido inyectando un fallo en changePopularity: la pelea quedaba
+     1-0 con la bolsa cobrada y el historial vacio.
+     Es la misma garantia que advanceWeek ya tiene. El rethrow se conserva a
+     proposito: confirmFight NO debe marcar G.paid si esto no termino.
+     ====================================================================== */
+  return TX.run('applyPlayerFight', function(){
+    var f = G && G.fight;
+    var ctx = {f:f, draw: !!(f && f.result && f.result.winner==='d')};
+    hookEmit('fight:pre', ctx);
+    var r = ctx.draw ? applyDrawResult() : applyWinLossResult();
+    hookEmit('fight:applied', ctx);
+    return r;
+  });
 }
 function applyWinLossResult(){
   var f = G.fight, res = f.result, p = G.player, o = F(f.opp);
@@ -3358,7 +3538,10 @@ function applyWinLossResult(){
   p.weeksIdle=0; o.weeksIdle=0;
   // dinero
   var purse = f.purse || 5000;
-  if(G.camp && G.camp.missWeight) purse *= .8;
+  /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
+     tanto" y su flag no se leia. Entra aqui: la multa por no dar el peso pasa
+     del 20% al 10%. */
+  if(G.camp && G.camp.missWeight) purse *= (G.flags.nutri? .9 : .8);
   var pay = won? purse : purse*0.6;
   var bonus = 0;
   if(res.method!=='dec' && chance(.45)) bonus = Math.round(purse*0.5);
@@ -3379,7 +3562,9 @@ function applyWinLossResult(){
   fightXP(p, won, res); fightXP(o, !won, res);
   // daño / lesiones
   p.fatigue = clamp(p.fatigue + ri(25,45),0,100);
-  p.dmg = clamp(p.dmg + (100-f.p.hp)*0.6 + ri(5,15),0,100);
+  /* H-010: el cutman prometia "recibis menos dano acumulado" y su flag no se
+     leia en ningun sitio. Ahora se lee aqui, que es donde el dano se acumula. */
+  p.dmg = clamp(p.dmg + ((100-f.p.hp)*0.6 + ri(5,15)) * (G.flags.cutman?0.72:1), 0, 100);
   o.fatigue = clamp(o.fatigue + ri(25,45),0,100);
   o.dmg = clamp(o.dmg + (100-G.fight.o.hp)*0.6,0,100);
   if(!won && (res.method==='ko'||res.method==='tko')){ p.injWeeks=ri(6,16); p.inj='suspensión médica'; }
@@ -3405,7 +3590,13 @@ function applyWinLossResult(){
   // registro de carrera
   p.career.push({y:G.year, w:G.week, opp:fname(o), oppId:o.id, res:won?'W':'L', m:res.methodEs, r:res.round,
     org:orgId, title:f.title, purse:net, pop:Math.round(p.pop), event:f.event});
-  if(G.contract && G.contract.org===orgId){ G.contract.left--; }
+  /* ESCRITOR UNICO de contract.left. El hook 'fight:applied'/'economia'
+     descontaba una segunda vez, asi que los contratos duraban la mitad de las
+     peleas firmadas y el evento contract_dispute (left<=1) saltaba antes de
+     tiempo. Aquel duplicado ademas no comprobaba la organizacion: una pelea
+     fuera del contrato tambien lo consumia. La cuenta vive aqui, donde se
+     sabe bajo que organizacion se peleo. */
+  if(G.contract && G.contract.org===orgId && safeInt(G.contract.left,0)>0){ G.contract.left--; }
   recalcRank(orgId, p.div);
   var news = (won?fname(p)+' venció a '+fname(o):fname(o)+' venció a '+fname(p))+' por '+res.methodEs+
     (f.title?' [TÍTULO]':'');
@@ -3730,7 +3921,7 @@ GATE.audit = function(){
   }
   var host = (typeof window!=='undefined') ? window : null;
   if(host) Object.keys(host).forEach(function(k){
-    try{ if(typeof host[k]==='function') escanear(host[k]); }catch(e){}
+    try{ if(typeof host[k]==='function') escanear(host[k]); }catch(e){ /* leer una propiedad del objeto global puede lanzar (getters del navegador): este escaner es diagnostico, se salta esa clave */ }
   });
   /* las pantallas registradas por módulos no son globales */
   if(typeof CL!=='undefined' && CL.screens) Object.keys(CL.screens).forEach(function(k){ escanear(CL.screens[k]); });
@@ -3738,7 +3929,7 @@ GATE.audit = function(){
     (typeof CL!=='undefined'?CL:null),  (typeof FX!=='undefined'?FX:null),
     (typeof META!=='undefined'?META:null) ].forEach(function(o){
     if(o && typeof o==='object') Object.keys(o).forEach(function(k){
-      try{ if(typeof o[k]==='function') escanear(o[k]); }catch(e){}
+      try{ if(typeof o[k]==='function') escanear(o[k]); }catch(e){ /* idem: una clave que lanza al leerse no rompe el escaner */ }
     });
   });
   var destinos = Object.keys(vistos).sort();
@@ -4027,6 +4218,63 @@ function go(s,sub){
   render();
 }
 
+/* ==========================================================================
+   DUEÑO UNICO DE IR A LA PANTALLA DE MINIJUEGO (E2)
+   --------------------------------------------------------------------------
+   El par `mgOpen();` estaba escrito DIECIOCHO veces, una por
+   cada minijuego, y era el grupo mas grande de las 36 escrituras directas de
+   UI.screen que esquivaban a go().
+   Aqui se unifica solo la NAVEGACION. Como cada sitio arma su G.mg de forma
+   distinta -son once formas distintas- ese objeto se sigue construyendo en su
+   sitio: darle dueño unico a G.mg es otro problema y otro paso.
+   `mg` sin pasar (undefined) significa "no toques G.mg, solo navega".
+   `dibujar:false` es para los dos sitios que abren un overlay FX y redibujan
+   ellos despues, no antes. */
+function mgOpen(mg, dibujar){
+  if(mg !== undefined) G.mg = mg;
+  UI.screen = 'mg';
+  if(dibujar !== false) render();
+  return G.mg;
+}
+
+/* ==========================================================================
+   DUEÑO UNICO DE CERRAR UN MINIJUEGO (E2)
+   --------------------------------------------------------------------------
+   Cerrar estaba escrito en seis sitios y cada uno decidia su destino por su
+   cuenta, con TRES respuestas distintas:
+     · 'fight' u 'hub' segun si hay una pelea viva   (8519, 11177)
+     · 'train'                                        (11174)
+     · 'hub' incondicional                            (14697, 14744, 15295)
+   EL DESTINO NO SE UNIFICA AQUI: hacerlo es cambio de comportamiento y se
+   evalua en E5 con su propia evidencia. Lo que se unifica es QUIEN cierra y
+   la regla condicional, que pasa a existir en un solo sitio bajo el nombre
+   'auto'. Cada llamador declara el destino que ya tenia. */
+function mgExit(destino, dibujar){
+  G.mg = null;
+  if(destino){
+    UI.screen = (destino === 'auto')
+      ? ((G && G.fight && !G.fight.over) ? 'fight' : 'hub')
+      : destino;
+  }
+  if(dibujar) render();
+}
+
+/* ==========================================================================
+   TRANSICIONES DENTRO DE UNA PELEA (E2)
+   --------------------------------------------------------------------------
+   Estas NO pasan por go() a proposito, y conviene que la excepcion tenga
+   nombre en vez de ser tres escrituras sueltas. go() emite 'nav', y ese hook
+   cierra el overlay FX y descarta G.mg si esta vivo. En mitad de una pelea eso
+   destruiria el minijuego de finalizacion — que es justo el camino que el
+   autopiloto no recorre y el golden master no valida, o sea el peor sitio
+   posible para un cambio no verificable.
+   Si algun dia se quiere unificar con go(), hace falta antes una prueba que
+   conduzca el minijuego de finalizacion a mano y demuestre que sobrevive. */
+function fightScreen(pantalla){
+  UI.screen = pantalla;
+  render();
+}
+
 function bar(v,max,cls){
   v=safeNum(v,0); max=safeNum(max,100)||100;     /* el saneo vivia en un wrapper aparte */
   return '<div class="bar"><i class="'+(cls||'')+'" style="width:'+clamp(v/max*100,0,100)+'%"></i></div>';
@@ -4079,10 +4327,16 @@ function scrTitleBase(){
    '<div class="card"><button class="btn pri" onclick="go(\'create\')">Empezar una carrera</button>'+
    (saves.length? '<button class="btn" onclick="go(\'menu\',\'load\')">Cargar partida <small>'+saves.length+' guardadas</small></button>':'')+
    '</div>'+
-   '<div class="card"><h3>Cómo funciona</h3><p class="sm dim">Elegís un año de inicio y el mundo arranca ahí: solo existen los peleadores que ya habían llegado. '+
+   /* E3. Medido: la portada daba 1,58 pantallas a 360x640 —se pasaba del
+      objetivo por 53 px— y estos dos párrafos son 150 de esos píxeles. No se
+      borra una palabra: se pliegan. Quien ya sabe cómo funciona no los
+      scrollea; quien no, los abre. <details> es HTML plano, sin JS. */
+   '<div class="card"><details><summary class="b" style="cursor:pointer;list-style:none">Cómo funciona</summary>'+
+   '<p class="sm dim">Elegís un año de inicio y el mundo arranca ahí: solo existen los peleadores que ya habían llegado. '+
    'Desde tu primera pelea el universo se separa de su línea original y reacciona a lo que hacés. '+
    'Cada semana entrenás, negociás, hablás con prensa y peleás. Todo se recuerda.</p>'+
-   '<p class="sm dim">El resto del mundo pelea sin vos: hay rankings que cambian, campeones que caen, peleadores que envejecen, se lesionan y se retiran, y prospectos que debutan cada año.</p></div>';
+   '<p class="sm dim">El resto del mundo pelea sin vos: hay rankings que cambian, campeones que caen, peleadores que envejecen, se lesionan y se retiran, y prospectos que debutan cada año.</p>'+
+   '</details></div>';
 }
 
 /* ================= CREACIÓN ================= */
@@ -4398,12 +4652,65 @@ function startCareer(){
   go('hub');
 }
 
+/* ==========================================================================
+   E3 — LA FRANJA DE AVISOS
+   --------------------------------------------------------------------------
+   Medido: en el peor caso realista (pelea proxima + tres avisos) el inicio da
+   2,45 pantallas a 360x640 y los tres avisos caen DEBAJO del pliegue. Un aviso
+   que hay que scrollear para ver no avisa.
+   La franja pone la SEÑAL arriba de todo, en una linea: el detalle sigue en su
+   tarjeta, mas abajo. No lleva onclick a proposito — saltar a la tarjeta
+   moveria el scroll, que es justo lo que I1 prohibe en una interaccion en
+   sitio. Aca la franja es el aviso, no un atajo.
+   Coste: llama una vez mas a cada fn() de aviso. Son funciones baratas y el
+   inicio entero se dibuja en 1,14 ms.
+   ========================================================================== */
+var AVISO_ETIQUETA = {
+  peso:'⚖️ Peso', deuda:'💸 Deuda', ufc:'🏆 Liga mayor', observado:'👁️ Tu estilo real',
+  sagas:'📖 Saga', content_team:'📹 Contenido', instalaciones:'⚡ Instalaciones'
+};
+function avisosStrip(){
+  if(typeof CL==='undefined' || !CL.hubCards) return '';
+  var chips=[];
+  for(var i=0;i<CL.hubCards.length;i++){
+    var c=CL.hubCards[i];
+    if(!AVISO_ETIQUETA[c.id]) continue;
+    if(CL.cardHome(c.id)!=='hub') continue;
+    var out = safeRun('aviso/'+c.id, c.fn, function(){ return ''; }, true) || '';
+    if(!out || !String(out).trim()) continue;
+    chips.push('<a class="tag on" href="#aviso-'+c.id+'">'+AVISO_ETIQUETA[c.id]+'</a>');
+  }
+  if(!chips.length) return '';
+  /* sin tarjeta alrededor: son señales, y cada pixel de aca empuja «Avanzar»
+     hacia abajo en el peor caso. */
+  return '<div class="avisos" style="margin:0 0 8px;line-height:1.9">'+chips.join(' ')+'</div>';
+}
+
+/* E3: el estado del peleador deja de ir arriba del todo. Lo que el jugador
+   necesita ANTES de scrollear es la decision de la semana y el boton de
+   avanzar; el record y las barras se leen despues, y siguen completos. */
+function estadoCard(){
+  var p=G.player;
+  return '<div class="card"><div class="split"><div class="face p">'+esc(p.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
+   '<div style="flex:1"><div class="b">'+recStr(p)+' <span class="dim sm">('+p.rec.ko+' KO · '+p.rec.sub+' SUB · '+p.rec.dec+' DEC)</span></div>'+
+   '<div class="sm dim">'+ageOf(p)+' años · OVR '+ovr(p)+' · Potencial '+p.potGlobal+'</div></div>'+
+   '<div class="center"><div class="mono b gold">'+money(G.cash)+'</div><div class="xs dim2">en caja</div></div></div>'+
+   /* etiqueta y número en la misma línea que antes ocupaban dos */
+   '<hr><div class="grid g3">'+
+   '<div><div class="xs dim2">Popularidad <b class="mono">'+Math.round(p.pop)+'</b></div>'+bar(p.pop,100,'y')+'</div>'+
+   '<div><div class="xs dim2">Fatiga <b class="mono">'+Math.round(p.fatigue)+'</b></div>'+bar(p.fatigue,100)+'</div>'+
+   '<div><div class="xs dim2">Daño <b class="mono">'+Math.round(p.dmg)+'</b></div>'+bar(p.dmg,100)+'</div></div>'+
+   (p.inj? '<p class="sm bad" style="margin-top:8px">Lesionado: '+esc(p.inj)+' — '+p.injWeeks+' semanas restantes.</p>' : '')+
+   '</div>';
+}
+
 /* ================= HUB ================= */
 function scrHub(){
   var p=G.player, nf=G.nextFight;
   var h='<div class="topbar"><div class="r1"><div><h2 style="margin:0">'+esc(fname(p))+'</h2>'+
     '<span class="sm dim">'+DIVS[p.div].n+' · '+(p.org? G.orgs[p.org].ab : 'Agente libre')+' · '+rankLabel(p)+'</span></div>'+
     '<div class="center"><div class="mono sm">'+weekDate()+'</div><div class="xs dim2">semana '+G.week+'</div></div></div></div>';
+  h+=avisosStrip();       /* la señal, arriba del pliegue */
 
   // evento pendiente
   if(G.pending.length){
@@ -4417,17 +4724,6 @@ function scrHub(){
     h+='<div class="card"><p class="sm">'+esc(G.lastEventOut)+'</p><button class="btn ghost" onclick="G.lastEventOut=null;render()">Entendido</button></div>';
   }
 
-  h+='<div class="card"><div class="split"><div class="face p">'+esc(p.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
-   '<div style="flex:1"><div class="b">'+recStr(p)+' <span class="dim sm">('+p.rec.ko+' KO · '+p.rec.sub+' SUB · '+p.rec.dec+' DEC)</span></div>'+
-   '<div class="sm dim">'+ageOf(p)+' años · OVR '+ovr(p)+' · Potencial '+p.potGlobal+'</div></div>'+
-   '<div class="center"><div class="mono b gold">'+money(G.cash)+'</div><div class="xs dim2">en caja</div></div></div>'+
-   '<hr><div class="grid g3">'+
-   '<div><div class="xs dim2">Popularidad</div>'+bar(p.pop,100,'y')+'<div class="xs mono">'+Math.round(p.pop)+'</div></div>'+
-   '<div><div class="xs dim2">Fatiga</div>'+bar(p.fatigue,100)+'<div class="xs mono">'+Math.round(p.fatigue)+'</div></div>'+
-   '<div><div class="xs dim2">Daño</div>'+bar(p.dmg,100)+'<div class="xs mono">'+Math.round(p.dmg)+'</div></div></div>';
-  if(p.inj) h+='<p class="sm bad" style="margin-top:8px">Lesionado: '+esc(p.inj)+' — '+p.injWeeks+' semanas restantes.</p>';
-  h+='</div>';
-
   // pelea / campamento
   if(nf){
     var o=F(nf.oppId);
@@ -4437,7 +4733,12 @@ function scrHub(){
       '<div class="split"><div class="face">'+esc(o.name.split(' ').map(function(x){return x[0];}).join('').slice(0,2))+'</div>'+
       '<div style="flex:1"><div class="b">'+esc(fname(o))+' <span class="dim sm">'+recStr(o)+'</span></div>'+
       '<div class="sm dim">'+STYLES[o.style].n+' · '+rankLabel(o)+' · '+ageOf(o)+' años · OVR '+ovr(o)+'</div></div></div>'+
-      '<div class="ticker">'+esc(nf.event||'')+' · Bolsa '+money(nf.purse)+' · '+(nf.title?'5 rounds':'3 rounds')+'</div>';
+      /* Una linea: con un evento de nombre largo envolvia a dos y empujaba
+         «Avanzar» fuera de pantalla en el peor caso (pelea de titulo + rival
+         de nombre largo). La bolsa y los rounds son lo que no puede faltar,
+         asi que van primero y el nombre del evento es lo que se recorta. */
+      '<div class="ticker" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+        'Bolsa '+money(nf.purse)+' · '+(nf.title?'5 rounds':'3 rounds')+' · '+esc(nf.event||'')+'</div>';
     if(wk<=0){
       var c=G.camp;
       if(c && !c.weighDone) h+='<button class="btn pri" onclick="weighStart()">Ir al pesaje</button>';
@@ -4450,31 +4751,27 @@ function scrHub(){
     h+='</div>';
   } else if(G.offers.length){
     h+='<div class="card gold"><div class="hdr"><h3 style="margin:0">Ofertas sobre la mesa</h3><span class="tag on">'+G.offers.length+'</span></div>'+
-      '<p class="sm dim">Tu manager tiene propuestas.</p><button class="btn pri" onclick="go(\'offers\')">Ver ofertas</button></div>';
+      '<button class="btn pri" onclick="go(\'offers\')">Ver ofertas</button></div>';
   } else {
     h+='<div class="card"><h3>Sin pelea firmada</h3><p class="sm dim">Entrená y esperá. Las ofertas llegan según tu ranking, tu actividad y tu popularidad.</p>'+
       '<button class="btn" onclick="askFight()">Pedirle una pelea a tu manager</button></div>';
   }
 
-  h+='<div class="grid g2">'+
-    '<button class="btn" onclick="go(\'train\')">Entrenar<small>'+(G.camp?'Campamento activo':'Semana libre')+'</small></button>'+
-    '<button class="btn" onclick="go(\'stats\')">Ficha completa<small>Stats, potencial, estilo</small></button>'+
-    '<button class="btn" onclick="go(\'rank\')">Rankings<small>Divisiones y campeones</small></button>'+
-    '<button class="btn" onclick="go(\'people\')">Personajes<small>Equipo y rivales</small></button>'+
-    '<button class="btn" onclick="go(\'gym\')">Gimnasio<small>Cambiar equipo</small></button>'+
-    '<button class="btn" onclick="go(\'contracts\')">Contratos<small>Dinero y patrocinios</small></button>'+
-    '</div>';
+  /* E3 — ORDEN DEL INICIO, medido contra el pliegue (640 px menos 56 de barra
+     = 584 px visibles a 360x640):
+       cabecera · avisos · decision de la semana · AVANZAR   <- sin scroll
+       estado · resumen del bloque · tarjetas de aviso · el mundo
+     Antes el estado iba arriba y «Avanzar» acababa en 654 px, o sea fuera de
+     pantalla en semana normal. La rejilla de seis accesos se fue al menú. */
   if(G.camp && G.nextFight){
     h+='<button class="btn go" onclick="skipWeek()">Pasar la semana sin entrenar</button>';
-  } else if(!G.player.retired){
-    h+=periodPanel();
   }
-  // noticias
-  if(G.news.length){
-    h+='<div class="card"><h3>El mundo</h3><div class="log">'+
-      G.news.slice(0,12).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
-      '</div><button class="btn ghost sm" onclick="go(\'history\',\'news\')">Ver todo el historial del mundo</button></div>';
-  }
+  h+=avanzarCard();   /* en las dos caras: ver el comentario de avanzarCard */
+  h+=estadoCard();
+  if(!(G.camp && G.nextFight) && !G.player.retired) h+=periodPanel();
+  /* «El mundo» se registra como tarjeta con orden 90 (mundoCard) para que
+     quede DESPUES de los avisos: un titular no puede empujar hacia abajo un
+     aviso de peso o de deuda. */
   return h;
 }
 function askFight(){
@@ -4482,6 +4779,20 @@ function askFight(){
   makeOffers();
   if(G.offers.length){ addMem(m,'le pediste que te consiguiera pelea',1); go('offers'); }
   else toast('No hay nada disponible todavía.');
+}
+
+/* E3: los seis accesos que estaban repetidos en el inicio. Se registran como
+   tarjeta para que el mapa (CL.CARD_HOME) decida dónde se dibujan. */
+function accesosCard(){
+  if(!G || !G.player) return '';
+  return '<div class="card"><h3>Ir a</h3><div class="grid g2">'+
+    '<button class="btn" onclick="go(\'train\')">Entrenar<small>'+(G.camp?'Campamento activo':'Semana libre')+'</small></button>'+
+    '<button class="btn" onclick="go(\'stats\')">Ficha completa<small>Stats, potencial, estilo</small></button>'+
+    '<button class="btn" onclick="go(\'rank\')">Rankings<small>Divisiones y campeones</small></button>'+
+    '<button class="btn" onclick="go(\'people\')">Personajes<small>Equipo y rivales</small></button>'+
+    '<button class="btn" onclick="go(\'gym\')">Gimnasio<small>Cambiar equipo</small></button>'+
+    '<button class="btn" onclick="go(\'contracts\')">Contratos<small>Dinero y patrocinios</small></button>'+
+    '</div></div>';
 }
 
 /* ================= ENTRENAMIENTO ================= */
@@ -4509,14 +4820,27 @@ function scrTrain(){
    '<button class="btn" onclick="strStart()">Fuerza y potencia <span class="tag on">minijuego</span><small>Carga y series. Sube potencia y velocidad. Riesgo de lesión.</small></button>'+
    '<button class="btn" onclick="drillStart()">Drills técnicos <span class="tag on">minijuego</span><small>Memorizar y ejecutar combinaciones. Sube precisión y timing.</small></button>'+
    (G.camp? '<button class="btn" onclick="gpStart()">Análisis y gameplan <span class="tag on">minijuego</span><small>Estudiar al rival y definir el plan. Afecta directamente la pelea.</small></button>':'')+
-   '</div><div class="card"><h3>Trabajo estándar</h3>';
+   '</div>';
+  /* E3: 712 px y nueve botones. Los minijuegos de arriba son el camino
+     principal de la semana; esto es la alternativa sin minijuego, y plegada
+     sigue a un toque. */
+  var estandar='';
   ['box','kick','muay','wrest','grap','cardio','str','mind','rest'].forEach(function(k){
-    h+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
+    estandar+='<button class="btn" onclick="doWeek(\''+k+'\')">'+TRAIN[k].n+'<small>'+Object.keys(TRAIN[k].w).slice(0,4).map(function(s){return STNAME[s];}).join(' · ')+'</small></button>';
   });
-  h+='</div>';
+  h+=CL.seccion('trabajoEstandar', 'Trabajo estándar', '<div class="card">'+estandar+'</div>');
+  /* E3: el foco vive acá, plegado. Va DESPUES del trabajo de la semana porque
+     eso es lo que se viene a hacer a esta pantalla; el foco es configuración,
+     y con la tarjeta abierta esta pantalla daba 5,6 pantallas de alto. */
+  h+=CL.seccion('foco', 'Foco de entrenamiento', focusCard());
   if(c && c.log.length){
-    h+='<div class="card"><h3>Diario del campamento</h3><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>';
+    /* plegado: 292 px de historial en la pantalla donde se decide la semana */
+    h+=CL.seccion('diarioCamp', 'Diario del campamento',
+      '<div class="card"><div class="log">'+c.log.map(function(l){return '<div>'+esc(l)+'</div>';}).join('')+'</div></div>');
   }
+  /* E3: las tarjetas que el mapa manda a esta pantalla (ver CL.CARD_HOME),
+     plegadas en secciones para que el scroll no se mude de sitio. */
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('train', 'Ajustes del entrenamiento');
   return h;
 }
 function doWeek(k){
@@ -4526,13 +4850,41 @@ function doWeek(k){
   var msg = TRAIN[k].n+' — '+gainText(r.gain)+(r.inj? ' · '+r.inj : '');
   finishWeek(msg);
 }
-function skipWeek(){ finishWeek('Semana tranquila. El cuerpo agradece.'); G.player.fatigue=clamp(G.player.fatigue-12,0,100); }
-function finishWeek(msg){
-  advanceWeek();
-  if(!G.pending.length && chance(.42)) fireEvent();
-  if(!G.nextFight && chance(.30)) makeOffers();
+/* C-006. El descanso es el unico efecto de esta accion y se perdia al
+   recargar: medido, fatiga 48,58 en el save contra 36,58 en memoria. */
+function skipWeek(){
+  finishWeek('Semana tranquila. El cuerpo agradece.', function(){
+    G.player.fatigue=clamp(G.player.fatigue-12,0,100);
+  });
+}
+/* ==========================================================================
+   CIERRE DE SEMANA — UN SOLO SITIO
+   --------------------------------------------------------------------------
+   Todo lo que hay que hacer DESPUES de advanceWeek() vivia copiado a mano en
+   los nueve llamadores, y cada copia se quedo con un subconjunto distinto:
+   terminar un minijuego de entrenamiento no publicaba las noticias de esa
+   semana, y recPick no las publicaba en tres semanas seguidas. Como
+   G.weekLog se SOBRESCRIBE en la semana siguiente (advanceWeekCore), esas
+   noticias no se retrasaban: se perdian.
+   Publicar es lo unico que no es opcional, porque es lo unico que se pierde.
+   El resto lo declara cada llamador, conservando lo que hacia hasta ahora.
+   ========================================================================== */
+function closeWeek(opts){
+  opts = opts || {};
   if(G.weekLog && G.weekLog.length) G.weekLog.forEach(function(n){ pushNews(n); });
-  saveGame(true);
+  if(opts.events && !G.pending.length && chance(.42)) fireEvent();
+  if(opts.offers && !G.nextFight && chance(.30)) makeOffers();
+  if(opts.save !== false) saveGame(true);
+}
+function finishWeek(msg, aplicar){
+  advanceWeek();
+  /* El efecto propio de la accion va AQUI: despues de avanzar la semana y
+     ANTES de cerrarla, porque cerrar guarda. skipWeek restaba su descanso
+     despues de finishWeek, o sea despues del guardado, y recargar lo evaporaba
+     (C-006). Adelantar la resta a antes de advanceWeek no vale: la semana
+     aplica su propia recuperacion y el orden cambia el resultado. */
+  if(typeof aplicar==='function') aplicar();
+  closeWeek({events:true, offers:true});
   if(msg) toast(msg);
   go('hub');
 }
@@ -4770,7 +5122,7 @@ function mgClose(consumesWeek){
   hookEmit('mg:close:pre', {type:t, consumesWeek:!!consumesWeek});
   G.mg=null;
   if(consumesWeek){
-    if(old&&old.weekApplied){ advanceWeek(); if(chance(.42)) fireEvent(); saveGame(true); go('hub'); }
+    if(old&&old.weekApplied){ advanceWeek(); closeWeek({events:true}); go('hub'); }
     else finishWeek(null);
   } else { saveGame(true); go('hub'); }
   hookEmit('mg:closed', {type:t, consumesWeek:!!consumesWeek});
@@ -4787,10 +5139,9 @@ function goFight(){
   if(!nf){
     G.fight=null; G.camp=null;
     if(typeof toast==='function') toast('No tenés ninguna pelea firmada.');
-    UI.screen='hub'; if(typeof render==='function') render();
+    go('hub');
     return;
   }
-  G.paid=false;
   fightStart(nf.oppId,{rounds:nf.title?5:3,title:nf.title,org:nf.org,purse:nf.purse,event:nf.event});
 }
 function scrFight(){
@@ -4833,10 +5184,20 @@ function scrFight(){
 function hpCol(v){ return v>60? '#3fbf87' : (v>30? '#d9a441':'#e0574f'); }
 function scrFightResult(){
   var f=G.fight, res=f.result, p=G.player, o=F(f.opp);
-  var won=res.winner==='p';
-  var h='<div class="topbar"><div class="r1"><h2>'+(won?'VICTORIA':'DERROTA')+'</h2><span class="sm dim">'+weekDate()+'</span></div></div>';
-  h+='<div class="card '+(won?'gold':'hi')+'"><div class="center"><div class="big '+(won?'jade':'bad')+'">'+(won?'GANASTE':'PERDISTE')+'</div>'+
-   '<p class="sm">'+esc(fname(won?p:o))+' por '+res.methodEs+' · round '+res.round+'</p></div>';
+  /* D-010. Esto tenia dos estados, no tres: `won = res.winner==='p'` mandaba el
+     empate a la rama de derrota, asi que la pantalla decia DERROTA y PERDISTE
+     y ademas le atribuia la pelea al rival ("<rival> por empate unanime").
+     La capa de arriba antepone una tarjeta EMPATE correcta, de modo que el
+     jugador veia los dos mensajes contradictorios a la vez.
+     No es un caso raro: medido en 200 carreras x 300 semanas, 108 empates de
+     4779 peleas (2,26%) y 85 de las 200 carreras tienen al menos uno. */
+  var draw=res.winner==='d', won=res.winner==='p';
+  var titulo=draw?'EMPATE':(won?'VICTORIA':'DERROTA');
+  var veredicto=draw?'EMPATE':(won?'GANASTE':'PERDISTE');
+  var h='<div class="topbar"><div class="r1"><h2>'+titulo+'</h2><span class="sm dim">'+weekDate()+'</span></div></div>';
+  h+='<div class="card '+(won?'gold':'hi')+'"><div class="center"><div class="big '+(draw?'gold':(won?'jade':'bad'))+'">'+veredicto+'</div>'+
+   '<p class="sm">'+(draw? 'Por '+res.methodEs+' · round '+res.round
+                         : esc(fname(won?p:o))+' por '+res.methodEs+' · round '+res.round)+'</p></div>';
   if(res.method==='dec') h+='<p class="sm dim center">Tarjetas: '+f.cards.map(function(c){return c.p+'-'+c.o;}).join(' | ')+'</p>';
   h+='</div>';
   if(!G.paid){
@@ -4857,6 +5218,19 @@ function scrFightResult(){
   return hookFilter('screen:fightresult', h, {});
 }
 function confirmFight(){
+  /* ======================================================================
+     COBRAR UNA PELEA ES IDEMPOTENTE
+     ----------------------------------------------------------------------
+     No habia guarda: G.paid solo se leia en la presentacion
+     (scrFightResult), o sea que era decoracion de interfaz, no un cerrojo.
+     Tres llamadas daban record 0-3, tres entradas de career, tres bolsas y
+     tres semanas consumidas para UNA sola pelea. Sin pelea cargada, ademas,
+     applyPlayerFight lanzaba al leer G.fight.result.
+     Ahora la condicion de entrada es explicita: hace falta una pelea con
+     resultado y sin cobrar. El cerrojo funciona porque fightStart() pone
+     G.paid=false al crear la pelea.
+     ====================================================================== */
+  if(!G || !G.fight || !G.fight.result || G.paid) return false;
   applyPlayerFight();
   var p=G.player;
   if(G.flags.wonder){
@@ -4867,15 +5241,19 @@ function confirmFight(){
   }
   G.paid=true;
   advanceWeek();
-  saveGame(true);
+  closeWeek();
   render();
+  return true;
 }
 function postFightQuote(won,res){
   var c=coachById(G.player.coach), m=memRef(c);
-  if(won && res.method!=='dec') return '"'+pick(['Eso es exactamente lo que entrenamos.','Lo rompiste. Ahora vienen los grandes.','Nadie va a poder decir nada esta vez.'])+'" — '+c.name;
-  if(won) return '"'+pick(['Ganaste, pero hubo veinte minutos que no me gustaron.','Sumamos. Ahora a corregir.','Salió por poco. Hay trabajo.'])+'" — '+c.name;
-  if(res.method==='ko') return '"'+pick(['Vas a estar bien. Descansá y después hablamos.','Te vi apagarte. Eso no fue técnica, fue desgaste.','Se termina hoy, no mañana.'])+'" — '+c.name;
-  return '"'+pick(['Perdiste una pelea, no la carrera.','Nos faltó plan B.','Vuelvo a verte el lunes en el gimnasio.'])+'" — '+c.name;
+  /* Misma regla que cornerAdvice: la pantalla de resultado se redibuja cada vez
+     que se vuelve a ella, y con pick() cada redibujado movia G.rs. */
+  var k=((G.fight&&G.fight.opp)||'?')+':'+G.year+'-'+G.week+':'+(res&&res.method)+':'+(won?'W':'L');
+  if(won && res.method!=='dec') return '"'+pickStable(['Eso es exactamente lo que entrenamos.','Lo rompiste. Ahora vienen los grandes.','Nadie va a poder decir nada esta vez.'], k)+'" — '+c.name;
+  if(won) return '"'+pickStable(['Ganaste, pero hubo veinte minutos que no me gustaron.','Sumamos. Ahora a corregir.','Salió por poco. Hay trabajo.'], k)+'" — '+c.name;
+  if(res.method==='ko') return '"'+pickStable(['Vas a estar bien. Descansá y después hablamos.','Te vi apagarte. Eso no fue técnica, fue desgaste.','Se termina hoy, no mañana.'], k)+'" — '+c.name;
+  return '"'+pickStable(['Perdiste una pelea, no la carrera.','Nos faltó plan B.','Vuelvo a verte el lunes en el gimnasio.'], k)+'" — '+c.name;
 }
 
 /* ================= RANKINGS ================= */
@@ -4959,32 +5337,40 @@ function scrPeople(){
    (c.mem.length? '<div class="log" style="margin-top:8px">'+c.mem.slice(0,8).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+
    '<div class="quote" style="margin-top:8px">'+esc(coachLine(c))+'</div></div>';
   if(m){
-    h+='<div class="card"><h3>'+esc(m.name)+' <span class="tag">manager</span></h3><p class="sm dim">'+esc(m.desc)+'</p>'+
+    /* E3: la pantalla daba 2,77 de alto en carrera avanzada. El entrenador
+       principal queda abierto; manager, gimnasio y rivales van plegados. */
+    h+=CL.seccion('manager', m.name+' · manager',
+     '<div class="card"><p class="sm dim">'+esc(m.desc)+'</p>'+
      '<div class="grid g4"><div><div class="xs dim2">Ambición</div>'+bar(m.a.amb,100,'y')+'</div>'+
      '<div><div class="xs dim2">Honestidad</div>'+bar(m.a.hon,100,'g')+'</div>'+
      '<div><div class="xs dim2">Codicia</div>'+bar(m.a.greed,100)+'</div>'+
      '<div><div class="xs dim2">Contactos</div>'+bar(m.a.net,100,'p')+'</div></div>'+
      '<p class="sm">'+relSummary(m.rel)+' · comisión '+Math.round(m.cut*100)+'%</p>'+
-     (m.mem.length? '<div class="log">'+m.mem.slice(0,6).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+'</div>';
+     (m.mem.length? '<div class="log">'+m.mem.slice(0,6).map(function(x){return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>';}).join('')+'</div>':'')+'</div>');
   }
-  h+='<div class="card"><h3>'+esc(g.name)+' <span class="tag">gimnasio</span></h3><p class="sm dim">'+esc(g.desc)+'</p>'+
+  h+=CL.seccion('gimnasio', g.name+' · gimnasio',
+   '<div class="card"><p class="sm dim">'+esc(g.desc)+'</p>'+
    '<div class="grid g2"><div><div class="xs dim2">Striking</div>'+bar(g.a.strike,100)+'</div>'+
    '<div><div class="xs dim2">Wrestling</div>'+bar(g.a.wrest,100)+'</div>'+
    '<div><div class="xs dim2">Grappling</div>'+bar(g.a.grap,100)+'</div>'+
-   '<div><div class="xs dim2">Sparring</div>'+bar(g.a.spar,100,'y')+'</div></div></div>';
+   '<div><div class="xs dim2">Sparring</div>'+bar(g.a.spar,100,'y')+'</div></div></div>');
   // rivales con memoria
   var known = Object.keys(G.fighters).filter(function(id){ var f=F(id); return f.mem && f.mem.length && !f.isPlayer; });
   known.sort(function(a,b){ return (F(b).rel? F(b).rel.rivalry:0) - (F(a).rel? F(a).rel.rivalry:0); });
   if(known.length){
-    h+='<div class="card"><h3>Gente que te recuerda</h3>';
+    /* plegado: hasta diez rivales con su historia en la pantalla que abre el
+       jugador para mirar a su equipo */
+    var filas='';
     known.slice(0,10).forEach(function(id){
       var f=F(id);
-      h+='<div class="row" onclick="go(\'fighter\',\''+id+'\')" style="cursor:pointer"><span>'+esc(fname(f))+' <span class="dim2 xs">'+recStr(f)+'</span></span>'+
+      filas+='<div class="row" onclick="go(\'fighter\',\''+id+'\')" style="cursor:pointer"><span>'+esc(fname(f))+' <span class="dim2 xs">'+recStr(f)+'</span></span>'+
        '<span class="xs '+((f.rel.rivalry>50)?'bad':'dim')+'">'+relSummary(f.rel)+'</span></div>';
     });
-    h+='</div>';
+    h+=CL.seccion('recuerdan', 'Gente que te recuerda', '<div class="card">'+filas+'</div>');
   }
-  return hookFilter('screen:people', h, {});
+  /* E3: idem para Gente (ver CL.CARD_HOME). */
+  return hookFilter('screen:people', h, {}) +
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('people', true) : '');
 }
 function coachLine(c){
   var m=memRef(c);
@@ -4998,28 +5384,40 @@ function coachLine(c){
 function scrGym(){
   var p=G.player;
   var h='<div class="topbar"><div class="r1"><h2>Equipo</h2><span class="sm dim">'+money(G.cash)+'</span></div></div>';
-  h+='<div class="card"><h3>Cambiar de gimnasio</h3><p class="sm dim">Cambiar mejora unas áreas y empeora otras, cuesta dinero y afecta relaciones.</p>';
+  /* E3b. Medido: esta pantalla daba 8,35 pantallas de alto a 360x640 y tres de
+     sus bloques eran catalogos —gimnasios, entrenadores y managers— que se
+     miran cuando se quiere cambiar algo, no cada vez que se entra. El equipo
+     que TENÉS queda abierto; los catalogos, plegados. */
+  var catGym='<div class="card"><p class="sm dim">Cambiar mejora unas áreas y empeora otras, cuesta dinero y afecta relaciones.</p>';
   G.gyms.forEach(function(g){
-    h+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes</span>'+
+    catGym+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes</span>'+
      '<small>'+esc(g.desc)+' · STR '+g.a.strike+' · WR '+g.a.wrest+' · GR '+g.a.grap+' · SPAR '+g.a.spar+' · prestigio '+g.prest+'</small></button>';
   });
-  h+='</div><div class="card"><h3>Equipo técnico</h3><p class="sm dim">Hasta 3 entrenadores a la vez. Cada uno aporta su especialidad al entrenamiento y su propia recomendación en el gameplan. Los ayudantes cobran aparte: '+money(teamCost())+'/semana.</p>';
+  var catGymHtml = catGym + '</div>';
+  h+='<div class="card"><h3>Equipo técnico</h3><p class="sm dim">Hasta 3 entrenadores a la vez. Cada uno aporta su especialidad al entrenamiento y su propia recomendación en el gameplan. Los ayudantes cobran aparte: '+money(teamCost())+'/semana.</p>';
   team().forEach(function(c){
     h+='<div class="row"><span>'+(c.id===p.coach?'★ ':'')+esc(c.name)+' <span class="dim2 xs">'+c.pers+' · '+c.spec+'</span></span>'+
       (team().length>1? '<a href="#" onclick="fireCoach(\''+c.id+'\');return false" class="bad xs">quitar</a>':'<span class="dim2 xs">principal</span>')+'</div>';
   });
-  h+='</div><div class="card"><h3>Contratar o cambiar de entrenador</h3>';
+  h+='</div>';
+  var catCoach='<div class="card">';
   G.coaches.forEach(function(c){
     var inT = team().filter(function(x){return x.id===c.id;}).length>0;
-    h+='<button class="btn '+(p.coach===c.id?'sel':'')+'" onclick="changeCoach(\''+c.id+'\')">'+esc(c.name)+' <span class="tag">'+c.pers+'</span>'+
+    catCoach+='<button class="btn '+(p.coach===c.id?'sel':'')+'" onclick="changeCoach(\''+c.id+'\')">'+esc(c.name)+' <span class="tag">'+c.pers+'</span>'+
      '<small>'+esc(c.desc)+' · calidad '+c.q+'</small></button>'+
-     (inT? '' : '<button class="btn ghost xs" style="min-height:32px;padding:5px 10px;margin-top:-4px" onclick="hireCoach(\''+c.id+'\')">Sumar al equipo (asistente)</button>');
+     /* E3b: 44 px. Median 32 y eran 14 de los 14 objetivos tactiles chicos que
+        quedaban en todo el juego. */
+     (inT? '' : '<button class="btn ghost" style="min-height:44px;padding:8px 10px;margin-top:-4px;font-size:13px" onclick="hireCoach(\''+c.id+'\')">Sumar al equipo (asistente)</button>');
   });
-  h+='</div><div class="card"><h3>Cambiar de manager</h3>';
+  catCoach+='</div>';
+  var catMgr='<div class="card">';
   G.mgrs.forEach(function(m){
-    h+='<button class="btn '+(G.mgId===m.id?'sel':'')+'" onclick="changeMgr(\''+m.id+'\')">'+esc(m.name)+'<small>'+esc(m.desc)+' · comisión '+Math.round(m.cut*100)+'%</small></button>';
+    catMgr+='<button class="btn '+(G.mgId===m.id?'sel':'')+'" onclick="changeMgr(\''+m.id+'\')">'+esc(m.name)+'<small>'+esc(m.desc)+' · comisión '+Math.round(m.cut*100)+'%</small></button>';
   });
-  h+='</div>';
+  catMgr+='</div>';
+  h+=CL.seccion('catGimnasios', 'Cambiar de gimnasio', catGymHtml)+
+     CL.seccion('catEntrenadores', 'Contratar o cambiar de entrenador', catCoach)+
+     CL.seccion('catManagers', 'Cambiar de manager', catMgr);
   return hookFilter('screen:gym', h, {});
 }
 function changeGym(id){
@@ -5088,17 +5486,35 @@ function scrContracts(){
 function scrStats(){
   var p=G.player;
   var h='<div class="topbar"><div class="r1"><h2>Ficha</h2><span class="sm dim">OVR '+ovr(p)+' · pot. global '+p.potGlobal+'</span></div></div>';
-  h+='<div class="card"><div class="sm dim">'+STYLES[p.style].n+(p.secondaryStyle?' · '+STYLES[p.secondaryStyle].n:'')+' · '+PERS[p.pers].n+(p.pers2?' + '+PERS[p.pers2].n:'')+' · '+NATNAME[p.nat]+' · '+ageOf(p)+' años</div>'+
-   '<p class="xs dim2" style="margin-top:6px">Barra clara = valor actual · barra azul fina = potencial máximo.</p></div>';
+  /* E3b: sin tarjeta propia. Eran 98 px para dos lineas de texto en una
+     pantalla que con sus salidas nuevas se pasaba de dos pantallas por 0,05. */
+  h+='<p class="sm dim" style="margin:0 0 4px">'+STYLES[p.style].n+(p.secondaryStyle?' · '+STYLES[p.secondaryStyle].n:'')+' · '+PERS[p.pers].n+(p.pers2?' + '+PERS[p.pers2].n:'')+' · '+NATNAME[p.nat]+' · '+ageOf(p)+' años</p>'+
+   '<p class="xs dim2" style="margin:0 0 8px">Barra clara = valor actual · barra azul fina = potencial máximo.</p>';
   h+='<div class="card"><h3>Técnica y físico</h3>'+PHYS.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>';
-  h+='<div class="card"><h3>Mental</h3>'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>';
-  h+='<div class="card"><h3>Aprendizaje</h3><p class="sm dim">Cuánto aprovechás cada semana de trabajo en cada área.</p>'+
+  /* E3: la ficha daba 3,2 pantallas de alto a 360x640 y E3 le habia sumado
+     296 px mas. Queda abierto lo que se viene a ver —técnica y físico—; el
+     resto son secciones a un toque. Ni un dato se quita. */
+  h+=CL.seccion('mental', 'Mental', '<div class="card">'+MENT.map(function(s){ return statRow(p,s[0]); }).join('')+'</div>');
+  h+=CL.seccion('aprendizaje', 'Aprendizaje',
+   '<div class="card"><p class="sm dim">Cuánto aprovechás cada semana de trabajo en cada área.</p>'+
    ALLST.filter(function(s){ return p.lr[s[0]]>=62 || p.lr[s[0]]<=42; }).map(function(s){
      return hookFilter('screen:stats', '<div class="row"><span>'+STNAME[s[0]]+'</span><span class="mono '+(p.lr[s[0]]>=62?'jade':'bad')+'">'+p.lr[s[0]]+'</span></div>', {});
-   }).join('')+'</div>';
+   }).join('')+'</div>');
   if(p.styleHist.length>1){
-    h+='<div class="card"><h3>Evolución de estilo</h3><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>';
+    h+=CL.seccion('evoEstilo', 'Evolución de estilo',
+      '<div class="card"><p class="sm dim">'+p.styleHist.map(function(s){return STYLES[s].n;}).join(' → ')+'</p></div>');
   }
+  /* E3b, decision 5b: la Ficha tenia 470 nodos y CERO botones — se entraba y
+     solo se salia por la barra. Ahora lleva a donde uno quiere ir despues de
+     mirar sus numeros: a entrenarlos, al arbol de tecnicas y a la ficha
+     publica. */
+  var SAL='text-align:center;white-space:nowrap;padding:12px 4px;margin:0';
+  h+='<div class="card tight"><div class="grid g4">'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'train\')">Entrenar</button>'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'tq\')">Técnicas</button>'+
+     '<button class="btn" style="'+SAL+'" onclick="go(\'bio\')">Pública</button>'+
+     '<button class="btn ghost" style="'+SAL+'" onclick="go(\'hub\')">Inicio</button>'+
+     '</div></div>';
   return hookFilter('screen:stats', h, {});
 }
 
@@ -5145,7 +5561,7 @@ function scrMenu(){
    '<button class="btn" onclick="saveGame(false)">Guardar partida</button>'+
    '<button class="btn" onclick="go(\'menu\',\'load\')">Cargar / administrar partidas</button>'+
    (G.player && !G.player.retired? '<button class="btn" onclick="confirmRetire()">Anunciar el retiro</button>':'')+
-   '<button class="btn ghost" onclick="if(confirm(\'¿Volver al inicio? Se guarda automáticamente.\')){saveGame(true);UI.screen=\'title\';render();}">Volver al inicio</button></div>';
+   '<button class="btn ghost" onclick="if(confirm(\'¿Volver al inicio? Se guarda automáticamente.\')){saveGame(true);go(\'title\');}">Volver al inicio</button></div>';
   if(UI.sub==='load'){
     var saves=listSaves();
     h+='<div class="card"><h3>Partidas guardadas</h3>';
@@ -5157,7 +5573,11 @@ function scrMenu(){
     });
     h+='</div>';
   }
-  return hookFilter('screen:menu', h, {});
+  /* E3: las tarjetas que el mapa manda al menu (ver CL.CARD_HOME). Van
+     DESPUES del filtro, para que los suscriptores de screen:menu sigan viendo
+     exactamente el mismo html que veian antes. */
+  return hookFilter('screen:menu', h, {}) +
+         ((typeof CL!=='undefined' && CL.renderCards) ? CL.renderCards('menu', 'Tu carrera y tu mundo') : '');
 }
 /* [código muerto eliminado: confirmRetire v1 — la redeclaración posterior lo pisaba por hoisting] */
 var SAVEKEY='cagelegacy_v1';
@@ -5244,7 +5664,7 @@ function scrEnding(){
    '<div class="kv"><span>Mejor ranking</span><span class="mono">'+(p.bestRank<99?'#'+p.bestRank:'—')+'</span></div>'+
    '<div class="kv"><span>Ganancias</span><span class="mono gold">'+money(G.careerEarn)+'</span></div>'+
    '<div class="kv"><span>Popularidad final</span><span class="mono">'+Math.round(p.pop)+'</span></div></div></div>';
-  h+='<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>';
+  h+='<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>';
   return hookFilter('screen:ending', h, {});
 }
 /* ==========================================================================
@@ -5268,21 +5688,9 @@ hookOn('event:pre','marcarVisto', function(c){
   if(c.handled) return;
   if(c.e){ G.flags.seen=G.flags.seen||{}; G.flags.seen[c.e.id]=1; }
 }, 50);
-/* la personalidad inclina qué tipo de evento aparece */
-rollEvent = function(){
-  var pool = EVENTS.filter(function(e){ try{ return e.c(); }catch(err){ return false; } });
-  if(!pool.length) return null;
-  var heat = persMul('heat'), tot=0, ws=[];
-  pool.forEach(function(e){
-    var w=e.w;
-    if(e.drama) w *= (0.5 + heat);            // arrogante/mediático atrae quilombo
-    if(e.calm)  w *= (1.6 - heat*0.6);        // humilde/reservado atrae vida tranquila
-    ws.push(w); tot+=w;
-  });
-  var r=rnd()*tot, acc=0, sel=pool[0];
-  for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
-  return {id:sel.id, txt:sel.x(), opts:sel.o};
-};
+/* El sorteo de eventos vive en una sola función, al final del módulo de
+   narrativa. Aquí había una primera implementación —peso por personalidad, sin
+   memoria ni contexto— que sólo se alcanzaba si la de arriba lanzaba. */
 
 /* ---------- equipo técnico (hasta 3 entrenadores) ---------- */
 function team(){
@@ -5963,8 +6371,29 @@ function periodLabel(s){
     camp:'Empieza el campamento: a partir de acá el tiempo pasa semana a semana.',
     inj:'Te lesionaste entrenando.', retired:'Tu carrera terminó.'}[s] || 'Bloque completado.';
 }
-function periodPanel(){
-  var f=focusGet(), p=G.player;
+/* ==========================================================================
+   E3 — EL FOCO DE ENTRENAMIENTO VIVE EN «ENTRENAR», NO EN EL INICIO
+   --------------------------------------------------------------------------
+   Medido a 360x640: esta tarjeta ocupaba 1.143 px, el 20 % del alto del
+   inicio, y traía 36 de sus 71 botones — 33 de ellos por debajo de los 44 px
+   de objetivo táctil, o sea TODOS los botones chicos del inicio menos los de
+   la barra. Y no es una decisión de la semana: es configuración que se elige
+   una vez y se revisa cada tanto.
+   Se parte en dos y no se pierde nada:
+     focusCard()    — la tarjeta entera, ahora dentro de scrTrain()
+     focusResumen() — una línea en el inicio con lo elegido y un botón
+   Las mismas 36 acciones, en la pantalla que se llama Entrenar. La condición
+   de cuándo existen no cambia: la misma con la que el inicio dibujaba el
+   panel (fuera de campamento con pelea, y sin retirarse).
+   Fijado por dev/tests/13-inventario.js, que exige que las 82 acciones del
+   inicio sigan alcanzables y a no más de dos toques.
+   ========================================================================== */
+function focusVisible(){
+  return !!(G && G.player && !G.player.retired && !(G.camp && G.nextFight));
+}
+function focusCard(){
+  if(!focusVisible()) return '';
+  var f=focusGet();
   var names = {}; FOCUS_OPTS.forEach(function(k){ names[k]=TRAIN[k].n; });
   var h='<div class="card"><div class="hdr"><h3 style="margin:0">Foco de entrenamiento</h3>'+
     '<span class="tag on">'+({ligera:'carga ligera',normal:'carga normal',dura:'carga dura'})[f.load]+'</span></div>'+
@@ -5972,7 +6401,7 @@ function periodPanel(){
   [['a','Principal (55%)'],['b','Secundario (30%)'],['c','Terciario (15%)']].forEach(function(s){
     h+='<div class="xs dim2" style="margin-top:6px">'+s[1]+'</div><div>';
     FOCUS_OPTS.forEach(function(k){
-      h+='<button class="btn '+(f[s[0]]===k?'sel':'')+'" style="display:inline-block;width:auto;margin:0 5px 5px 0;padding:9px 12px;min-height:38px;font-size:13px" onclick="focusSet(\''+s[0]+'\',\''+k+'\')">'+names[k]+'</button>';
+      h+='<button class="btn '+(f[s[0]]===k?'sel':'')+'" style="display:inline-block;width:auto;margin:0 5px 5px 0;padding:9px 12px;min-height:44px;font-size:13px" onclick="focusSet(\''+s[0]+'\',\''+k+'\')">'+names[k]+'</button>';
     });
     h+='</div>';
   });
@@ -5981,17 +6410,73 @@ function periodPanel(){
       return '<button class="btn '+(f.load===l?'sel':'')+'" style="text-align:center" onclick="focusSet(\'load\',\''+l+'\')">'+l+'</button>';
     }).join('')+'</div>';
   h+='<p class="xs dim2">Carga dura sube más rápido pero acumula fatiga y riesgo de lesión. Ligera conserva el cuerpo y desarrolla menos.</p></div>';
+  return h;
+}
+/* Lo que queda en el inicio: qué elegiste, y por dónde cambiarlo. No es una
+   tarjeta suelta: vive DENTRO de «Avanzar», porque el foco es exactamente en
+   qué se va el tiempo que ese botón hace pasar. Tenerlos separados costaba
+   141 px y no decía nada que junto no diga mejor. */
+function focusResumen(){
+  if(!focusVisible()) return '';
+  var f=focusGet();
+  /* Una linea. Medido: como fila con boton al lado ocupaba 55 px porque el
+     texto envolvia a dos lineas a 360 px de ancho. */
+  /* boton, no <a href="javascript:...">: este archivo no usa URLs javascript:
+     y ademas la red del inventario cuenta BOTONES — un enlace se le escapa. */
+  return '<div style="display:flex;align-items:center;gap:8px;margin:0 0 6px">'+
+    /* envuelve en vez de truncar: con puntos suspensivos se perdian el tercer
+       foco y la carga, que es justo lo que hay que ver antes de avanzar */
+    '<span class="xs dim2" style="flex:1;min-width:0">'+
+    'Foco: '+esc(TRAIN[f.a].n)+' · '+esc(TRAIN[f.b].n)+' · '+esc(TRAIN[f.c].n)+' · carga '+f.load+'</span>'+
+    '<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;min-height:44px;font-size:13px"'+
+    ' onclick="go(\'train\')">Cambiar</button></div>';
+}
+/* ==========================================================================
+   E3 — UN SOLO BLOQUE PARA AVANZAR EL TIEMPO
+   --------------------------------------------------------------------------
+   Había dos tarjetas que hacían lo mismo con distinta granularidad, separadas
+   por otras seis: «Dejar correr el tiempo» (191 px, dentro de periodPanel) y
+   «⏩ Tiempo» (237 px, tarjeta registrada). Ahora es una sola.
 
-  h+='<div class="card hi"><h3>Dejar correr el tiempo</h3>'+
-    '<p class="sm dim">Se interrumpe solo si aparece un evento, una oferta, una lesión o el inicio de un campamento.</p>'+
-    '<div class="grid g3">'+
-    '<button class="btn pri" onclick="advancePeriod(4)">1 mes</button>'+
-    '<button class="btn pri" onclick="advancePeriod(13)">3 meses</button>'+
-    '<button class="btn pri" onclick="advancePeriod(52)">1 año</button>'+
-    '</div>'+
-    (G.period && G.period.left>0 && !G.pending.length && !G.camp?
-      '<button class="btn go" onclick="advancePeriod('+G.period.left+')">Retomar el bloque · quedan '+G.period.left+' semanas</button>':'')+
-    '</div>';
+   OJO con la condición, que ya me costó un rojo: periodPanel() NO se dibuja en
+   semana de pelea (ahí el inicio muestra «Pasar la semana sin entrenar»), pero
+   la tarjeta ⏩ SÍ se dibujaba, con un tope de 8 semanas en vez de 26. Si el
+   bloque fundido viviera dentro de periodPanel, en semana de pelea se perdería
+   el avance automático. Por eso vive aparte y el inicio lo dibuja en sus dos
+   caras; lo que depende del campamento son los saltos por meses.
+   dev/tests/13-inventario.js lo pilló: «desapareció autoAdvanceToImportant(8)».
+   ========================================================================== */
+function avanzarCard(){
+  if(!G || !G.player || G.player.retired || (G.pending && G.pending.length)) return '';
+  var enCampamento = !!(G.camp && G.nextFight);
+  var maxAuto = G.nextFight? 8 : 26;
+  /* Compactada contra el pliegue: medida bloque a bloque, ocupaba 312 px
+     (h3 18 · foco 55 · parrafo 39 · botones 70 · auto 80 + relleno). Lo que
+     se fue son lineas envueltas, no informacion. */
+  var CENTRO='text-align:center;white-space:nowrap;padding:12px 4px';
+  var h='<div class="card hi"><h3 style="margin:0 0 4px">Avanzar</h3>'+focusResumen();
+  if(!enCampamento){
+    h+=
+    /* La explicacion de que interrumpe un bloque importa cuando NO hay pelea
+       firmada, que es cuando se saltan meses. Con una pelea encima, el bloque
+       ya se entiende y esos 36 px son justo los que dejaban «Avanzar» fuera
+       de pantalla en el peor caso (pelea de titulo + tres avisos). */
+    (G.nextFight? '' : '<p class="xs dim2" style="margin:0 0 6px">Se detiene ante un evento, una oferta, una lesión o un campamento.</p>')+
+      '<div class="grid g3">'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(4)">1 mes</button>'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(13)">3 meses</button>'+
+      '<button class="btn pri" style="'+CENTRO+'" onclick="advancePeriod(52)">1 año</button>'+
+      '</div>'+
+      (G.period && G.period.left>0 && !G.camp?
+        '<button class="btn go" onclick="advancePeriod('+G.period.left+')">Retomar el bloque · quedan '+G.period.left+' semanas</button>':'');
+  }
+  h+='<button class="btn go" style="margin-bottom:0" onclick="autoAdvanceToImportant('+maxAuto+')">'+
+     '⏩ Hasta el próximo evento <span class="dim2">(máx '+maxAuto+' sem)</span></button>';
+  return h+'</div>';
+}
+function periodPanel(){
+  var h='';
+
 
   if(G.period){
     var s=G.period, gk=Object.keys(s.gains).sort(function(a,b){return s.gains[b]-s.gains[a];}).slice(0,6);
@@ -6162,8 +6647,12 @@ function repairCritical(){
     out.revisados++;
     /* un peleador que compite no puede tener valores no numéricos: su score
        entra en el orden del ranking y en el emparejamiento */
-    var malo=false, st=f.st||{};
-    for(var i=0;i<STKEY.length;i++){ var v=st[STKEY[i]]; if(typeof v!=='number'||!isFinite(v)){ malo=true; break; } }
+    /* E4: Number.isFinite hace en una llamada lo que hacian typeof + isFinite,
+       y sin coercion — para un valor que ya paso el typeof, el resultado es el
+       mismo. El largo se saca del bucle. Medido: esta comprobacion corre 371
+       veces por semana y repara 0 en juego normal; es una red, no un calculo. */
+    var malo=false, st=f.st||{}, nst=STKEY.length;
+    for(var i=0;i<nst;i++){ if(!Number.isFinite(st[STKEY[i]])){ malo=true; break; } }
     if(!malo && (!isFinite(f.pop)||!isFinite(f.rep)||!isFinite(f.fatigue)||!isFinite(f.dmg))) malo=true;
     if(malo){ normalizeFighterState(f); out.reparados++;
       errRecord('integridad:peleador', {message:'valores inválidos reparados en '+id}, ERR.SEV.STATE); }
@@ -6404,7 +6893,7 @@ fightFinishResolve=function(mg){
   if(chance(finishChance)){ finishFight(mg.kind,'p'); return; }
   f.ex++; f.clock-=ri(24,46); drain('p',mg.kind==='ko'?10:9);
   flog('Buscaste '+FIN_LABELS[mg.kind].toLowerCase()+' y no apareció la ventana.');
-  if(f.ex>=f.exPer || f.clock<=20) endRound();
+  if(roundOver(f)) endRound();
   render();
 };
 
@@ -8331,7 +8820,7 @@ function fxResolveMini(mg,res){
   try{ finishMiniContinue(); }
   catch(e){
     try{ toast('Error al resolver: '+e.message); }catch(x){ errLog('L7335', x); }
-    G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)?'fight':'hub'; render();
+    mgExit('auto', true);
   }
 }
 
@@ -8392,9 +8881,10 @@ fightFinishResolve=function(mg){
   }
   _fxFightFinishResolvePrev(mg);
   if(G.fight && !G.fight.over){
-    G.mg=null;
-    if(UI.screen==='mg'){ UI.screen='fight'; }
-    render();
+    /* E2: la limpieza defensiva de la capa FX pasa por el dueño. Conserva su
+       regla tal cual: solo saca de la pantalla de minijuego SI se estaba en
+       ella; si no, cierra y redibuja sin mover de sitio. */
+    mgExit(UI.screen==='mg' ? 'fight' : null, true);
   }else{
     G.mg=null;
   }
@@ -8405,7 +8895,7 @@ var _fxSparFinishResolvePrev=sparFinishResolve;
 sparFinishResolve=function(mg){
   _fxSparFinishResolvePrev(mg);
   if(G.mg && G.mg.type==='finish'){ G.mg=mg.parent||null; }
-  UI.screen='mg'; render();
+  mgOpen();
 };
 
 /* Si se abandona una pelea/partida con un minijuego abierto, limpiar el overlay. */
@@ -8733,7 +9223,7 @@ function scrHallOfFame(){
 
   h+='<div class="card">'+
      (inGame? '<button class="btn" onclick="go(\'hub\')">Volver al juego</button>'
-            : '<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>')+
+            : '<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>')+
      (L.runs.length? '<button class="btn ghost" onclick="if(confirm(\'¿Borrar TODO el salón de la fama y las recompensas? No se puede deshacer.\'))legacyReset()">Borrar salón de la fama</button>':'')+
      '</div>';
   return h;
@@ -8771,8 +9261,8 @@ hookOn('screen:ending','legScrEndingPrev', function(h){
     }
     extra+='<button class="btn pri" onclick="go(\'hall\')">Ver salón de la fama</button>';
   }
-  return h.replace('<button class="btn pri" onclick="UI.screen=\'title\';render()">Volver al inicio</button>',
-                   extra+'<button class="btn" onclick="UI.screen=\'title\';render()">Volver al inicio</button>');
+  return h.replace('<button class="btn pri" onclick="go(\'title\')">Volver al inicio</button>',
+                   extra+'<button class="btn" onclick="go(\'title\')">Volver al inicio</button>');
 }, 10);
 
 /* ---------- accesos: título, hub y menú ---------- */
@@ -8990,6 +9480,14 @@ function insertAfterTopbar(h,block){
 /* La tarjeta va arriba de todo en la pantalla principal. */
 /* [consolidado en el núcleo v2: hub/stats clave] */
 
+
+/* E3: y en la Ficha del jugador, que es de donde vienen: hasta E3 esta tarjeta
+   se dibujaba arriba del inicio y `stats` no la tenía. */
+hookOn('screen:stats','coreScrStatsPrev', function(h){
+  if(!G || !G.player) return h;
+  /* plegada: E3 le sumo 296 px a una pantalla que ya daba 2,9 de alto */
+  return insertAfterTopbar(h, CL.seccion('clave', 'Estadísticas clave de tu estilo', coreStatsCard(G.player,false)));
+}, 10);
 
 /* En la ficha de cualquier peleador también se muestran sus claves. */
 hookOn('screen:fighter','coreScrFighterPrev', function(h){
@@ -10656,7 +11154,7 @@ function tgStart(pool, fallback){
   if(!info || !FX_GAMES[key]){ if(fallback) fallback(); return; }
   var mg={type:'train', game:key, pool:pool, cat:info.cat, tk:info.tk, name:info.n,
           live:true, done:false, log:[], weekApplied:false};
-  G.mg=mg; UI.screen='mg';
+  G.mg=mg; mgOpen(undefined, false);
   var ok=fxOpen(key, info.cat, mg, function(res){ tgResolve(mg,res); });
   if(!ok){ G.mg=null; if(fallback) fallback(); return; }
   render();
@@ -10689,7 +11187,7 @@ function tgResolve(mg,res){
   mg.result = mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+gainText(mg.gain);
   if(mg.inj) mg.result += ' Te lastimaste: '+mg.inj;
   mg.log.unshift(mg.label+' · ★'+mg.perfects+' ✓'+mg.hitsN+' ✗'+mg.missesN);
-  UI.screen='mg'; render();
+  mgOpen();
 }
 function tgRetry(){
   var mg=G&&G.mg; if(!mg||mg.type!=='train'||!mg.live) return;
@@ -10728,7 +11226,22 @@ function tgScreen(mg){
 /* [consolidado en el núcleo v2: mg/entrenamiento] */
 
 
-/* ---------- reemplazo de las entradas de entrenamiento ---------- */
+/* ---------- reemplazo de las entradas de entrenamiento ----------
+   ESTAS TRES LINEAS SON EL CAMINO VIVO. Lo que quedo debajo -las bases de
+   cardioStart/strStart/drillStart y la capa 'arcade' que las parchea- pasa a
+   ser el RESPALDO que tgStart recibe como segundo argumento, y sigue ahi como
+   recuperacion de error, no como codigo muerto que se pueda borrar.
+   Medido, no supuesto: conduciendo los tres arranques a mano (el autopiloto no
+   pulsa botones de minijuego), 120 de 120 salieron por tgStart y 0 por el
+   respaldo. Y de forma determinista, no muestreada: tgStart cae al respaldo si
+   tgPick devuelve una clave sin TG_INFO o sin FX_GAMES, y las 25 claves de
+   TG_INFO tienen juego FX, con los tres pools alcanzando 5, 5 y 15 claves sin
+   ninguna descubierta. O sea que el respaldo es inalcanzable por construccion:
+   lo unico que puede dispararlo es que fxOpen falle en runtime.
+   Por eso NO se fusionan (D-015): abajo hay tres minijuegos distintos, no tres
+   copias del mismo, y tgStart(pool, fallback) ya es una sola funcion
+   parametrizada. Ojo si alguna vez se recorre el respaldo: la capa arcade
+   redibuja en cardio y en str, pero NO en drill. */
 var _tgCardioPrev=cardioStart, _tgStrPrev=strStart, _tgDrillPrev=drillStart;
 cardioStart=function(){ tgStart('cardio', _tgCardioPrev); };
 strStart   =function(){ tgStart('str',    _tgStrPrev); };
@@ -10894,7 +11407,7 @@ function errRecord(where,e,sev){
     try{
       console.error('[CAGE ' + sev.toUpperCase() + '] ' + where + ' :: ' + m,
                     '\ncontexto:', rec.ctx, '\n' + (rec.stack||''));
-    }catch(x){}
+    }catch(x){ /* si console.error lanza, no hay donde registrarlo: es el propio registrador de errores */ }
     if(ERR.STOP_ON_CRITICAL && sev===ERR.SEV.CRITICAL) throw e;
   }
   return m;
@@ -10971,10 +11484,10 @@ fxLoop=function(ts){
     try{ fxClose(true); }catch(x){ errLog('L9912', x); }
     errNote('El ejercicio se interrumpió. Volvés al gimnasio sin perder la semana.');
     try{
-      if(mg && mg.type==='train'){ G.mg=null; UI.screen='train'; }
+      if(mg && mg.type==='train'){ mgExit('train', false); }
       else if(mg && mg.type==='finish'){ mg.live=false; mg.done=true; mg.quality=0.3;
         mg.result='El intento se interrumpió.'; safeRun('finishRecovery',function(){ finishMiniContinue(); },null,true); }
-      else { G.mg=null; UI.screen=(G&&G.fight&&!G.fight.over)?'fight':'hub'; }
+      else { mgExit('auto', false); }
       render();
     }catch(x){ errRecord('minijuego:recovery',x); }
   }
@@ -11761,7 +12274,7 @@ function chatStart(){
     /* se consume recién cuando hay conversación real: abrir un grupo vacío no cuesta */
     if(!socSpend('chat','chat',{weight:SOC_W.NORMAL, cat:'grupo'})){ toast('⛔ '+(socWhyBlocked('chat',{cat:'grupo'})||'No podés ahora.')); return; }
     G.mg={type:'chat', step:0, msgs:msgs, log:[], done:false, pop:0, rep:0};
-    UI.screen='mg'; render();
+    mgOpen();
   });
 }
 function chatPick(i){
@@ -12450,7 +12963,10 @@ function coachEdgeCard(){
   return h;
 }
 hookOn('screen:gym','coachScrGymPrev', function(h){
-  return h+safeRun('coachCard', function(){ return coachEdgeCard(); }, function(){ return ''; }, true);
+  /* E3b: plegado. Son 300 px de relato sobre el entrenador en una pantalla
+     que daba 8,35 pantallas de alto. */
+  return h + CL.seccion('coachEdge', 'Tu entrenador principal',
+    safeRun('coachCard', function(){ return coachEdgeCard(); }, function(){ return ''; }, true));
 }, 20);
 
 
@@ -12528,7 +13044,10 @@ function fightPayout(f, won, res){
   if(won){ winB=Math.round(base*0.55 + safeNum(c&&c.bonus,0)); lines.push(['Bono de victoria', winB]); }
   if(res && res.method!=='dec' && chance(0.45)){ perfB=Math.round(base*0.5); lines.push(['Bono de actuación', perfB]); }
   if(f && f.title && won){ titleB=Math.round(base*0.3); lines.push(['Bono de título', titleB]); }
-  if(G.camp && G.camp.missWeight){ penalty=Math.round((showUp+winB)*0.2); lines.push(['Multa por no dar el peso', -penalty]); }
+  /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
+     tanto" y su flag no se leia. Entra aqui, en la fuente unica del pago: la
+     multa por no dar el peso pasa del 20% al 10%. */
+  if(G.camp && G.camp.missWeight){ penalty=Math.round((showUp+winB)*(G.flags&&G.flags.nutri?0.10:0.20)); lines.push(['Multa por no dar el peso', -penalty]); }
   var gross = showUp+winB+perfB+titleB-penalty;
   var m=mgrById(G.mgId), cut=m? safeNum(m.cut,0) : 0;
   var fee=Math.round(gross*cut);
@@ -12558,10 +13077,34 @@ hookOn('fight:applied','economia', function(c){
     var q=fightPayout(G.nextFightPaid||f.meta||{purse:f.purse, title:f.title}, won, f.result);
     var diff=q.net-paidOld;
     G.cash=safeNum(G.cash,0)+diff;                 /* se ajusta al contrato firmado */
-    G.careerEarn=safeNum(G.careerEarn,0)+Math.max(0,diff);
-    G.player.earn=safeNum(G.player.earn,0)+Math.max(0,diff);
+    /* A-002. Aqui habia Math.max(0,diff) mientras la caja se llevaba el diff
+       entero. applyWinLossResult ya habia sumado su propio 'paidOld' a las
+       dos, asi que cuando la correccion es NEGATIVA -la formula vieja concedio
+       bono y fightPayout no, o CL.payout descuenta deuda- la caja bajaba y las
+       ganancias de carrera se quedaban con la cifra vieja, inflada.
+       Medido antes de arreglarlo: 94 de 144 peleas divergian; un caso real
+       metia 947 en la caja y anotaba 1.597 en la carrera. Importa porque
+       careerEarn alimenta el legado, tres logros y la puntuacion final.
+       Con el diff entero, el total queda en paidOld+diff, que es exactamente
+       el neto liquidado. El suelo en 0 es para que una racha de correcciones
+       no lo deje en negativo. */
+    G.careerEarn=Math.max(0, safeNum(G.careerEarn,0)+diff);
+    G.player.earn=Math.max(0, safeNum(G.player.earn,0)+diff);
     G.lastPayout=q;
-    if(G.contract && safeInt(G.contract.left,0)>0) G.contract.left=safeInt(G.contract.left,1)-1;
+    /* A-013. La pantalla de resultado pintaba DOS netos distintos a la vez:
+       "Cobro neto" salia de G.fightPayout, que escribe applyWinLossResult con
+       su propia cuenta, y la tarjeta "Liquidacion" salia de G.lastPayout, que
+       es esta. Medido: la caja coincide SIEMPRE con esta (8 de 8) y nunca con
+       la otra — un caso real destacaba 7.900 arriba mientras entraban 15.664.
+       Es la misma forma que D-010: dos mensajes que se contradicen en la
+       misma pantalla, y el destacado era el falso.
+       Como este hook es el que reconcilia la caja, es el que tiene la verdad:
+       deja G.fightPayout sincronizado y la pantalla pasa a decir una sola
+       cosa. */
+    G.fightPayout={net:safeInt(q.net,0), bonus:safeInt(q.gross,0)-safeInt(q.base,0),
+                   cut:safeInt(q.fee,0)};
+    /* La cuenta de peleas del contrato la lleva applyWinLossResult, que es
+       quien sabe bajo que organizacion se peleo. Aqui solo se ajusta la caja. */
   }
 }, 20);
 /* Desglose después de la pelea. */
@@ -12614,20 +13157,38 @@ function saveIndexWrite(d){
   try{ localStorage.setItem(SAVE_IDX, JSON.stringify(d)); return true; }catch(e){ return false; }
 }
 
-/* ---------- poda: lo que no hace falta reconstruir la carrera ---------- */
+/* ---------- poda: lo que no hace falta reconstruir la carrera ----------
+   Recorre los luchadores que la poda puede tocar. LA REGLA ES QUE AL JUGADOR
+   NO SE LE TOCA NADA, y vivía escrita dos veces: una aquí y otra en la pasada
+   de redondeo de más abajo, que se añadió como una capa encima. Es la regla
+   que impide que guardar le destruya el historial — medido, un jugador de 250
+   semanas tiene career=22 y lastFights=12, y sin ella cada guardado se los
+   dejaría en 12 y 6. Escrita dos veces, bastaba tocar una para perder datos
+   del jugador en silencio, así que ahora vive en un solo sitio.
+   Las dos pasadas siguen siendo dos: podan cosas distintas (truncar listas y
+   redondear decimales) y cada una registra sus fallos con su propia etiqueta
+   en safeRun. Lo que comparten es el recorrido, no la poda. */
+function eachPrunableFighter(g, fn){
+  if(!g || !g.fighters) return;
+  var pid = g.player && g.player.id;
+  for(var id in g.fighters){
+    if(!g.fighters.hasOwnProperty(id) || id===pid) continue;
+    fn(g.fighters[id], id);
+  }
+}
 function savePrune(g){
   safeRun('savePrune', function(){
     if(!g || !g.fighters) return;
-    var pid = g.player && g.player.id;
-    for(var id in g.fighters){
-      if(!g.fighters.hasOwnProperty(id)) continue;
-      var f=g.fighters[id];
-      if(id===pid) continue;                       /* al jugador no se le toca nada */
+    eachPrunableFighter(g, function(f){
       if(Array.isArray(f.lastFights) && f.lastFights.length>6) f.lastFights=f.lastFights.slice(-6);
       if(Array.isArray(f.mem) && f.mem.length>8) f.mem=f.mem.slice(0,8);
       if(Array.isArray(f.career) && f.career.length>12) f.career=f.career.slice(-12);
       if(f.bond && Array.isArray(f.bond.hist) && f.bond.hist.length>10) f.bond.hist=f.bond.hist.slice(0,10);
-    }
+    });
+    /* Estas dos cuelgan del mismo guardia que el recorrido: sin g.fighters no
+       se podan. Es una rareza, no un arreglo pendiente de esta consolidación;
+       cambiarla sería cambio de comportamiento. Fijada en
+       dev/tests/09-saveprune.js para que una fusión no la corrija sin querer. */
     if(Array.isArray(g.news) && g.news.length>40) g.news=g.news.slice(0,40);
     if(Array.isArray(g.retiredList) && g.retiredList.length>60) g.retiredList=g.retiredList.slice(-60);
   }, null, true);
@@ -13000,8 +13561,15 @@ function loadGame(id){
               (g._saveDamage.length>3? ' (y '+(g._saveDamage.length-3)+' más)':'')+'.');
     }
     /* Cargar reescribe el slot ya migrado. Si la migración fuese defectuosa se
-       perdería el original, así que se guarda una copia intacta ANTES. */
-    if(safeInt(parsed.saveVersion,1) !== SAVE_VERSION){
+       perdería el original, así que se guarda una copia intacta ANTES.
+       La condición leía `parsed.saveVersion`, pero saveMigrate() DEVUELVE EL
+       MISMO OBJETO `parsed` y le pone saveVersion = SAVE_VERSION antes de
+       llegar aquí: la comparación era siempre falsa y la copia no se escribía
+       nunca. Acto seguido saveGame(true) pisaba el slot con la versión migrada,
+       así que el original quedaba irrecuperable y la única red de seguridad de
+       la migración no existía. Se usa `diag.v`, que se calculó con saveShape()
+       ANTES de mutar nada. */
+    if(safeInt(diag && diag.v, 1) !== SAVE_VERSION){
       try{ localStorage.setItem(SAVE_BAK+id, raw); }catch(e4){ errLog('backup:'+id, e4); }
     }
     G=g; G.saveId=id;
@@ -13012,9 +13580,19 @@ function loadGame(id){
     if(g._migratedFrom) toast('Partida v'+g._migratedFrom+' actualizada a v'+SAVE_VERSION+' ('+(g._migrationSteps||[]).length+' pasos)');
     else toast('Partida cargada');
     go('hub');
-    saveGame(true);                              /* la reescribe ya migrada */
+    /* E4. Este saveGame existe para PERSISTIR LA MIGRACION: si el save ya
+       estaba al dia, reescribe byte a byte lo que se acaba de leer.
+       Medido: era el 22 % de loadGame (una serializacion completa de ~950 KB
+       sobre los 103 ms de la carga). Ahora solo se reescribe cuando hubo algo
+       que persistir.
+       Lo que se pierde a proposito: las reparaciones de normalizeWorldState()
+       dejan de quedar grabadas en el acto. No se pierden — son idempotentes y
+       se vuelven a aplicar en la carga siguiente y en el primer guardado real
+       de la partida. */
+    var huboMigracion = !!g._migratedFrom || safeInt(diag && diag.v, 1) !== SAVE_VERSION;
+    if(huboMigracion) saveGame(true);            /* la reescribe ya migrada */
     return true;
-  }, function(){ errNote('No se pudo abrir esa partida.'); UI.screen='title'; render(); return false; }, true);
+  }, function(){ errNote('No se pudo abrir esa partida.'); go('title'); return false; }, true);
 }
 
 /* ---------- listado de slots (lee el índice nuevo y el formato viejo) ---------- */
@@ -13227,7 +13805,7 @@ function gymVisit(id){
     }
     G.socOut={t:'✈️ Entrenaste una semana en '+g.name+' ('+g.specName+'). '+gainText(r.gain||[])+
       (met?' Conociste a '+fname(met)+'.':'')+extra+' Costo: '+money(c.money)+'.'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 /* Cambio definitivo de gimnasio: conserva historial y relaciones. */
@@ -13413,7 +13991,7 @@ function podcastStart(kind){
     var soPod={weight:SOC_W.MAYOR, actor:host?host.id:null, cat:'prensa'};
     if(!socSpend('pod:'+kind,'pod',soPod)){ toast('⛔ '+(socWhyBlocked('pod:'+kind,soPod)||'No podés ahora.')); return; }
     G.mg={type:'pod',kind:kind,step:0,qs:qs,hostId:host?host.id:null,pop:0,heat:0,resp:0,log:[],done:false};
-    UI.screen='mg'; render();
+    mgOpen();
   });
 }
 var POD_OPTS=[
@@ -13486,7 +14064,7 @@ function watchFight(id){
     else if(roll<0.52){ p.st.adaptability=cap(p.st.adaptability+1.2); extra=' Te llevaste una idea táctica para tu propio juego.'; }
     else if(roll<0.62 && bondOf(f).rival){ socClash(f,4,'te vio en el evento y te buscó'); extra=' Te buscó en el pasillo. No fue amistoso.'; }
     G.socOut={t:'🏟️ Fuiste a ver a '+fname(f)+'. Le leíste el juego: '+pat+'.'+extra+' (+Fight IQ)'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 /* ============ F) VIAJAR CON OTRO PELEADOR ============================== */
@@ -13521,7 +14099,7 @@ function travelWith(id){
     bondNote(f,'Viajaron juntos');
     addMemF(f,'viajaron juntos a un evento',7);
     G.socOut={t:'✈️ Viajaste con '+fname(f)+': '+(bits[0]||'fue un viaje tranquilo')+'. Costo '+money(cost)+'.'};
-    advanceWeek(); saveGame(true); render();
+    advanceWeek(); closeWeek(); render();
   });
 }
 
@@ -13555,7 +14133,7 @@ function scrLoad(){
        '<div class="grid g2"><button class="btn pri" onclick="loadGame(\''+id+'\')">Cargar</button>'+
        '<button class="btn ghost" onclick="deleteSave(\''+id+'\')">Eliminar</button></div></div>';
   });
-  h+='<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>';
+  h+='<button class="btn" onclick="go(\'title\')">Volver al inicio</button>';
   if(G && G.player) h+='<button class="btn ghost" onclick="go(\'hub\')">Seguir jugando</button>';
   return hookFilter('screen:load', h, {});
 }
@@ -13590,7 +14168,7 @@ hookOn('screen:title','ldScrTitlePrev', function(h){
    archivo; ahora sólo se DECLARA, y GATE.install() lo aplica al final del
    archivo, cuando todas estas funciones ya existen de verdad.
    advanceWeek NO entra: se dispara muchas veces por acción. */
-['resolveEvent','confirmFight','acceptFight','negoClose','negoAsk','startCamp','retire','mgClose',
+['resolveEvent','confirmFight','acceptFight','negoClose','negoAsk','startCamp','retire','mgClose','advancePeriod',
  'socInvite','socAdvice','chatPick','allyForm','allySide','gymVisit','gymJoin','watchFight','travelWith',
  'podPick','pressPick','sparPick','weighAct','recPick','gpConfirm','askManagerRaise','changeWeightClass',
  'tgResolve','fxResolveMini','buyItem'
@@ -13808,7 +14386,18 @@ function migrateLegacyBlob(){
         try{
           var g=JSON.parse(rec.data);
           if(!g || !g.player) return;
-          saveExpand(g); savePrune(g); g.saveVersion=SAVE_VERSION;
+          /* F-003. Esto era `saveExpand(g); savePrune(g); g.saveVersion=4;`:
+             sellaba la version SIN ejecutar ni un paso de migracion. Un save v1
+             del blob quedaba etiquetado v4, y al cargarlo saveShape decia "al
+             dia" y aplicaba CERO pasos: socCD, trainRec, mgStats y sagas se
+             quedaban undefined en una partida que el juego da por correcta.
+             Ahora pasa por saveMigrate, el mismo camino que usa loadGame, que
+             encadena SAVE_STEPS y valida con saveValidateV4. Si devuelve null
+             la partida era irrecuperable, y entonces NO se escribe: sellarla
+             era justo lo que convertia un save roto en uno "al dia". */
+          g=saveMigrate(saveExpand(g));
+          if(!g) return;
+          savePrune(g);
           var body=saveSerialize(g);
           /* La escritura se aisla del resto: un fallo aqui NO es una partida
              irrecuperable, es una partida buena que no cupo. Confundir los dos
@@ -13928,17 +14517,13 @@ var _qSavePrunePrev=savePrune;
 savePrune=function(g){
   g=_qSavePrunePrev(g);
   safeRun('saveCompact', function(){
-    if(!g || !g.fighters) return;
-    var pid=g.player && g.player.id;
-    for(var id in g.fighters){
-      if(!g.fighters.hasOwnProperty(id) || id===pid) continue;
-      var f=g.fighters[id];
+    eachPrunableFighter(g, function(f){
       ['pop','rep','fatigue','dmg','hype','weightNow','divAdapt'].forEach(function(k){
         if(typeof f[k]==='number' && isFinite(f[k])) f[k]=Math.round(f[k]*10)/10;
       });
       if(f.rel){ for(var rk in f.rel){ if(f.rel.hasOwnProperty(rk) && typeof f.rel[rk]==='number')
         f.rel[rk]=Math.round(f.rel[rk]); } }
-    }
+    });
   }, null, true);
   return g;
 };
@@ -13960,14 +14545,14 @@ hookOn('screen:load','qScrLoadPrev', function(h){
     var used=storageUsedKB(), n=Object.keys(saveIndex()).length;
     var pct=clamp(Math.round(used/5120*100),0,100);
     var warn = pct>=80;
-    return h.replace('<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>',
+    return h.replace('<button class="btn" onclick="go(\'title\')">Volver al inicio</button>',
       '<div class="card'+(warn?' hi':'')+'"><div class="hdr"><span class="b">Espacio de guardado</span>'+
       '<span class="tag'+(warn?' red':'')+'">'+used+' / 5120 KB</span></div>'+
       '<div class="bar" style="height:10px"><i class="'+(warn?'r':'g')+'" style="width:'+pct+'%"></i></div>'+
       '<p class="xs dim2" style="margin:6px 0 0">'+n+' partida'+(n===1?'':'s')+' guardada'+(n===1?'':'s')+'. '+
       (warn? 'Poco espacio: borrá alguna partida vieja para que el juego pueda seguir guardando.'
            : 'El navegador limita el almacenamiento a unos 5 MB por sitio.')+'</p></div>'+
-      '<button class="btn" onclick="UI.screen=\'title\';UI.sub=null;render()">Volver al inicio</button>');
+      '<button class="btn" onclick="go(\'title\')">Volver al inicio</button>');
   }, function(){ return h; }, true);
 }, 10);
 
@@ -14394,14 +14979,48 @@ var FAME_INFO={
   weekplan:{n:'Organizar la semana', cat:'plan'},
   titlerun:{n:'Camino al título', cat:'plan'}
 };
+/* ==========================================================================
+   LAS ACTIVIDADES QUE DAN DINERO TIENEN LIMITE SEMANAL (H-001/002/003)
+   --------------------------------------------------------------------------
+   fameStart no tenia NINGUNA puerta: ni coste, ni enfriamiento, ni consumo de
+   semana, ni comprobacion de ocupado. Medido conduciendolas a mano, con
+   50.000 de caja y todo en la MISMA semana:
+     invest x12 (q=0,85) -> 137.570  (+87.570) y +2.160/semana para siempre
+     stream x10 (q=0,85) ->  91.700  (+41.700)
+     photo  x10 (q=0,85) -> 124.500  (+74.500)
+   El defecto no es que el retorno sea generoso: es que NO HAY LIMITE DE
+   REPETICIONES, asi que el dinero no tiene techo.
+   Matiz, porque la auditoria lo decia al reves: en 'invest' el capital SI se
+   arriesga — con q baja, (q-0,45)*2,2 es negativo y se pierde dinero. Lo que
+   no tenia techo era repetirlo.
+   Solo se limitan las tres que dan dinero. Las que dan atributos o
+   popularidad se dejan repetibles a proposito: sus recompensas ya estan
+   acotadas por el tope de los atributos y por el de pop. */
+var FAME_DINERO = ['invest','stream','photo'];
+var BIZ_INCOME_MAX = 1800;   /* diez inversiones buenas: el pasivo deja de crecer */
+function fameWeekStamp(){ return clN(G.year)*52 + clN(G.week); }
+function fameMoneyDone(key){
+  if(FAME_DINERO.indexOf(key) < 0) return false;
+  var f = G && G.flags && G.flags.fameWeek;
+  if(!f || typeof f!=='object' || f.at !== fameWeekStamp()) return false;
+  return !!f[key];
+}
+function fameMoneyMark(key){
+  if(FAME_DINERO.indexOf(key) < 0) return;
+  if(!G.flags) G.flags = {};
+  var f = G.flags.fameWeek;
+  if(!f || typeof f!=='object' || f.at !== fameWeekStamp()) f = G.flags.fameWeek = {at:fameWeekStamp()};
+  f[key] = 1;
+}
 function fameStart(key){
   safeRun('fameStart', function(){
     if(!FX_GAMES[key] || !FAME_INFO[key]) return;
+    if(fameMoneyDone(key)){ toast('Esa actividad ya la hiciste esta semana.'); return; }
     if(FX.running) fxClose(true);
     var mg={type:'fame', game:key, name:FAME_INFO[key].n, live:true, done:false, log:[]};
-    G.mg=mg; UI.screen='mg';
+    G.mg=mg; mgOpen(undefined, false);
     var ok=fxOpen(key, FAME_INFO[key].cat, mg, function(res){ fameResolve(mg,res); });
-    if(!ok){ G.mg=null; UI.screen='hub'; errNote('No se pudo abrir la actividad.'); }
+    if(!ok){ mgExit('hub', false); errNote('No se pudo abrir la actividad.'); }
     render();
   });
 }
@@ -14419,6 +15038,8 @@ function fameResolve(mg,res){
       if(q>=0.85){ p.st.confidence=cap(p.st.confidence+3); out.push('confianza'); }
       out.unshift('+'+hype+' popularidad');
     } else if(mg.game==='photo'){
+      if(fameMoneyDone('photo')) return;          /* una por semana (H-003) */
+      fameMoneyMark('photo');
       var pop=Math.round(1+q*6), pay=Math.round(1500+q*7000);
       p.pop=clamp(safeNum(p.pop,10)+pop,1,100);
       G.cash=safeNum(G.cash,0)+pay;
@@ -14445,8 +15066,8 @@ function fameResolve(mg,res){
       out.push(q>=0.85?'llegás en tu mejor momento':'preparación sumada');
     }
     mg.result=mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+out.join(' · ')+'.';
-    UI.screen='mg'; saveGame(true); render();
-  }, function(){ if(G&&G.mg){ G.mg=null; UI.screen='hub'; render(); } }, true);
+    mgOpen(undefined, false); saveGame(true); render();
+  }, function(){ if(G&&G.mg){ mgExit('hub', true); } }, true);
 }
 function fameRetry(){
   var mg=G&&G.mg; if(!mg||mg.type!=='fame'||!mg.live) return;
@@ -14974,6 +15595,8 @@ fameResolve=function(mg,res){
       if(q>=0.85) p.st.recovery=cap(p.st.recovery+1);
       out.push('-'+fat+' fatiga', '-'+dmg+' daño');
     } else if(mg.game==='stream'){
+      if(fameMoneyDone('stream')) return;         /* una por semana (H-002) */
+      fameMoneyMark('stream');
       var pop=Math.round(1+q*8), tips=safeInt(res&&res.tips,0);
       var pay=Math.round(600+q*4200+tips*350);
       p.pop=clamp(safeNum(p.pop,10)+pop,1,100);
@@ -14981,17 +15604,21 @@ fameResolve=function(mg,res){
       if(q<0.35){ p.rep=clamp(safeNum(p.rep,45)-1.5,1,100); out.push('te agarraron mal parado'); }
       out.unshift('+'+pop+' popularidad', money(pay));
     } else {
+      if(fameMoneyDone('invest')) return;         /* una por semana (H-001) */
+      fameMoneyMark('invest');
       var mult=(q-0.45)*2.2;
       var invested=Math.round(clamp(safeNum(G.cash,0)*0.10,800,25000));
       var ret=Math.round(invested*mult);
       G.cash=safeNum(G.cash,0)+ret;
-      G.flags.bizIncome=Math.max(0,safeInt(G.flags.bizIncome,0)+(q>=0.7?180:0));
+      /* El ingreso pasivo se acumulaba +180 por clic SIN TOPE: 60 semanas
+         invirtiendo daban 10.800/semana para siempre. Ahora tiene techo. */
+      G.flags.bizIncome=clamp(safeInt(G.flags.bizIncome,0)+(q>=0.7?180:0), 0, BIZ_INCOME_MAX);
       out.push(ret>=0? 'ganaste '+money(ret) : 'perdiste '+money(-ret));
       if(q>=0.7) out.push('+'+180+'/semana de ingreso pasivo');
     }
     mg.result=mg.name+' — '+mg.label+' ('+Math.round(q*100)+'%). '+out.join(' · ')+'.';
-    UI.screen='mg'; saveGame(true); render();
-  }, function(){ if(G&&G.mg){ G.mg=null; UI.screen='hub'; render(); } }, true);
+    mgOpen(undefined, false); saveGame(true); render();
+  }, function(){ if(G&&G.mg){ mgExit('hub', true); } }, true);
 };
 /* El motor debe devolver las donaciones del stream. */
 var _shopFxFinishPrev=fxFinish;
@@ -15956,6 +16583,9 @@ hookOn('screen:menu','perfScrMenuPrev', function(h){
         return '<button class="btn'+(m===k?' pri':'')+'" onclick="setPerf(\''+k+'\')">'+n+'</button>';
       }).join('')+'</div>'+
       '<p class="xs dim2" style="margin:8px 0 0">Automático mide los primeros segundos de minijuego y decide solo.</p></div>';
+    /* E3: plegado. Es un ajuste que se toca una vez y ocupaba 250 px en la
+       pantalla que recibio siete tarjetas del inicio. */
+    box = CL.seccion('rendimiento', 'Rendimiento', box);
     var anchor='<button class="btn" onclick="go(\'hall\')">🏆 Salón de la fama y recompensas</button>';
     if(h.indexOf(anchor)>=0) return h.replace(anchor, anchor+box);
     return h+box;
@@ -16028,6 +16658,105 @@ CL.hubCard = function(id, fn, order){
   for(var i=0;i<CL.hubCards.length;i++) if(CL.hubCards[i].id===id){ CL.hubCards[i].fn=fn; return; }
   CL.hubCards.push({id:id, fn:fn, o:(order==null?50:order)});
   CL.hubCards.sort(function(x,y){ return x.o-y.o; });
+};
+
+/* ==========================================================================
+   E3 — CADA TARJETA TIENE UN SITIO, Y LO DECIDE EL NUCLEO
+   --------------------------------------------------------------------------
+   El inicio media 8,84 pantallas a 360x640 porque TODA tarjeta registrada se
+   dibujaba ahi: no habia forma de decir "esto va en Entrenar". Ahora la hay,
+   y vive aca, en el compositor, no en las tarjetas.
+
+   Por que importa que viva aca: la tarjeta del casino se registra DENTRO del
+   modulo 33, que no se toca ni una linea. Como el que decide donde se dibuja
+   es el compositor, la tarjeta se puede mudar sin abrir ese modulo: su fn()
+   se sigue llamando tal cual. Es el "se puede proteger desde fuera" de la
+   frontera, aplicado a la colocacion.
+
+   Mover una tarjeta es una entrada en esta tabla y nada mas. Lo que NO hace
+   es cambiar cuando aparece: cada fn conserva su propia condicion.
+   Protegido por dev/tests/13-inventario.js: toda accion del inicio tiene que
+   seguir alcanzable y a no mas de dos toques.
+   ========================================================================== */
+/* Etiqueta de la seccion en la que se pliega cada tarjeta mudada. Si una
+   tarjeta no esta aca, se dibuja suelta (sin plegar). */
+/* La seccion mas usada de cada pantalla arranca abierta. El resto, cerradas;
+   y en cuanto el jugador abre o cierra una, manda su eleccion (UI.sec). */
+/* Abierta por defecto la seccion MAS USADA de cada pantalla... cuando esa
+   seccion existe. En `train`, `menu` y `stats` lo mas usado NO esta plegado:
+   el trabajo de la semana, los botones del menu y la hoja de stats ya estan
+   abiertos. Abrir ademas la seccion mas pesada de cada una las devolvia por
+   encima de dos pantallas de alto — medido: train 4,51 y menu 3,78. */
+CL.CARD_ABIERTA = { circulo:true, publico:true };   /* people · bio */
+CL.GRUPO_ABIERTO = {};
+CL.CARD_SECCION = {
+  decisiones:'Cómo estás trabajando', finanzas:'Gasto semanal',
+  pilares:'Pilares del campamento',   tecnicas:'Técnicas especiales',
+  accesos:'Ir a',                     carrera:'Tu peleador y tu mundo',
+  meta:'Tu carrera',
+  historia:'Tu historia',             inversion:'Invertir y gimnasios',
+  legado:'Legado y retiro',           casino:'Casino',
+  circulo:'Tu círculo',               publico:'Quién te sigue'
+};
+/* CL.seccion(id, titulo, cuerpo, abiertaPorDefecto)
+   El id es la clave estable en UI.sec: el titulo puede ser dinamico (el nombre
+   del manager, la semilla de la linea temporal) y no sirve como clave. */
+CL.seccion = function(id, titulo, cuerpo, porDefecto){
+  if(!cuerpo || !String(cuerpo).trim()) return '';
+  var ab = secAbierta(id, porDefecto);
+  return '<details class="sec" id="sec-'+id+'"'+(ab?' open':'')+
+         ' ontoggle="secToggle(\''+id+'\', this.open)">'+
+         '<summary>'+esc(titulo)+'</summary>'+
+         '<div class="secBody">'+cuerpo+'</div></details>';
+};
+CL.CARD_HOME = {
+  /* configuracion del entrenamiento: se elige una vez, no se decide cada semana */
+  decisiones:'train',    /* enfoque y gasto semanal — 532 px, 10 botones     */
+  finanzas:'train',      /* el gasto medido, pegado a donde se elige         */
+  pilares:'train',       /* pilares del campamento — preparacion            */
+  tecnicas:'train',      /* arbol de tecnicas                               */
+  /* gente */
+  circulo:'people',      /* vinculos y grupo                                */
+  publico:'bio',         /* quien te sigue: es tu ficha publica             */
+  /* archivo y tienda: se visitan, no se atienden */
+  identity:'off', threads:'off',     /* fundidas: las dibuja 'carrera'      */
+  carrera:'menu',                    /* «Tu peleador» + «Tu mundo», un boton */
+  meta:'menu', historia:'menu', inversion:'menu', legado:'menu',
+  casino:'menu',         /* la tarjeta es del modulo 33 y no se toca: lo que
+                            cambia es donde la llama el compositor          */
+  accesos:'menu',        /* los seis accesos que estaban repetidos          */
+  /* 'off' = ninguna pantalla la dibuja. auto_advance no desaparece: su boton
+     se fundio con «Avanzar» en el inicio, que es donde ya estaban los otros
+     tres. La red exige que la accion siga alcanzable, asi que si algun dia se
+     borrara de verdad, se pondria roja. */
+  auto_advance:'off'
+  /* Se quedan en el inicio, y por eso no estan aca: auto_advance (avanzar la
+     semana), vida (las actividades que consumen la semana) y los avisos que
+     solo aparecen cuando tienen algo que decir — peso, deuda, ufc, sagas,
+     observado, content_team, instalaciones. */
+};
+CL.cardHome = function(id){ return CL.CARD_HOME[id] || 'hub'; };
+CL.renderCards = function(pantalla, plegar){
+  var h = '';
+  for(var i=0;i<CL.hubCards.length;i++){
+    var c = CL.hubCards[i];
+    if(CL.cardHome(c.id) !== pantalla) continue;
+    /* misma clave de error que antes ('hub/<id>'): los diagnosticos guardados
+       siguen significando lo mismo aunque la tarjeta se haya mudado. */
+    var out = safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '';
+    if(plegar === true && CL.CARD_SECCION[c.id]) h += CL.seccion('card_'+c.id, CL.CARD_SECCION[c.id], out, CL.CARD_ABIERTA[c.id]);
+    else if(pantalla === 'hub' && typeof AVISO_ETIQUETA !== 'undefined' && AVISO_ETIQUETA[c.id] && out)
+      /* el destino del ancla de la franja. Se envuelve DESDE EL COMPOSITOR:
+         asi la tarjeta del aviso no sabe nada de la franja y no hay que abrir
+         ningun modulo para darle un id. */
+      h += '<div id="aviso-'+c.id+'" class="avisoAncla">'+out+'</div>';
+    else h += out;
+  }
+  /* Si `plegar` es un texto, las agrupa TODAS en una sola seccion con ese
+     titulo. Con una seccion por tarjeta, siete resumenes de 49 px sumaban
+     343 px de cabeceras plegadas: mas que varias de las tarjetas. */
+  if(typeof plegar === 'string') return CL.seccion('grupo_'+pantalla, plegar, h, CL.GRUPO_ABIERTO[pantalla]);
+  return h;
 };
 
 /* --- estado persistente -------------------------------------------------- */
@@ -17568,7 +18297,12 @@ CL.year = function(){
     history:    {fn:function(){ return scrHistory(); }},
     stats:      {fn:function(){ return scrStats(); }},
     menu:       {fn:function(){ return scrMenu(); }},
-    ending:     {fn:function(){ return scrEnding(); }}
+    /* B-007: era la UNICA entrada de la tabla sin la guarda. scrEnding usa
+       G.ending sin comprobarlo, asi que dibujarla sin final lanzaba y la red
+       de render devolvia al jugador al hub con un aviso. Ahora cumple el
+       mismo contrato que retire, fight, fightresult y mg: si no puede
+       dibujarse, devuelve null y el router decide. */
+    ending:     {fn:function(){ if(!G || !G.ending) return null; return scrEnding(); }}
   };
   /* una pantalla se registra en UNA tabla; CL.screens queda como espejo para
      los módulos que se registraron antes de que existiera CL.SCREENS. */
@@ -17644,16 +18378,22 @@ CL.year = function(){
   scrHub = function(){
     var h = CL_BASE_SCRHUB();
     if(G.pending && G.pending.length) return h;
-    /* las estadísticas clave del estilo se insertan arriba, no al final */
-    h = safeRun('hub/coreStats', function(){
-      return insertAfterTopbar(h, coreStatsCard(G.player,false));
-    }, function(){ return h; }, true) || h;
-    for(var i=0;i<CL.hubCards.length;i++){
-      var c=CL.hubCards[i];
-      h += (safeRun('hub/'+c.id, c.fn, function(){ return ''; }, true) || '');
-    }
+    /* E3: las estadísticas clave del estilo se fueron a la Ficha (296 px, el
+       15 % del inicio, y cero botones: es una ficha, no una decisión). */
+    h += CL.renderCards('hub');
     return h;
   };
+
+  CL.hubCard('accesos', function(){ return accesosCard(); }, 4);
+  /* el titular del mundo, al final del inicio: informa, no avisa */
+  CL.hubCard('mundo', function(){
+    if(!G || !G.news || !G.news.length) return '';
+    return '<div class="card"><div class="hdr"><span class="b">El mundo</span>'+
+      '<button class="btn ghost sm" style="width:auto;margin:0" onclick="go(\'history\',\'news\')">Ver todo</button></div>'+
+      '<div class="log">'+
+      G.news.slice(0,1).map(function(n){ return '<div><span class="dim2 xs mono">'+n.y+'</span> '+esc(n.t)+'</div>'; }).join('')+
+      '</div></div>';
+  }, 90);
 
   /* tarjetas recuperadas de los parches retirados, ahora registradas */
   CL.hubCard('peso', function(){
@@ -17823,6 +18563,10 @@ CL.year = function(){
      sumaba su modificador. Ahora es una suscripción al punto de extensión.
      Mismo cálculo y mismo orden: CL corre antes que TQ, igual que cuando TQ
      envolvía a CL. */
+  /* E-001: la agresividad del jugador entra por aqui. Ver aggrShift, arriba. */
+  hookOn('combat:eff','agresividad', function(v, ctx){
+    return v + aggrShift(ctx && ctx.f, (ctx && ctx.keys) || []);
+  }, 40);
   hookOn('combat:eff','CL', function(v, ctx){
     if(!G || !G.fight) return v;
     var m = safeRun('CL/eff', function(){ return CL.effMod(ctx.side); }, function(){ return 0; }, true) || 0;
@@ -18076,7 +18820,9 @@ CL.year = function(){
 
   W('scrGym');
   hookOn('screen:gym','clScrGym', function(h){
-    return h + (safeRun('CL/scrGym', function(){ return CL.gymPanel(); }, function(){ return ''; }, true) || '');
+    /* E3b: plegado, por lo mismo */
+    return h + CL.seccion('gymPanel', 'Filosofía del gimnasio',
+      safeRun('CL/scrGym', function(){ return CL.gymPanel(); }, function(){ return ''; }, true) || '');
   }, 30);
 
   W('scrMenu');
@@ -18286,18 +19032,20 @@ function clEvoReject(){
 }
 
 /* ---------- tarjetas del hub --------------------------------------------- */
-CL.hubCard('identity', function(){
+/* El cuerpo, sin tarjeta ni boton: lo compone clCarreraCard() junto con el de
+   «Tu mundo». Las dos llevaban al mismo sitio y eran dos tarjetas. */
+CL.identityBody = function(){
   var p=G.player, st=CL.stage(p), id=CL.identity(p);
   var pl=CL.primeLeft(p), a=clAge(p);
   var pct = clamp((a-18)/(42-18)*100,0,100);
-  return '<div class="card"><div class="hdr"><span class="b">'+esc(id.n)+'</span>'+
+  return '<div class="hdr"><span class="b">'+esc(id.n)+'</span>'+
     clTag(st.n, st.k==='prime'||st.k==='late'?'on':(st.k==='lvet'?'red':''))+'</div>'+
     '<p class="sm dim">'+esc(CL.styleName(p))+' · '+esc(id.tags.slice(0,3).join(' · ')||'sin rasgos marcados')+'</p>'+
     '<div class="xs dim2">'+a+' años'+(pl>0? ' · ventana de prime: '+pl+' años' : (a>36?' · fuera de la ventana':''))+'</div>'+
     clBar(pct,100, st.k==='prime'||st.k==='late'?'y':'')+
-    '<div class="ticker">'+esc(st.d)+'</div>'+
-    '<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver tu carrera</button></div>';
-}, 6);
+    '<div class="ticker">'+esc(st.d)+'</div>';
+};
+CL.hubCard('identity', function(){ return '<div class="card">'+CL.identityBody()+'</div>'; }, 6);
 
 CL.hubCard('ufc', function(){
   if(!CL.inBig()) return '';
@@ -18313,20 +19061,38 @@ CL.hubCard('ufc', function(){
       (p.weeksIdle>26? ' · <span class="bad">te estás volviendo invisible</span>':'')+'</div></div>';
 }, 8);
 
-CL.hubCard('threads', function(){
+/* idem: el cuerpo, sin tarjeta ni boton */
+CL.threadsBody = function(){
   var s=CL.S();
   var tr=CL.tracked().filter(function(f){ return !f.retired; });
   if(!s.threads.length && !tr.length) return '';
   var hot = tr.filter(function(f){ return clN((f.rel||{}).rivalry)>45; });
-  var h='<div class="card"><div class="hdr"><span class="b">Tu mundo</span>'+
+  var h='<div class="hdr" style="margin-top:10px"><span class="b">Tu mundo</span>'+
     clTag(tr.length+' personas'+(hot.length? ' · '+hot.length+' ⚔️':''), hot.length?'red':'')+'</div>';
   if(s.threads.length){
     h+='<div class="log">'+s.threads.slice(0,4).map(function(t){
       return '<div><span class="dim2 xs mono">'+t.y+'</span> '+esc(t.t)+'</div>'; }).join('')+'</div>';
   }
-  h+='<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver historias y personas</button></div>';
   return h;
+};
+CL.hubCard('threads', function(){
+  var b=CL.threadsBody();
+  return b? '<div class="card">'+b+'</div>' : '';
 }, 72);
+
+/* E3, decision 2: FUNDIDAS. «Tu peleador» y «Tu mundo» llevaban las dos a
+   clcareer y eran dos tarjetas con dos botones al mismo sitio. Ahora es una
+   tarjeta con las dos mitades y UN boton. Las dos originales siguen
+   registradas y con sus cuerpos intactos: lo unico que cambia es que su sitio
+   es 'off' y las dibuja esta. */
+CL.hubCard('carrera', function(){
+  if(!G || !G.player) return '';
+  var a=safeRun('hub/identity', CL.identityBody, function(){ return ''; }, true) || '';
+  var b=safeRun('hub/threads',  CL.threadsBody,  function(){ return ''; }, true) || '';
+  if(!a && !b) return '';
+  return '<div class="card">'+a+b+
+    '<button class="btn ghost sm" onclick="go(\'clcareer\')">Ver tu carrera, tus historias y tu gente</button></div>';
+}, 6);
 
 /* ---------- pantalla: TU CARRERA ----------------------------------------- */
 CL.screen('clcareer', function(){
@@ -19221,7 +19987,7 @@ CL.hubCard('pilares', function(){
   var prev = CL.gymPanel;
   CL.gymPanel = function(){
     var h = prev();
-    return h + (safeRun('CL/gymRepPanel', function(){
+    return h + CL.seccion('gymRep', 'Tu lugar en el gimnasio', safeRun('CL/gymRepPanel', function(){
       var p=G.player, g=gymById(p.gym); if(!g) return '';
       var rep=CL.gymRep(g.id), L=CL.gymRepLabel(g.id), perks=CL.gymPerks(g.id);
       var others=G.gyms.filter(function(x){ return x.id!==g.id && CL.S().gymRep && CL.S().gymRep[x.id]!==undefined; });
@@ -19792,8 +20558,23 @@ CL.on('week','publico', function(){
 /* Consecuencia 1 — patrocinios: quién te sigue decide qué marcas te llaman. */
 CL.on('week','publicoSpon', function(){
   if(!CL.onceYear('audSpon')) return;
-  var a=CL.aud();
-  (G.spons||[]).forEach(function(s){ s.week=Math.round(clN(s.week,200)*clamp(a.mult,0.7,1.6)); });
+  var a=CL.aud(), m=clamp(a.mult,0.7,1.6);
+  /* ======================================================================
+     EL MULTIPLICADOR DE AUDIENCIA ES UN NIVEL, NO UNA TASA DE CRECIMIENTO
+     ----------------------------------------------------------------------
+     Dice cuanto vale tu publico HOY, no cuanto ha crecido desde el año
+     pasado. Se aplicaba sobre el valor YA reescalado del año anterior, asi
+     que componia sin techo: 500/semana se convertian en 54.976 en diez años
+     con el multiplicador en su tope. Era el motor que deformaba la economia
+     a largo plazo sin que el jugador hiciera nada deliberado.
+     Ahora se reescala sobre el valor BASE del contrato. Los patrocinios ya
+     guardados no traen base: adoptan su valor actual la primera vez, de modo
+     que el ingreso no da ningun salto al cargar una partida antigua.
+     ====================================================================== */
+  (G.spons||[]).forEach(function(s){
+    if(!isFinite(s.base)) s.base = clN(s.week, 200);
+    s.week = Math.round(clN(s.base, 200) * m);
+  });
 }, 57);
 /* Consecuencia 2 — ofertas: el hardcore te consigue peleas buenas, el casual
    te consigue peleas grandes. No es lo mismo y no se compran igual. */
@@ -20698,7 +21479,7 @@ TQ.apply = function(t, grade, q){
   if(f.o.hp<=0){ finishFight('ko','p'); return; }
   if(f.p.hp<=0){ finishFight('ko','o'); return; }
   drain('p',1.2); drain('o',1.2);
-  if(f.ex >= f.exPer || f.clock<=20){ endRound(); }
+  if(roundOver(f)){ endRound(); }
   if(typeof render==='function') render();
 };
 
@@ -22021,7 +22802,9 @@ CL.mod('historia','Cola de eventos, memoria de decisiones y orden narrativo');
    la repetían por su cuenta. */
 
 /* -------- 2. memoria de eventos: nada se repite pisándose los talones ---- */
-var EV_COOL = 26;                        /* semanas de veda tras salir       */
+/* La veda por repetición tiene una sola constante y vive en el selector
+   (EV_VEDA). Este registro sobrevive porque lo escribe el hook event:resolved
+   y lo comprueba un autotest, pero el sorteo ya no lo consulta. */
 CL.evSeen = function(){
   var s=CL.S();
   if(!s.evSeen || typeof s.evSeen!=='object') s.evSeen={};
@@ -22042,50 +22825,9 @@ CL.dramaOk = function(){
   var semanas = (clN(G.year)-clN(p.debutYear, G.year))*52 + clN(G.week) - 1;
   return jugadas>=2 || clN(p.pop)>=24 || semanas>=20;
 };
-(function(){
-  var prev = rollEvent;
-  rollEvent = function(){
-    return safeRun('rollEvent34', function(){
-      var dramaOk = CL.dramaOk();
-      var pool = EVENTS.filter(function(e){
-        try{
-          if(!e.c()) return false;
-          if(e.drama && !dramaOk) return false;      /* nada de circo el mes 1 */
-          if(CL.evAge(e.id) < EV_COOL) return false; /* veda por repetición    */
-          return true;
-        }catch(err){ return false; }
-      });
-      /* Si la veda dejó el mazo vacío se relaja la veda, PERO NUNCA el umbral
-         de drama: caer al motor viejo dejaba entrar por la ventana los eventos
-         de circo mediático que la puerta acababa de rechazar. */
-      if(pool.length < 4){
-        pool = EVENTS.filter(function(e){
-          try{ return e.c() && (!e.drama || dramaOk) && CL.evAge(e.id) >= 8; }catch(err){ return false; }
-        });
-      }
-      if(!pool.length){
-        pool = EVENTS.filter(function(e){
-          try{ return e.c() && (!e.drama || dramaOk); }catch(err){ return false; }
-        });
-      }
-      if(!pool.length) return null;                  /* mejor nada que un evento fuera de lugar */
-      var heat = persMul('heat'), tot=0, ws=[];
-      pool.forEach(function(e){
-        var w=clN(e.w,1);
-        if(e.drama) w *= (0.5 + heat);
-        if(e.calm)  w *= (1.6 - heat*0.6);
-        /* lo visto hace poco pesa menos aunque haya salido de la veda */
-        var age=CL.evAge(e.id);
-        if(age<52) w *= clamp(age/52, 0.25, 1);
-        ws.push(Math.max(0.01,w)); tot+=Math.max(0.01,w);
-      });
-      var r=rnd()*tot, acc=0, sel=pool[0];
-      for(var i=0;i<pool.length;i++){ acc+=ws[i]; if(r<=acc){ sel=pool[i]; break; } }
-      CL.evSeen()[sel.id] = CL.evStamp();
-      return {id:sel.id, txt:sel.x(), opts:sel.o};
-    }, function(){ return prev(); }, true);
-  };
-})();
+/* La escalera de veda y la puerta de drama que este módulo introdujo están
+   hoy en el selector único, que es el que las aplica de verdad. CL.dramaOk()
+   se queda aquí porque es el umbral, y lo consulta ese selector. */
 
 /* -------- 3. las decisiones dejan rastro -------------------------------- */
 CL.evLog = function(){
@@ -22326,7 +23068,7 @@ CL.evSanitize = function(){
            f.result.round = undefined y la pantalla de resultado imprimia
            "round undefined" en toda decision. */
         f.result={winner:r.winner,method:'dec',methodEs:r.methodEs,round:r.round,cards:r.cards,totals:r.totals};
-        UI.screen='fightresult'; render();
+        fightScreen('fightresult');
       }
       return true;
     };
@@ -24525,7 +25267,7 @@ function scrChallenges(){
               ' · recompensa: '+esc(c.r))+
        '</div></div>';
   });
-  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24554,7 +25296,7 @@ function scrAch(){
     });
     h+='</div></div>';
   }
-  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24583,7 +25325,7 @@ function scrRecords(){
     });
     h+='</div>';
   }
-  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+((G&&G.player)?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24619,17 +25361,22 @@ function scrBio(){
   if(b && b.rival) h+='<p class="sm dim" style="margin:8px 0 0">Rival principal: <b>'+esc(b.rival)+'</b> ('+b.rivalN+' peleas).</p>';
   h+='</div>';
 
-  h+='<div class="card"><div class="hdr"><h3 style="margin:0">Línea temporal</h3>'+
-     '<span class="tag">semilla '+META.seedCode()+'</span></div><div class="mtl">';
+  /* E3: plegadas. La ficha publica daba 2,07 pantallas de alto y estas dos
+     son consulta, no lo que se viene a ver. */
+  var linea='';
   tl.forEach(function(e){
-    h+='<div class="mtli"><span class="mty mono">'+e.y+'</span><span class="mtico">'+e.ico+'</span><span class="sm">'+esc(e.t)+'</span></div>';
+    linea+='<div class="mtli"><span class="mty mono">'+e.y+'</span><span class="mtico">'+e.ico+'</span><span class="sm">'+esc(e.t)+'</span></div>';
   });
-  h+='</div></div>';
+  h+=CL.seccion('lineaTemporal', 'Línea temporal · semilla '+META.seedCode(),
+     '<div class="card"><div class="mtl">'+linea+'</div></div>');
 
-  h+='<div class="card"><h3>Compartir</h3><pre class="mshare">'+esc(META.shareText())+'</pre>'+
+  h+=CL.seccion('compartir', 'Compartir',
+     '<div class="card"><pre class="mshare">'+esc(META.shareText())+'</pre>'+
      '<div class="grid g2"><button class="btn pri" onclick="META.share()">Compartir carrera</button>'+
-     '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>';
+     '<button class="btn" onclick="META.copy(META.shareText())">Copiar texto</button></div></div>');
 
+  /* E3: las tarjetas que el mapa manda a la ficha publica (CL.CARD_HOME). */
+  if(typeof CL!=='undefined' && CL.renderCards) h+=CL.renderCards('bio', true);
   h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';
   return h;
 }
@@ -24702,7 +25449,7 @@ function scrRace(){
 
   h+='<div class="card"><h3 class="dim">¿Y el multijugador de verdad?</h3>'+
      '<pre class="mshare xs">'+esc(META.NET_CONTRACT)+'</pre></div>';
-  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'UI.screen=\'title\';render()')+'">Volver</button>';
+  h+='<button class="btn ghost" onclick="'+(inGame?'go(\'hub\')':'go(\'title\')')+'">Volver</button>';
   return h;
 }
 
@@ -24975,7 +25722,11 @@ var RES = (function(){
   function betweenRounds(side){
     if(!G.fight) return;
     var f=side==='p'?G.player:F(G.fight.opp), s=G.fight[side], r=normalize(f);
-    var rec=clamp(.7 + r.recovery/95, .9, 1.75);
+    /* H-011: el laboratorio de recuperacion prometia "mejora la recuperacion
+       entre rounds" y su flag no se leia en ningun sitio. Entra aqui, que es
+       la ruta viva — endRound delega en esta funcion y solo cae a su propio
+       calculo si RES no existe. */
+    var rec=clamp(.7 + r.recovery/95, .9, 1.75) * (side==='p' && G.flags && G.flags.recoveryLab ? 1.25 : 1);
     var damagePenalty=clamp((r.accum-45)/120,0,.35);
     s.stam=clamp(s.stam + 11*rec,0,100);
     s.wobble=clamp(safeNum(s.wobble,0)-.18*rec,0,1);
@@ -25879,16 +26630,10 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
 
     return true;
   };
-  var _rollEventFinal=rollEvent;
-  rollEvent=function(){
-    if(!G||!G.player||G.player.retired) return null;
-    for(var tries=0;tries<12;tries++){
-      var base=_rollEventFinal();
-      if(!base) return null;
-      if(eventContextOK(base.id)) return base;
-    }
-    return null;
-  };
+  /* Este hueco lo rellena eventContextOK, arriba. La capa que reintentaba el
+     sorteo hasta doce veces esperando que el contexto cuadrara ya no hace
+     falta: el selector filtra por contexto antes de sortear, así que no puede
+     elegir un evento incoherente ni por casualidad. */
 
   CL.worldPressure=function(){
     var p=G.player,s=CL.S(); if(!p||p.retired||G.pending.length) return;
@@ -25988,7 +26733,23 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     G.simRunning=true;
     for(var i=0;i<weeks;i++){
       if(p.retired){sum.stop='retired';break;}
-      if(!p.inj){Object.keys(w).forEach(function(k){var r=applyTrain(k,w[k]*lm*1.25,0);r.gain.forEach(function(g){sum.gains[g[0]]=(sum.gains[g[0]]||0)+g[1];});if(r.inj)sum.stop='inj';});}
+      if(!p.inj){
+        /* El bloque entrena tres disciplinas por semana, pero el campamento
+           avanza UNA semana. La disciplina de mayor peso pasa por campWeek(),
+           que lleva la contabilidad del campamento (c.i, sharp, corte de peso,
+           diario), y el resto por applyTrain().
+           Antes TODAS iban por applyTrain sin mirar G.camp, asi que el bloque
+           consumia semanas de campamento sin aplicarlo: c.i, sharp y el corte
+           de peso se quedaban clavados mientras el reloj y nextFight.weeks si
+           avanzaban. El jugador perdia preparacion de forma invisible. */
+        var claves=Object.keys(w);
+        var principal=(G.camp && claves.length)? claves.reduce(function(a,b){ return w[b]>w[a]? b:a; }, claves[0]) : null;
+        claves.forEach(function(k){
+          var r=(k===principal)? campWeek(k,w[k]*lm*1.25,0) : applyTrain(k,w[k]*lm*1.25,0);
+          r.gain.forEach(function(g){sum.gains[g[0]]=(sum.gains[g[0]]||0)+g[1];});
+          if(r.inj)sum.stop='inj';
+        });
+      }
       else p.fatigue=clamp(p.fatigue-10,0,100);
       if(focusGet().load!=='dura') p.fatigue=clamp(p.fatigue-6,0,100);
       var news=advanceWeek();sum.weeks++;
@@ -26008,7 +26769,16 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
         }
       }
       if(sum.stop==='inj'){sum.left=weeks-i-1;break;}
-      if(!G.nextFight&&!p.inj){makeOffers();var importantOffer=G.offers.filter(function(o){return o.type==='fight'&&(o.title||o.shortNotice||o.clTag==='revancha');});if(importantOffer.length&&chance(.35)){sum.stop='offers';sum.left=weeks-i-1;break;}}
+      if(!G.nextFight&&!p.inj){
+        /* makeOffers() hace G.offers=[] antes de repoblar, asi que llamarlo
+           cada semana del bloque borraba las ofertas que el jugador estuviera
+           evaluando. Solo se generan si no hay ninguna de pelea sobre la mesa,
+           que es lo que hace finishWeek (con probabilidad, ademas). */
+        var hayOfertas=G.offers.some(function(o){return o.type==='fight';});
+        if(!hayOfertas) makeOffers();
+        var importantOffer=G.offers.filter(function(o){return o.type==='fight'&&(o.title||o.shortNotice||o.clTag==='revancha');});
+        if(importantOffer.length&&chance(.35)){sum.stop='offers';sum.left=weeks-i-1;break;}
+      }
       if(G.nextFight&&G.nextFight.weeks<=8){sum.stop='camp';sum.left=weeks-i-1;break;}
     }
     G.simRunning=false;sum.money=G.cash-sum.money0;G.period=sum;render();
@@ -26117,7 +26887,7 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     }
     rebuildRosters();
     if(typeof window.CAGE_AUDIT!=='undefined'&&window.CAGE_AUDIT) window.CAGE_AUDIT.normalize();
-    UI.screen='legacy';UI.sub=null;saveGame(true);render();return true;
+    saveGame(true); go('legacy'); return true;
   };
   function buildLegacySnapshot(p){
     var fights=clN(p.rec.w)+clN(p.rec.l)+clN(p.rec.d);return {name:p.name,nick:p.nick||'',record:recStr(p),wins:p.rec.w,losses:p.rec.l,draws:p.rec.d,ko:p.rec.ko,sub:p.rec.sub,dec:p.rec.dec,koLoss:p.rec.kol,subLoss:p.rec.subl,decLoss:p.rec.decl,titles:p.titles,defenses:p.defenses,bestRank:p.bestRank,streakBest:safeInt(p.bestStreak,0),fights:fights,age:ageOf(p),startYear:G.startYear,endYear:G.year,years:Math.max(0,G.year-G.startYear),cash:safeNum(G.cash,0),earned:safeNum(G.careerEarn,0),pop:safeNum(p.pop,0),div:p.div,divisionChanged:!!p.divAdapt,career:JSON.parse(JSON.stringify(p.career||[])),rivalries:((p.rel&&p.rel.rivalry)||0)};
@@ -26344,17 +27114,65 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     if(p.pop<=20)return 'unknown';
     return 'respected';
   }
-  function eventAllowed(e){
+  /* ---------- el filtro de eventos, con sus dos niveles de exigencia -------
+     El selector sortea primero con el nivel estricto y, si le quedan menos de
+     cuatro candidatos, repite con el relajado. Los dos niveles comparten tres
+     reglas duras —carrera viva, coherencia de contexto y puerta de drama— que
+     hasta ahora estaban escritas por separado, una vez en esta función y otra
+     a mano dentro del selector. Por eso la puerta de drama (G-002) hubo que
+     arreglarla dos veces: tras corregir el nivel estricto se seguían colando
+     eventos de circo por el relajado. Ahora las tres viven en eventCore y el
+     nivel sólo elige cuánto afloja encima.
+     Lo que el nivel relajado afloja, y nada más:
+       · la veda de repetición pasa de EV_VEDA a EV_VEDA_CORTA;
+       · deja de cortar por categoría repetida.
+     EL ORDEN DE LAS COMPROBACIONES SE CONSERVA TAL CUAL ESTABA en cada nivel.
+     No es cosmético: tres condiciones del banco hacen inicialización perezosa
+     —x1_parking crea G.flags.seen, sg_callout y sg_invcamp crean su registro
+     de saga—, así que adelantar una comprobación barata delante de e.c() se
+     salta esa inicialización y cambia el estado que se guarda. Medido: llamar
+     a las 66 condiciones mueve la huella del estado en la primera pasada y ya
+     no en la segunda. */
+  var EV_VEDA = 26;        /* semanas de veda tras salir, nivel estricto */
+  var EV_VEDA_CORTA = 8;   /* la veda que deja en pie el nivel relajado  */
+  function eventCore(e){
     if(!G||!G.player||G.player.retired)return false;
-    if(recentEvent(e.id,26))return false;
     /* FASE 25: el filtro de contexto entra acá, que es el camino que el
        selector recorre de verdad. Antes sólo se consultaba en un respaldo. */
     if(!eventContextAllows(e.id))return false;
+    /* La puerta de drama: un novato en su tercera semana de campamento, sin
+       una sola pelea disputada y con popularidad 8, podía recibir un evento de
+       circo. Medido en 10 carreras x 120 semanas: 4 de 328 eventos del banco
+       eran drama con la puerta cerrada, todos sg_counterplan. */
+    if(e.drama && typeof CL!=='undefined' && CL.dramaOk && !CL.dramaOk())return false;
+    return true;
+  }
+  function eventAllowed(e){
+    if(!G||!G.player||G.player.retired)return false;
+    if(recentEvent(e.id,EV_VEDA))return false;
+    if(!eventCore(e))return false;
     var cat=eventCategory(e),s=story(),last=s.recentCats[0];
     if(last===cat&&s.recentCats.length>=2)return false;
     if(e.c&&!e.c())return false;
     return true;
   }
+  function eventAllowedRelajado(e){
+    if(!eventCore(e))return false;
+    if(e.c&&!e.c())return false;
+    return !recentEvent(e.id,EV_VEDA_CORTA);
+  }
+  /* Ultimo recurso: se cae la veda entera, nunca la coherencia. Es lo que
+     hacian las capas viejas del selector cuando se llegaba a ellas. */
+  function eventSinVeda(e){
+    if(!eventCore(e))return false;
+    return !(e.c&&!e.c());
+  }
+  /* Que nivel resolvio el ultimo sorteo. No vive en G: no se guarda ni viaja
+     en el save, existe para que la politica sea medible desde fuera sin tener
+     que deducirla del historial. Medido con esto: 328 de 328 sorteos de juego
+     real salen por los niveles 1 y 2. */
+  var EV_NIVEL = 0;
+  CL.evNivel = function(){ return EV_NIVEL; };
   function eventWeight(e){
     var p=G.player,s=story(),cat=eventCategory(e),w=Math.max(.05,num(e.w,1));
     if(s.recentCats[0]===cat)w*=.35;
@@ -26419,22 +27237,59 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     if(G.player.retired){G.nextFight=null;G.camp=null;G.fight=null;G.offers=[];G.pending=[];}
   }, 30);
 
-  /* ---------- selector inteligente de eventos ---------- */
-  var oldRoll=window.rollEvent;
-  window.rollEvent=function(){
+  /* ---------- EL SELECTOR DE EVENTOS — DEFINICIÓN ÚNICA ----------
+     Esto eran cuatro capas encadenadas: una base con peso por personalidad,
+     una con su propia memoria de repeticiones y su propia puerta de drama, una
+     que reintentaba el sorteo hasta doce veces esperando que el contexto
+     cuadrara, y ésta. Cada una construía por su cuenta el objeto que se
+     encola, y de ahí salieron dos bugs que hubo que arreglar en varios sitios:
+     la marca `important` (G-001, tres constructores) y la puerta de drama
+     (G-002, dos filtros).
+     Medido antes de fundirlas: en 8 carreras x 150 semanas, 328 de 328 sorteos
+     salieron por esta capa y ninguno por las de abajo, que sólo se alcanzaban
+     con el mazo vacío. Y lo que hacían cuando se las alcanzaba era devolver un
+     evento que cumplía contexto + drama + c() saltándose la veda — es decir,
+     exactamente el nivel 3 de aquí abajo. La política entera cabe en tres
+     líneas y ahora se lee de una vez:
+
+       nivel 1   veda EV_VEDA + contexto + drama + categoría + c()
+       nivel 2   veda EV_VEDA_CORTA + contexto + drama + c()   (si quedan <4)
+       nivel 3   sin veda + contexto + drama + c()             (si no queda ninguno)
+
+     Dos diferencias respecto de las capas viejas, ambas dentro del nivel 3,
+     que es el camino que el juego no recorre:
+       · pesa con el mismo eventWeight que los otros dos niveles, en vez del
+         peso por personalidad de la capa base;
+       · si una condición del banco lanza, ahora propaga en vez de contarse
+         como "no cumple". Era un try/catch que tapaba un error funcional, y el
+         camino vivo nunca lo tuvo.
+     El nivel 3 también deja rastro en el historial, como los otros dos: antes
+     el respaldo sorteaba sin registrar nada. */
+  rollEvent=function(){
+    EV_NIVEL = 0;
     if(!G||!G.player||G.player.retired)return null;
-    var s=story(),pool=EVENTS.filter(eventAllowed);
-    /* El respaldo relaja el enfriamiento, NO la coherencia: un campeón no puede
-       recibir un evento de aspirante ni siquiera porque falten candidatos. */
-    if(pool.length<4)pool=EVENTS.filter(function(e){if(!G||!G.player||G.player.retired)return false;if(!eventContextAllows(e.id))return false;if(e.c&&!e.c())return false;return !recentEvent(e.id,8);});
-    if(!pool.length)return oldRoll?oldRoll():null;
+    /* filter() pasa (elemento, indice, array): los predicados se llaman con un
+       solo argumento a propósito, para que el indice no se cuele como opción. */
+    var s=story(),pool=EVENTS.filter(function(e){return eventAllowed(e);});
+    EV_NIVEL = 1;
+    /* Los niveles 2 y 3 aflojan el enfriamiento, NO la coherencia: un campeón
+       no puede recibir un evento de aspirante ni porque falten candidatos. */
+    if(pool.length<4){ pool=EVENTS.filter(function(e){return eventAllowedRelajado(e);}); EV_NIVEL = 2; }
+    if(!pool.length){ pool=EVENTS.filter(function(e){return eventSinVeda(e);}); EV_NIVEL = 3; }
+    if(!pool.length){ EV_NIVEL = 0; return null; }
     var total=0,weights=pool.map(function(e){var w=eventWeight(e);total+=w;return w;});
     var r=rnd()*total,acc=0,sel=pool[0];
     for(var i=0;i<pool.length;i++){acc+=weights[i];if(r<=acc){sel=pool[i];break;}}
     s.eventHistory.unshift({id:sel.id,category:eventCategory(sel),at:stamp(),y:G.year,w:G.week});
     if(s.eventHistory.length>100)s.eventHistory.pop();
     s.recentCats.unshift(eventCategory(sel));if(s.recentCats.length>5)s.recentCats.pop();
-    var out={id:sel.id,txt:sel.x(),opts:sel.o};
+    /* `important` viaja con el evento. Al construir el objeto encolado se
+       dejaba caer, asi que TODOS los eventos del banco llegaban a G.pending con
+       important===undefined. Consecuencias: advancePeriod descartaba en
+       silencio hasta los 10 marcados como decisivos, el boton de avanzar hasta
+       el proximo evento importante solo paraba ante CL.ask, y el hook
+       event:pre/simulacion, que compara con === false, nunca se cumplia. */
+    var out={id:sel.id,txt:sel.x(),opts:sel.o,important:sel.important};
     if(sel.id==='story_rival_escalation'&&G.tmpOpp)remember('event_target',{event:sel.id,person:G.tmpOpp});
     return out;
   };
@@ -27249,18 +28104,25 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
   }
   window.storyReact=storyReact;
   function storyScreen(){
-    var s=story(),p=G.player,h='<div class="topbar"><div class="r1"><h2>📱 Mundo y memoria</h2><span class="sm dim">'+careerState()+' · '+CAT_NAMES.MEDIA+'/'+CAT_NAMES.SOCIAL+'</span></div></div>';
-    h+='<div class="card"><div class="hdr"><h3>Estado narrativo</h3><span class="tag">'+socialState()+'</span></div><p class="sm dim">'+esc(fname(p))+' está en una etapa de <b>'+careerState()+'</b>. Las decisiones importantes quedan registradas y pueden volver a aparecer con otras consecuencias.</p></div>';
+    var s=story(),p=G.player,h='<div class="topbar"><div class="r1"><h2>📱 Mundo y memoria</h2><span class="sm dim">'+careerState()+' · '+CAT_NAMES.media+'/'+CAT_NAMES.social+'</span></div></div>';   /* E5-2: eran .MEDIA/.SOCIAL y la tabla tiene las claves en minuscula: la cabecera decia «undefined/undefined» en cada visita */
+    h+=CL.seccion('estadoNarr', 'Estado narrativo',
+      '<div class="card"><p class="sm dim"><span class="tag">'+socialState()+'</span> '+esc(fname(p))+' está en una etapa de <b>'+careerState()+'</b>. Las decisiones importantes quedan registradas y pueden volver a aparecer con otras consecuencias.</p></div>');
     h+=socMeterHTML();
     if(G.socOut){
       h+='<div class="card hi"><p class="sm">'+esc(G.socOut.t)+'</p>'+
          '<button class="btn ghost" onclick="G.socOut=null;render()">Entendido</button></div>';
     }
     if(s.feed.length){
-      h+='<div class="card"><h3>Feed</h3>';
-      s.feed.slice(0,18).forEach(function(x,i){
+      /* E3b. Medido: el feed era 5.491 px de los 6.367 de esta pantalla —el
+         86 %— con 18 publicaciones y 55 botones. Lo que pide accion son las
+         que todavia no respondiste; el resto es historial.
+         Arriba van las PENDIENTES (hasta 5) y el resto se pliega. Ninguna
+         publicacion desaparece y ninguna reaccion se pierde: la red de
+         inventario de story/gym lo exige. */
+      var post = function(x, i){
+        var hp='';
         var cls = x.type==='media'?'rival' : (x.type==='rival'||x.type==='opp'?'rival' : (x.type==='mate'||x.type==='prospect'?'partner':''));
-        h+='<div class="soc-card '+cls+'"><div class="b">'+esc(x.author)+
+        hp+='<div class="soc-card '+cls+'"><div class="b">'+esc(x.author)+
            (x.type&&x.type!=='player'? ' <span class="tag">'+esc(FEED_TAG[x.type]||x.type)+'</span>':'')+'</div>'+
            '<div class="sm">'+esc(x.text)+'</div>'+
            '<div class="xs dim2">'+x.y+' · semana '+x.w+'</div>';
@@ -27268,31 +28130,53 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
         var legacy = !opts && (x.type==='media'||x.type==='fan'||x.type==='hardcore');
         if(x.type!=='player' && (opts||legacy)){
           if(x.reacted){
-            h+='<p class="xs jade" style="margin:7px 0 0">✓ Ya respondiste: '+esc(x.reacted.t||'—')+'</p>';
+            hp+='<p class="xs jade" style="margin:7px 0 0">✓ Ya respondiste: '+esc(x.reacted.t||'—')+'</p>';
           } else {
             var ref=x.uid? ("'"+x.uid+"'") : String(i);
             var why=socWhyBlocked('post:'+(x.uid||x.id||i));
             if(why){
-              h+='<p class="xs dim2" style="margin:7px 0 0">⛔ '+esc(why)+'</p>';
+              hp+='<p class="xs dim2" style="margin:7px 0 0">⛔ '+esc(why)+'</p>';
             } else if(opts){
-              h+='<div style="margin-top:7px">';
+              hp+='<div style="margin-top:7px">';
               opts.forEach(function(o,oi){
-                h+='<button class="btn" onclick="storyReact('+ref+','+oi+')">'+esc(o.t)+'</button>';
+                hp+='<button class="btn" onclick="storyReact('+ref+','+oi+')">'+esc(o.t)+'</button>';
               });
-              h+='</div>';
+              hp+='</div>';
             } else {
-              h+='<div class="grid g3" style="margin-top:7px">'+
+              hp+='<div class="grid g3" style="margin-top:7px">'+
                  '<button class="btn" onclick="storyReact('+ref+',0)">Responder</button>'+
                  '<button class="btn" onclick="storyReact('+ref+',1)">Apoyar</button>'+
                  '<button class="btn" onclick="storyReact('+ref+',2)">Ignorar</button></div>';
             }
           }
         }
-        h+='</div>';
+        hp+='</div>';
+        return hp;
+      };
+      var lista = s.feed.slice(0,18);
+      var pend = [], viejos = [];
+      lista.forEach(function(x,i){
+        var accionable = x.type!=='player' && !x.reacted &&
+          ((Array.isArray(x.opts)&&x.opts.length) || x.type==='media' || x.type==='fan' || x.type==='hardcore');
+        /* tres: con cinco, esta pantalla seguia en 3,45 pantallas de alto.
+           Cada publicacion con opciones mide ~300 px. */
+        /* dos: con tres seguia en 2,39 pantallas. Cada publicacion con
+           opciones mide unos 300 px y el criterio es <= 2 pantallas. */
+        (accionable && pend.length<2 ? pend : viejos).push([x,i]);
       });
-      h+='</div>';
+      if(pend.length){
+        h+='<div class="card"><h3>Te están hablando</h3>';
+        pend.forEach(function(par){ h+=post(par[0], par[1]); });
+        h+='</div>';
+      }
+      if(viejos.length){
+        var vh='<div class="card">';
+        viejos.forEach(function(par){ vh+=post(par[0], par[1]); });
+        h+=CL.seccion('feedViejo', 'Resto del feed · '+viejos.length, vh+'</div>');
+      }
     }
-    h+='<div class="card"><h3>Memoria de carrera</h3><div class="log">'+s.memories.slice(0,20).map(function(m){return '<div><span class="dim2 xs">'+m.y+' S'+m.w+'</span> '+esc(m.type)+(m.choice?' · '+esc(m.choice):'')+(m.identity?' · '+esc(m.identity):'')+'</div>';}).join('')+'</div></div>';
+    h+=CL.seccion('memoriaCarrera', 'Memoria de carrera',
+      '<div class="card"><div class="log"><div class="log">'+s.memories.slice(0,20).map(function(m){return '<div><span class="dim2 xs">'+m.y+' S'+m.w+'</span> '+esc(m.type)+(m.choice?' · '+esc(m.choice):'')+(m.identity?' · '+esc(m.identity):'')+'</div>';}).join('')+'</div></div>');
     h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';return h;
   }
   /* 'story' era la tercera vía de renderizado: interceptaba render() antes de
@@ -27477,7 +28361,7 @@ TESTS.restore = function(snap){
   if(!snap) return;
   if(snap.tx===null){ G=null; }
   else TX.restore(snap.tx);
-  try{ UI = JSON.parse(snap.ui); }catch(e){ UI = {screen:'title', sub:null, tmp:{}}; }
+  try{ UI = JSON.parse(snap.ui); }catch(e){ UI = {screen:'title', sub:null, tmp:{}, sec:{}}; }   /* E5-4: sin `sec` el reset dejaba UI con otra forma que la declarada */
 };
 /* Ejecuta fn() sobre una copia. Durante la ejecución:
      · saveGame/autosave quedan neutralizados (ningún test escribe en disco);
@@ -27545,7 +28429,7 @@ TESTS.sandbox = function(fn){
     if(ls){
       ls.setItem = setReal; ls.removeItem = remReal;
       Object.keys(tocadas).forEach(function(k){
-        try{ if(tocadas[k]===null || tocadas[k]===undefined) remReal.call(ls,k); else setReal.call(ls,k,tocadas[k]); }catch(e){}
+        try{ if(tocadas[k]===null || tocadas[k]===undefined) remReal.call(ls,k); else setReal.call(ls,k,tocadas[k]); }catch(e){ /* reponer una clave tras la prueba de cuota puede fallar por la misma cuota; no hay nada mejor que hacer */ }
       });
     }
     /* LEG_CACHE es un var global: se repone por el objeto window para que la
@@ -28100,12 +28984,13 @@ var DEV = {
      apagado, así que un jugador normal no se topa con herramientas internas. */
   initFromUrl: function(){
     try{
-      var q = (typeof location!=='undefined' && location) ? (String(location.search||'')+String(location.hash||'')) : '';
+      /* E5-1: esta linea estaba DOS VECES, identica. La segunda era una
+         sentencia muerta de un copiar-pegar. */
       var q = (typeof location!=='undefined' && location) ? (String(location.search||'')+String(location.hash||'')) : '';
       /* Sin \\b: se comprueba el final del parámetro a mano, para que
          "?developer=1" o "?dev=10" no activen el modo por accidente. */
       if(/(^|[?&#])dev=1($|[&#])/.test(q) || /(^|[?&#])dev($|[&#])/.test(q)) DEV.set(true);
-    }catch(e){}
+    }catch(e){ /* leer la direccion puede lanzar en contextos raros; sin ?dev=1 el modo queda apagado, que es lo correcto */ }
     return DEV.on;
   },
   run: function(weeks){

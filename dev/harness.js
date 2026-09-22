@@ -167,17 +167,21 @@ function makeStub(opts){
 /* ---------- carga del juego ---------- */
 /** ids declarados en el HTML: el stub los crea para imitar al navegador. */
 let _idsCache = null;
-function idsDelDocumento(){
-  if(_idsCache) return _idsCache;
-  const src = fs.readFileSync(GAME, 'utf8');
+function idsDelDocumento(archivo){
+  if(!archivo && _idsCache) return _idsCache;
+  const src = fs.readFileSync(archivo || GAME, 'utf8');
   const html = src.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   const ids = new Set();
   for(const m of html.matchAll(/\bid\s*=\s*["']([^"']+)["']/g)) ids.add(m[1]);
-  return (_idsCache = [...ids]);
+  const lista = [...ids];
+  if(!archivo) _idsCache = lista;
+  return lista;
 }
 
-function extractJS(){
-  const src = fs.readFileSync(GAME, 'utf8');
+/** Permite cargar OTRA version del archivo (p. ej. la de un commit anterior)
+    para comparar antes/despues sin tocar el arbol de trabajo. */
+function extractJS(archivo){
+  const src = fs.readFileSync(archivo || GAME, 'utf8');
   const blocks = [...src.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]);
   if(!blocks.length) throw new Error('el archivo no tiene bloques <script>');
   return blocks.join('\n;\n');
@@ -190,7 +194,7 @@ function extractJS(){
 function boot(o){
   o = o || {};
   const seed = (o.seed === undefined) ? 1 : o.seed;
-  const stub = makeStub({ quota: o.quota, idsDelDocumento: idsDelDocumento() });
+  const stub = makeStub({ quota: o.quota, idsDelDocumento: idsDelDocumento(o.file) });
   const rng = mulberry32(seed);
   const errores = [];
 
@@ -227,7 +231,7 @@ function boot(o){
   stub.document.defaultView = sandbox;
 
   const context = vm.createContext(sandbox);
-  const code = extractJS();
+  const code = extractJS(o.file);
   try {
     new vm.Script(code, { filename: 'cage-legacy.js' }).runInContext(context);
   } catch(e){

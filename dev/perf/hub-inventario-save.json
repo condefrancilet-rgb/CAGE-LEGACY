@@ -1,0 +1,273 @@
+{
+ "bloques": [
+  {
+   "i": 0,
+   "tag": "div",
+   "clase": "topbar",
+   "titulo": "Mateo Ferrari",
+   "altoPx": 61,
+   "nodos": 7,
+   "bytes": 218,
+   "botones": []
+  },
+  {
+   "i": 1,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "7-4 (1 KO · 0 SUB · 6 DEC)",
+   "altoPx": 134,
+   "nodos": 26,
+   "bytes": 723,
+   "botones": []
+  },
+  {
+   "i": 2,
+   "tag": "div",
+   "clase": "card hi",
+   "titulo": "PRÓXIMA PELEASEMANA DE PELEA",
+   "altoPx": 191,
+   "nodos": 11,
+   "bytes": 439,
+   "botones": [
+    {
+     "txt": "Ir al pesaje",
+     "onclick": "weighStart()",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 3,
+   "tag": "button",
+   "clase": "btn go",
+   "titulo": "",
+   "altoPx": 46,
+   "nodos": 0,
+   "bytes": 28,
+   "botones": []
+  },
+  {
+   "i": 4,
+   "tag": "div",
+   "clase": "card hi",
+   "titulo": "Avanzar",
+   "altoPx": 140,
+   "nodos": 3,
+   "bytes": 150,
+   "botones": [
+    {
+     "txt": "⏩ Hasta el próximo evento importantehasta 8 se",
+     "onclick": "autoAdvanceToImportant(8)",
+     "alto": 80
+    }
+   ]
+  },
+  {
+   "i": 5,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "El mundoVer todo",
+   "altoPx": 151,
+   "nodos": 6,
+   "bytes": 282,
+   "botones": [
+    {
+     "txt": "Ver todo",
+     "onclick": "go('history','news')",
+     "alto": 46
+    }
+   ]
+  },
+  {
+   "i": 6,
+   "tag": "div",
+   "clase": "card",
+   "titulo": "Vida y prensa5",
+   "altoPx": 386,
+   "nodos": 14,
+   "bytes": 695,
+   "botones": [
+    {
+     "txt": "🗓️ Organizar la semanaEquilibrá carga y desca",
+     "onclick": "fameStart('weekplan')",
+     "alto": 95
+    },
+    {
+     "txt": "🏆 Camino al títuloCuatro pruebas seguidas",
+     "onclick": "fameStart('titlerun')",
+     "alto": 95
+    },
+    {
+     "txt": "🎵 Preparar la entradaRitmo · sube el hype",
+     "onclick": "fameStart('walkout')",
+     "alto": 95
+    },
+    {
+     "txt": "📸 Sesión de fotosPopularidad y dinero",
+     "onclick": "fameStart('photo')",
+     "alto": 95
+    },
+    {
+     "txt": "🎬 Highlight reelEditá tu mejor video",
+     "onclick": "fameStart('reel')",
+     "alto": 95
+    }
+   ]
+  }
+ ],
+ "tarjetas": [
+  {
+   "id": "accesos",
+   "orden": 4,
+   "bytes": 632,
+   "dibuja": true
+  },
+  {
+   "id": "identity",
+   "orden": 6,
+   "bytes": 480,
+   "dibuja": true
+  },
+  {
+   "id": "finanzas",
+   "orden": 6,
+   "bytes": 409,
+   "dibuja": true
+  },
+  {
+   "id": "ufc",
+   "orden": 8,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "peso",
+   "orden": 10,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "decisiones",
+   "orden": 12,
+   "bytes": 1447,
+   "dibuja": true
+  },
+  {
+   "id": "deuda",
+   "orden": 12,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "tecnicas",
+   "orden": 12,
+   "bytes": 337,
+   "dibuja": true
+  },
+  {
+   "id": "meta",
+   "orden": 12,
+   "bytes": 357,
+   "dibuja": true
+  },
+  {
+   "id": "pilares",
+   "orden": 14,
+   "bytes": 831,
+   "dibuja": true
+  },
+  {
+   "id": "auto_advance",
+   "orden": 18,
+   "bytes": 436,
+   "dibuja": true
+  },
+  {
+   "id": "circulo",
+   "orden": 30,
+   "bytes": 364,
+   "dibuja": true
+  },
+  {
+   "id": "sagas",
+   "orden": 34,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "publico",
+   "orden": 36,
+   "bytes": 972,
+   "dibuja": true
+  },
+  {
+   "id": "observado",
+   "orden": 38,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "vida",
+   "orden": 40,
+   "bytes": 719,
+   "dibuja": true
+  },
+  {
+   "id": "historia",
+   "orden": 40,
+   "bytes": 357,
+   "dibuja": true
+  },
+  {
+   "id": "content_team",
+   "orden": 42,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "inversion",
+   "orden": 44,
+   "bytes": 234,
+   "dibuja": true
+  },
+  {
+   "id": "casino",
+   "orden": 46,
+   "bytes": 275,
+   "dibuja": true
+  },
+  {
+   "id": "instalaciones",
+   "orden": 48,
+   "bytes": 0,
+   "dibuja": false
+  },
+  {
+   "id": "threads",
+   "orden": 72,
+   "bytes": 636,
+   "dibuja": true
+  },
+  {
+   "id": "legado",
+   "orden": 80,
+   "bytes": 555,
+   "dibuja": true
+  }
+ ],
+ "total": 1294,
+ "semanaJuego": "2018/47",
+ "record": "7-4",
+ "accionesUnicas": [
+  "autoAdvanceToImportant(8)",
+  "fameStart('photo')",
+  "fameStart('reel')",
+  "fameStart('titlerun')",
+  "fameStart('walkout')",
+  "fameStart('weekplan')",
+  "go('history','news')",
+  "weighStart()"
+ ],
+ "semanas": 12,
+ "etiqueta": "save"
+}

@@ -1,0 +1,38 @@
+{
+ "cuando": "2026-09-21T05:54:58.871Z",
+ "archivo": "59af2194c9c5f03c8447f0a8d4e69689",
+ "semillas": [
+  {
+   "seed": 700,
+   "meta": 8000
+  },
+  {
+   "seed": 729,
+   "meta": 8173
+  },
+  {
+   "seed": 758,
+   "meta": 8346
+  }
+ ],
+ "advanceWeek": {
+  "n": 900,
+  "media": 24.04,
+  "p95": 30.4,
+  "max": 132.82
+ },
+ "save": {
+  "ms_media": 45.48,
+  "load_ms_media": 147.24,
+  "kb_s50": 729.4,
+  "kb_s150": 677.7,
+  "kb_s300": 750.3
+ },
+ "hub": {
+  "render_ms_media": 0.008,
+  "render_ms_p95": 0.012,
+  "html_bytes": 771,
+  "etiquetas": 14,
+  "botones": 3
+ }
+}

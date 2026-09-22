@@ -87,10 +87,23 @@ suite('save/load', () => {
     ok(h.ctx.SAVE_VERSION >= 4, 'SAVE_VERSION bajo lo esperado: ' + h.ctx.SAVE_VERSION);
   });
 
-  /* --- I3: todas las fixtures cargan --- */
-  const archivos = fs.existsSync(FIXTURES)
+  /* --- I3: todas las fixtures cargan ---
+     dev/fixtures/*.json son SAVES y nada mas: se llaman NN-nombre.json y se
+     generan con dev/make-baseline.js. Cualquier otro .json suelto ahi se
+     intentaba cargar como save y fallaba con un "loadGame fallo" que no
+     explicaba nada -- me paso al dejar el fixture del inventario de E3. Los
+     fixtures que no son saves van en subcarpetas (dev/fixtures/e3/...).      */
+  const sueltos = fs.existsSync(FIXTURES)
     ? fs.readdirSync(FIXTURES).filter(f => f.endsWith('.json') && f !== 'INDEX.json').sort()
     : [];
+  const archivos = sueltos.filter(f => /^\d\d-/.test(f));
+
+  test('en dev/fixtures/ sólo hay saves (I3)', () => {
+    const intrusos = sueltos.filter(f => !/^\d\d-/.test(f));
+    ok(intrusos.length === 0,
+       'hay .json que no son saves sueltos en dev/fixtures/: ' + intrusos.join(', ') +
+       '\n      los fixtures que no son saves van en una subcarpeta');
+  });
 
   if(!archivos.length){
     test('hay fixtures de save (I3)', () => {

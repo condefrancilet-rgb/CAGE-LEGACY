@@ -1,0 +1,518 @@
+[
+ {
+  "alto": 898,
+  "vh": 640,
+  "navAlto": 57,
+  "fold": 583,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "Ofertas sobre la mesa",
+    "top": 73,
+    "bottom": 188,
+    "px": 115,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 198,
+    "bottom": 454,
+    "px": 256,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 464,
+    "bottom": 598,
+    "px": 134,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 608,
+    "bottom": 778,
+    "px": 171,
+    "visible": false
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 198,
+   "bottom": 454,
+   "px": 256,
+   "visible": true
+  },
+  "avisos": [],
+  "strip": null,
+  "tactiles": 12,
+  "chicos": [],
+  "desborde": false,
+  "estado": "normal",
+  "vp": "360x640",
+  "pantallas": 1.4
+ },
+ {
+  "alto": 881,
+  "vh": 844,
+  "navAlto": 57,
+  "fold": 787,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "Ofertas sobre la mesa",
+    "top": 73,
+    "bottom": 188,
+    "px": 115,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 198,
+    "bottom": 454,
+    "px": 256,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 464,
+    "bottom": 580,
+    "px": 116,
+    "visible": true
+   },
+   {
+    "t": "El mundo",
+    "top": 590,
+    "bottom": 761,
+    "px": 171,
+    "visible": true
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 198,
+   "bottom": 454,
+   "px": 256,
+   "visible": true
+  },
+  "avisos": [],
+  "strip": null,
+  "tactiles": 12,
+  "chicos": [],
+  "desborde": false,
+  "estado": "normal",
+  "vp": "390x844",
+  "pantallas": 1.04
+ },
+ {
+  "alto": 915,
+  "vh": 915,
+  "navAlto": 57,
+  "fold": 858,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "Ofertas sobre la mesa",
+    "top": 73,
+    "bottom": 188,
+    "px": 115,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 198,
+    "bottom": 454,
+    "px": 256,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 464,
+    "bottom": 580,
+    "px": 116,
+    "visible": true
+   },
+   {
+    "t": "El mundo",
+    "top": 590,
+    "bottom": 741,
+    "px": 151,
+    "visible": true
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 198,
+   "bottom": 454,
+   "px": 256,
+   "visible": true
+  },
+  "avisos": [],
+  "strip": null,
+  "tactiles": 12,
+  "chicos": [],
+  "desborde": false,
+  "estado": "normal",
+  "vp": "412x915",
+  "pantallas": 1
+ },
+ {
+  "alto": 1525,
+  "vh": 640,
+  "navAlto": 57,
+  "fold": 583,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "avisos",
+    "top": 73,
+    "bottom": 121,
+    "px": 48,
+    "visible": true
+   },
+   {
+    "t": "PELEA DE TÍTULO",
+    "top": 129,
+    "bottom": 337,
+    "px": 209,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 347,
+    "bottom": 561,
+    "px": 214,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 571,
+    "bottom": 705,
+    "px": 134,
+    "visible": false
+   },
+   {
+    "t": "⚖️ Peso",
+    "top": 715,
+    "bottom": 825,
+    "px": 110,
+    "visible": false
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 835,
+    "bottom": 1083,
+    "px": 248,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1093,
+    "bottom": 1224,
+    "px": 131,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 1234,
+    "bottom": 1405,
+    "px": 171,
+    "visible": false
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 347,
+   "bottom": 561,
+   "px": 214,
+   "visible": true
+  },
+  "avisos": [
+   {
+    "t": "⚖️ Peso",
+    "top": 715,
+    "bottom": 825,
+    "px": 110,
+    "visible": false
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 835,
+    "bottom": 1083,
+    "px": 248,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1093,
+    "bottom": 1224,
+    "px": 131,
+    "visible": false
+   }
+  ],
+  "strip": {
+   "t": "franja de avisos",
+   "top": 73,
+   "bottom": 121,
+   "px": 48,
+   "visible": true
+  },
+  "tactiles": 16,
+  "chicos": [],
+  "desborde": false,
+  "estado": "peor",
+  "vp": "360x640",
+  "pantallas": 2.38
+ },
+ {
+  "alto": 1474,
+  "vh": 844,
+  "navAlto": 57,
+  "fold": 787,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "avisos",
+    "top": 73,
+    "bottom": 121,
+    "px": 48,
+    "visible": true
+   },
+   {
+    "t": "PELEA DE TÍTULO",
+    "top": 129,
+    "bottom": 320,
+    "px": 191,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 330,
+    "bottom": 544,
+    "px": 214,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 554,
+    "bottom": 670,
+    "px": 116,
+    "visible": true
+   },
+   {
+    "t": "⚖️ Peso",
+    "top": 680,
+    "bottom": 790,
+    "px": 110,
+    "visible": false
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 800,
+    "bottom": 1048,
+    "px": 248,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1058,
+    "bottom": 1173,
+    "px": 115,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 1183,
+    "bottom": 1354,
+    "px": 171,
+    "visible": false
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 330,
+   "bottom": 544,
+   "px": 214,
+   "visible": true
+  },
+  "avisos": [
+   {
+    "t": "⚖️ Peso",
+    "top": 680,
+    "bottom": 790,
+    "px": 110,
+    "visible": false
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 800,
+    "bottom": 1048,
+    "px": 248,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1058,
+    "bottom": 1173,
+    "px": 115,
+    "visible": false
+   }
+  ],
+  "strip": {
+   "t": "franja de avisos",
+   "top": 73,
+   "bottom": 121,
+   "px": 48,
+   "visible": true
+  },
+  "tactiles": 16,
+  "chicos": [],
+  "desborde": false,
+  "estado": "peor",
+  "vp": "390x844",
+  "pantallas": 1.75
+ },
+ {
+  "alto": 1439,
+  "vh": 915,
+  "navAlto": 57,
+  "fold": 858,
+  "bloques": [
+   {
+    "t": "",
+    "top": 10,
+    "bottom": 65,
+    "px": 55,
+    "visible": true
+   },
+   {
+    "t": "avisos",
+    "top": 73,
+    "bottom": 121,
+    "px": 48,
+    "visible": true
+   },
+   {
+    "t": "PELEA DE TÍTULO",
+    "top": 129,
+    "bottom": 320,
+    "px": 191,
+    "visible": true
+   },
+   {
+    "t": "Avanzar",
+    "top": 330,
+    "bottom": 544,
+    "px": 214,
+    "visible": true
+   },
+   {
+    "t": "0-0 (0 KO · 0 SUB · 0 DEC)",
+    "top": 554,
+    "bottom": 670,
+    "px": 116,
+    "visible": true
+   },
+   {
+    "t": "⚖️ Peso",
+    "top": 680,
+    "bottom": 790,
+    "px": 110,
+    "visible": true
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 800,
+    "bottom": 1033,
+    "px": 233,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1043,
+    "bottom": 1158,
+    "px": 115,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 1168,
+    "bottom": 1319,
+    "px": 151,
+    "visible": false
+   }
+  ],
+  "avanzar": {
+   "t": "Avanzar",
+   "top": 330,
+   "bottom": 544,
+   "px": 214,
+   "visible": true
+  },
+  "avisos": [
+   {
+    "t": "⚖️ Peso",
+    "top": 680,
+    "bottom": 790,
+    "px": 110,
+    "visible": true
+   },
+   {
+    "t": "📹 Equipo de contenido",
+    "top": 800,
+    "bottom": 1033,
+    "px": 233,
+    "visible": false
+   },
+   {
+    "t": "⚡ Tus instalaciones",
+    "top": 1043,
+    "bottom": 1158,
+    "px": 115,
+    "visible": false
+   }
+  ],
+  "strip": {
+   "t": "franja de avisos",
+   "top": 73,
+   "bottom": 121,
+   "px": 48,
+   "visible": true
+  },
+  "tactiles": 16,
+  "chicos": [],
+  "desborde": false,
+  "estado": "peor",
+  "vp": "412x915",
+  "pantallas": 1.57
+ }
+]

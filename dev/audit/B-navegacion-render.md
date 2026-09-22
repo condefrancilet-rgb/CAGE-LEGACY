@@ -440,3 +440,55 @@ for(const s of [1000,1001]) for(const m of ['normal','stub','nornd']) console.lo
 # 7: barrido de pureza de las 33 pantallas
 #   para cada k de Object.keys(ctx.CL.SCREENS): UI.screen=k; comparar G.rs y JSON.stringify(G) antes/después de fn()
 ```
+
+---
+
+## Adenda F2 · `G.mg` tiene 30 escritores y cerrar un minijuego no lo posee nadie
+
+Buscando si `fightFinishResolve` / `sparFinishResolve` eran duplicación real o
+descomposición sana, apareció algo más grande detrás.
+
+### Los 30 escritores de `G.mg`
+
+**11 abridores, cada uno con su propia forma**, construidos en línea sin constructor
+compartido: `spar` 2347, `cardio` 2474, `str` 2502, `drill` 2532, `gp` 2572, `weigh` 2622,
+`press` 2719, `rec` 2769, `nego` 2798, `chat` 11838, `pod` 13498. Más tres abridores
+genéricos (2422, 10734, 14485) con el molde `G.mg=mg; UI.screen='mg'`.
+
+**El resto son cierres**, y ahí está el problema: **cerrar un minijuego y decidir a qué
+pantalla se vuelve está escrito en seis sitios con tres respuestas distintas.**
+
+| línea | a dónde vuelve |
+|---|---|
+| 8409 | `(G.fight && !G.fight.over) ? 'fight' : 'hub'` |
+| 11052 | `(G.fight && !G.fight.over) ? 'fight' : 'hub'` |
+| 11049 | `'train'` si `mg.type==='train'` |
+| 14487 | `'hub'` incondicional |
+| 14532 | `'hub'` incondicional |
+| 15077 | `'hub'` incondicional |
+
+Y hay cierres que no deciden pantalla ninguna: 4842, 8464, 8470, 8474, 17708, 22051.
+
+### Por qué importa
+
+Es **exactamente la misma forma que C-002**: nueve llamadores de `advanceWeek`, cada uno
+haciendo un subconjunto distinto del cierre de semana. Aquí son seis cierres de minijuego,
+cada uno con su propia idea de a dónde se vuelve.
+
+Y explica por qué la capa FX de `fightFinishResolve` (8460) necesita su limpieza
+defensiva: como cerrar no lo posee nadie, al fallar la finalización quedaba `G.mg` vivo y
+la pantalla en `'mg'`, obligando a pulsar CONTINUAR en bucle. El comentario del archivo lo
+dice; lo que no dice es que el arreglo fue **añadir un séptimo cierre** en vez de darle
+dueño al cierre.
+
+### Veredicto sobre las dos cadenas que se venían a mirar
+
+`fightFinishResolve` y `sparFinishResolve` tienen 2 capas cada una, **pero no son
+duplicación**: las dos capas tienen responsabilidades distintas y la externa delega
+explícitamente (cálculo de probabilidad y cierre del intercambio dentro; atajo por
+ejecución impecable y saneamiento fuera). No hay ninguna regla escrita dos veces. Fundirlas
+sería renombrar, no consolidar — y hay que tener cuidado, porque el `return` de la capa
+interna **no** salta el saneamiento de la externa.
+
+**Lo que sí hay que consolidar aquí es el cierre de minijuego**, y eso toca `UI.screen`,
+que es el terreno de F3. Va anotado como tal, no se toca en F2.
