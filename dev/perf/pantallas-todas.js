@@ -4,7 +4,12 @@
    360x640, partiendo del save congelado. Sirve para E3: antes de mover un
    bloque del inicio a otra pantalla hay que saber si esa pantalla tiene sitio.
    Se recorre la tabla unica de pantallas (CL.SCREENS); las que devuelven null
-   (no dibujables en este estado) se marcan y no se cuentan. */
+   (no dibujables en este estado) se marcan y no se cuentan.
+
+   RUIDO CONOCIDO en la salida: `bytes` de la pantalla `load` cambia entre
+   corridas (992 vs 977) porque lista las partidas guardadas, cuyos nombres y
+   fechas salen de la corrida. Un diff en ESE campo no es una regresion. El
+   alto, los nodos y los botones si son estables. */
 const path = require('node:path');
 const fs   = require('node:fs');
 const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
