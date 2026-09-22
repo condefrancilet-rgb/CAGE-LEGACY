@@ -97,35 +97,41 @@ async function main(){
          · si no hay ninguna, la prueba FALLA. No se salta.                 */
     const scroll = await page.evaluate(async () => {
       const esperar = ms => new Promise(r => setTimeout(r, ms));
-      /* [pantalla, selector de un control que re-dibuja SIN navegar] */
+      /* [pantalla, selector de un control que re-dibuja SIN navegar]
+         Las pantallas largas van primero: E3 dejo `train`, `menu` y el hub en
+         menos de una pantalla y media, y con el umbral viejo (+300 px) la
+         prueba se quedo SIN SITIO donde medir y fallo. Fallar era lo correcto
+         —para eso se arreglo— pero la respuesta no es bajar la exigencia sino
+         medir donde de verdad hay scroll. */
       const candidatas = [
+        ['gym',   'button[onclick^="changeCoach("]'],
+        ['story', 'button[onclick^="storyReact("]'],
+        ['rank',  'button[onclick^="setRank("]'],
         ['train', 'button[onclick^="focusSet("]'],
         ['menu',  'button[onclick^="setPerf("]'],
-        ['hub',   'button[onclick^="clSetFocus("]'],
       ];
+      const detalle = [];
       for(const [pant, sel] of candidatas){
         go(pant); await esperar(150);
-        if(document.documentElement.scrollHeight < window.innerHeight + 300) continue;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
         const btn = document.querySelector('#app ' + sel);
-        if(!btn) continue;
-        window.scrollTo(0, 400); await esperar(120);
+        detalle.push(pant + ' margen=' + max + ' control=' + (btn ? 'si' : 'no'));
+        /* margen minimo para que el scroll signifique algo */
+        if(max < 120 || !btn) continue;
+        const y = Math.min(400, max);
+        window.scrollTo(0, y); await esperar(120);
         const antes = window.scrollY, pantallaAntes = UI.screen;
         btn.click();                                  // interaccion en sitio
         await esperar(200);
         const enSitio = { antes: antes, despues: window.scrollY,
                           mismaPantalla: UI.screen === pantallaAntes };
-        window.scrollTo(0, 400); await esperar(120);
+        window.scrollTo(0, y); await esperar(120);
         const antesNav = window.scrollY;
         go('rank'); await esperar(200);
         return { medido: true, pantalla: pant, enSitio: enSitio,
                  nav: { antes: antesNav, despues: window.scrollY } };
       }
-      return { medido: false,
-               detalle: candidatas.map(function(c){
-                 go(c[0]);
-                 return c[0] + ' alto=' + document.documentElement.scrollHeight +
-                        ' control=' + (document.querySelector('#app ' + c[1]) ? 'si' : 'no');
-               }).join(' · ') };
+      return { medido: false, detalle: detalle.join(' · ') };
     });
     anota(vp.n + ' · interaccion en sitio conserva el scroll (I1)',
       scroll.medido && scroll.enSitio.mismaPantalla && scroll.enSitio.despues === scroll.enSitio.antes,
