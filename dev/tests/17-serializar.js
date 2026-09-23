@@ -109,21 +109,34 @@ suite('R2 · el save se serializa igual que siempre (A1)', () => {
 
   /* Los sitios raros: la semantica original convierte st/pot/lr EN CUALQUIER
      PARTE del arbol, no solo en los peleadores. Una implementacion que solo
-     mirara G.fighters pasaria todas las pruebas de arriba y fallaria aqui. */
-  test('estado adversarial: st/pot/lr en sitios raros, alias, fechas, huecos', () => {
+     mirara G.fighters pasaria todas las pruebas de arriba y fallaria aqui.
+     OJO, pagado: la primera version de esta prueba metia tambien una fecha y
+     un toJSON EN EL MISMO ESTADO. Con eso el juego vuelve entero al camino del
+     replacer, asi que el camino rapido no se ejercitaba y dos mutantes (no
+     bajar a los arrays) pasaban verdes. Van separados. */
+  test('estado adversarial: st/pot/lr en sitios raros, alias, huecos (camino rapido)', () => {
     const h = H.boot({ seed: 35 });
     H.startCareer(h, { metaSeed: 35001, style: 'kick', div: 'FEA', age: 21 });
     const c = h.ctx, G = c.G;
     const hueco = [ { st: { speed: 3.33, power: 'x' } }, null ]; hueco[3] = 5;       /* indice 2 es un hueco */
     G.flags.r2raro = { st: { power: 12.345, raro: 7 }, pot: [1, 2, 3], lr: null,
-                       anidado: { lr: { accuracy: 1.26 } }, lista: hueco, vacio: {} };
+                       anidado: { lr: { accuracy: 1.26 } }, lista: hueco, vacio: {},
+                       matriz: [[ { pot: { chin: 88.88 } } ]] };
     G.flags.r2alias = G.player.st;                    /* el mismo objeto, bajo otra clave: NO se convierte */
     G.flags.r2mismo = { st: G.player.st };            /* el mismo objeto, bajo st en otro contenedor */
-    G.flags.r2fecha = { st: new Date(0), pot: { toJSON(){ return { lr: { power: 99.99 } }; } } };
     G.flags.r2fn = { st: function(){}, u: undefined, lr: 'texto', pot: 42 };
     G.flags.r2proto = Object.create({ heredado: { st: { power: 1 } } });   /* heredado: JSON no lo ve */
     G.flags.r2proto.propio = 1;
     exigeIgual(c, 'adversarial');
+  });
+
+  test('estado adversarial: fechas y toJSON (camino del replacer)', () => {
+    const h = H.boot({ seed: 37 });
+    H.startCareer(h, { metaSeed: 37001, style: 'boxer', div: 'BAN', age: 25 });
+    const c = h.ctx, G = c.G;
+    G.flags.r2fecha = { st: new Date(0), pot: { toJSON(){ return { lr: { power: 99.99 } }; } } };
+    G.flags.r2lista = [ { st: { speed: 3.33 } } ];
+    exigeIgual(c, 'toJSON');
   });
 
   test('si serializar falla a mitad, el estado queda como estaba', () => {

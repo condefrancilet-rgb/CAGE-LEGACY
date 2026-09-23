@@ -1,0 +1,46 @@
+{
+ "filtro": "R2 · el save",
+ "mutantes": [
+  {
+   "nombre": "M1 no convierte lr",
+   "buscar": "if((k==='st'||k==='pot'||k==='lr') && !Array.isArray(v)){ cambios.push(o,k,v); continue; }",
+   "poner": "if((k==='st'||k==='pot') && !Array.isArray(v)){ cambios.push(o,k,v); continue; }"
+  },
+  {
+   "nombre": "M2 no repone el estado (sin finally)",
+   "buscar": "for(i=0;i<hechos;i+=3) cambios[i][cambios[i+1]] = cambios[i+2];",
+   "poner": ""
+  },
+  {
+   "nombre": "M3 ignora toJSON en objetos",
+   "buscar": "      if(typeof v.toJSON==='function') return JSON.stringify(out, saveReplacer);\n      if((k==='st'",
+   "poner": "      if((k==='st'"
+  },
+  {
+   "nombre": "M4 no baja a los arrays",
+   "buscar": "        if(typeof v.toJSON==='function') return JSON.stringify(out, saveReplacer);\n        pila.push(v);",
+   "poner": "        if(typeof v.toJSON==='function') return JSON.stringify(out, saveReplacer);"
+  },
+  {
+   "nombre": "M5 si falla, devuelve null en vez de repetir",
+   "buscar": "return texto!==null ? texto : JSON.stringify(out, saveReplacer);",
+   "poner": "return texto;"
+  },
+  {
+   "nombre": "M6 solo mira los peleadores",
+   "buscar": "  var cambios=[], pila=[out], vistos=new Set(), o, i, ks, k, v;",
+   "poner": "  var cambios=[], pila=[out.fighters||{}], vistos=new Set(), o, i, ks, k, v;"
+  },
+  {
+   "nombre": "M7 convierte cualquier objeto (no solo st/pot/lr)",
+   "buscar": "if((k==='st'||k==='pot'||k==='lr') && !Array.isArray(v)){ cambios.push(o,k,v); continue; }",
+   "poner": "if(k.length===2 && !Array.isArray(v)){ cambios.push(o,k,v); continue; }"
+  },
+  {
+   "nombre": "M8 el valor no finito vale 0 y no 50",
+   "buscar": "out[i]=(typeof v==='number' && isFinite(v)) ? Math.round(v*10)/10 : 50;",
+   "poner": "out[i]=(typeof v==='number' && isFinite(v)) ? Math.round(v*10)/10 : 0;"
+  }
+ ],
+ "nota": "M7 original (convertir tambien arrays) era EQUIVALENTE: saveReplacer ya devuelve el array intacto. Se reemplazo."
+}
