@@ -213,7 +213,7 @@ cargar  ── loadGame ─▶ saveShape ▸ saveMigrate(v1..v5) ▸ saveValidat
 | eras (1, "no existe") | `ERA`, derivadas de `G.champs` | `19-rpg-campo-mundo.js` |
 | `G.flags.heat` (fase 10; no figuraba en 2.3 porque cada escritura lo leía para sumarse, pero ninguna **decisión** lo leía) | consumido por el emparejamiento: las peleas de rivalidad/revancha pagan +4 % por punto (tope +30 %); con 4+ se arma la del rival con más rivalidad; firmarla gasta el ruido; se enfría 3 % por semana | `22-fase10.js` |
 | `CL.ufc().heat` (fase 10: segundo «heat», escrito y enfriado, sin lector) | la bienvenida de Vanguard escribe en `G.flags.heat`; el enfriamiento propio se retiró (el campo queda en partidas viejas, sin uso) | `22-fase10.js` |
-| `gp.def` «Defensa principal» (fase 10: sólo sumaba al puntaje del plan) | cuenta en el intercambio en que el rival hace eso (`gpDefShift` por `combat:eff`, +3 a esa defensa) | `22-fase10.js` · A/B de 400 peleas por defensa |
+| `gp.def` «Defensa principal» (fase 10: sólo sumaba al puntaje del plan) | cuenta en el intercambio en que el rival hace eso, de suma cero (`gpDefShift` por `combat:eff`: +3 a lo que cubre la elegida, −1,5 a lo que cubren las otras dos) | `22-fase10.js` · A/B de 400 peleas por defensa (RPG-08) |
 | `f.tq.back` toma de espalda (fase 10, del árbol) | posición `TQ.back()`: suelo +6, sumisión del árbol ×1,15, +1 de control por intercambio | `22-fase10.js` |
 | ciclo de rivalidad (fase 10: derivado en cada consulta, sin «medios» ni resolución) | `RPG.rivalFacts` (lector puro) + `RPG.rivalTick` (avance guardado en `bond.rc`, `bondNote`, `CL.remember`, diario); la resolución es `canOfferRematch` | `22-fase10.js` |
 

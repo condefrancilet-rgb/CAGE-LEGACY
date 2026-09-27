@@ -2011,14 +2011,18 @@ function aggrShift(f, keys){
      derribo -> tu defensa de derribo (pTdd) cuando va al derribo, de pie o
                 desde el clinch
      reja    -> tu defensa de derribo (pTdd) cuando te quiere llevar al clinch
-   No es un bonus general: el resto de los intercambios queda igual, y elegir
-   una defensa es no elegir las otras dos. La suscripción vive con el resto de
-   los hooks de combate (el bus todavía no existe acá), igual que aggrShift.
+   No es un bonus general, y es un compromiso (fase 10, segunda pasada): si él
+   hace lo que cubre OTRA defensa, esa te queda un poco más floja. Es la misma
+   idea de suma cero que aggrShift: prepararse para una cosa es descuidar las
+   otras, así que la defensa no infla el poder general; lo que decide es
+   elegir la que corresponde a ESE rival (scouting, sparring). La suscripción
+   vive con el resto de los hooks de combate (el bus todavía no existe acá).
    ========================================================================== */
-var GP_DEF_B = 3;
+var GP_DEF_B = 3;             /* lo que cubre la defensa elegida           */
+var GP_DEF_COST = 1.5;        /* lo que cubren las otras dos, descuidado   */
 var GP_DEF_KEY = {cabeza:'defense', derribo:'tdd', reja:'tdd'};
 var GP_DEF_X = null;          /* {pos, oa, pa} del intercambio en curso */
-var GP_DEF_HINT = 'La defensa cuenta en la pelea sólo cuando él hace eso: golpear de pie (cabeza), ir al derribo (derribo) o llevarte al clinch contra la reja (reja).';
+var GP_DEF_HINT = 'La defensa cuenta cuando él hace eso: golpear de pie (cabeza), ir al derribo (derribo) o llevarte al clinch contra la reja (reja). Si hace lo que cubre otra, esa te queda un poco más floja: elegí la que pide este rival.';
 function gpDefCovers(def, pos, oa, pa){
   if(def==='cabeza')  return pos==='stand' && (oa==='jab' || oa==='combo' || (oa==='counter' && pa==='combo'));
   if(def==='derribo') return (pos==='stand' && oa==='td') || (pos==='clinch' && oa==='ctd');
@@ -2028,9 +2032,14 @@ function gpDefCovers(def, pos, oa, pa){
 function gpDefShift(f, keys, side){
   var fi=G && G.fight, x=GP_DEF_X;
   if(!x || !fi || side!=='p' || !f || !f.isPlayer) return 0;
-  var def=fi.gp && fi.gp.def, k=GP_DEF_KEY[def];
-  if(!k || keys.indexOf(k)<0) return 0;
-  return gpDefCovers(def, x.pos, x.oa, x.pa) ? GP_DEF_B : 0;
+  var def=fi.gp && fi.gp.def; if(!GP_DEF_KEY[def]) return 0;
+  /* a lo sumo una defensa cubre la acción del rival (sus dominios no se pisan) */
+  var tot=0;
+  for(var d in GP_DEF_KEY){
+    if(!GP_DEF_KEY.hasOwnProperty(d) || keys.indexOf(GP_DEF_KEY[d])<0) continue;
+    if(gpDefCovers(d, x.pos, x.oa, x.pa)) tot += (d===def)? GP_DEF_B : -GP_DEF_COST;
+  }
+  return tot;
 }
 function hitDamage(atk, dfn, base, powerStat){
   var d = base * (1 + (atk-dfn)/70) * (0.75 + powerStat/200);
@@ -18087,8 +18096,9 @@ CL.advice = function(){
   else if(fitP<-0.25) t.push('Estás peleando la pelea del rival.');
   else t.push('Terreno neutro.');
   if(fitO>0.3) t.push('Él está cómodo acá.');
-  if(A.dist-c.dist>0.5) t.push('Necesitás alejarte.');
-  if(A.dist-c.dist<-0.5) t.push('Necesitás entrar.');
+  var pie = f.pos==='stand';                 /* alejarse/entrar sólo se puede de pie */
+  if(pie && A.dist-c.dist>0.5) t.push('Necesitás alejarte.');
+  if(pie && A.dist-c.dist<-0.5) t.push('Necesitás entrar.');
   if(c.pace> 30+A.pace*22+18) t.push('El ritmo va más rápido de lo que te conviene.');
   if(c.pace< 30+A.pace*22-18) t.push('Podés apretar el ritmo.');
   if(c.read>55) t.push('Ya lo leíste: la contra está disponible.');
@@ -19557,19 +19567,26 @@ CL.fightHUD = function(){
   var p=G.player, o=F(f.opp); if(!o) return '';
   var A=CL.styleAt(p), B=CL.styleAt(o);
   var adv=CL.advice();
-  var pos = Math.round(c.dist/2*100);
+  var pos = Math.round(c.dist/2*100), pie = f.pos==='stand';
   /* lo que cada uno quiere, en palabras: la misma escala de zonas que el
      encabezado (antes eran porcentajes de una variable interna) */
   var wantP = CL.zone(A.dist), wantO = CL.zone(B.dist);
   var back = (typeof TQ!=='undefined' && TQ.back && TQ.back());
   var fitCls = adv && adv.fit>0.2? 'gr' : (adv && adv.fit<-0.2? 'red' : '');
-  var h='<div class="card tight">'+
-    '<div class="hdr"><span class="b sm">DISTANCIA · '+CL.zoneLabel(c.dist)+'</span>'+
-    clTag(adv&&adv.fit>0.2?'tu terreno':(adv&&adv.fit<-0.2?'su terreno':'neutro'), fitCls)+'</div>'+
+  var quiere = 'vos querés '+wantP+' · él '+(wantO===wantP?'también':wantO);
+  /* de pie, la distancia se ve y se pelea; en el clinch o en el suelo queda en
+     suspenso (las acciones de ahí casi no la mueven) pero el motor la sigue
+     usando para tu terreno: se dice así, sin una barra que parezca moverse */
+  var dist = pie ?
     '<div class="bar" style="height:10px;position:relative">'+
       '<i style="width:'+pos+'%;background:linear-gradient(90deg,#5b9bd5,#3fbf87)"></i></div>'+
     '<div class="xs dim2" style="display:flex;justify-content:space-between">'+
-      '<span>pegado</span><span>vos querés '+wantP+' · él '+(wantO===wantP?'también':wantO)+'</span><span>afuera</span></div>'+
+      '<span>pegado</span><span>'+quiere+'</span><span>afuera</span></div>'
+    : '<p class="xs dim2" style="margin:2px 0 0">Distancia en suspenso ('+CL.zone(c.dist)+') hasta que vuelvan a estar de pie: '+quiere+'.</p>';
+  var h='<div class="card tight">'+
+    '<div class="hdr"><span class="b sm">'+(pie? 'DISTANCIA · '+CL.zoneLabel(c.dist) : 'POSICIÓN · '+esc(POS_ES[f.pos]||f.pos))+'</span>'+
+    clTag(adv&&adv.fit>0.2?'tu terreno':(adv&&adv.fit<-0.2?'su terreno':'neutro'), fitCls)+'</div>'+
+    dist+
     (back? '<p class="xs" style="margin:5px 0 0;color:#7fe0b4">🎒 Espalda tomada: tu trabajo de suelo rinde más y le cuesta salir. Se pierde si cambia la posición o termina el round.</p>':'')+
     '<div style="margin-top:6px"><div class="xs dim2">Ritmo '+Math.round(c.pace)+'</div>'+clBar(c.pace,100,'y')+'</div>'+
     '<div style="margin-top:4px"><div class="xs dim2">Lectura del rival '+Math.round(c.read)+'</div>'+clBar(c.read,100,'g')+'</div>'+

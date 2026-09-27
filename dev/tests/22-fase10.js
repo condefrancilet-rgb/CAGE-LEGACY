@@ -133,6 +133,23 @@ suite('RPG-10 · la toma de espalda es una posición que el motor lee', () => {
     ok(!/Espalda tomada/.test(h0), 'muestra la espalda sin tenerla');
     f.pos = 'gtop'; st.back = 1; st.backR = f.round;
     ok(/Espalda tomada/.test(c.CL.fightHUD()), 'no muestra la espalda tomada');
+    /* fuera de la pelea de pie: la posición, la distancia en suspenso, sin barra
+       que parezca moverse y sin «alejate/entrá»; el terreno sigue (el motor lo usa) */
+    for(const pos of ['clinch', 'gtop', 'gbot']){
+      f.pos = pos; st.back = 0;
+      for(const d of [0.1, 1.9]){
+        f.cl.dist = d;
+        const h = c.CL.fightHUD(), txt = h.replace(/<[^>]+>/g, ' ');
+        ok(/POSICIÓN · /.test(txt) && !/DISTANCIA · /.test(txt), pos + ': el encabezado no dice la posición: ' + txt.slice(0, 120));
+        ok(/Distancia en suspenso/.test(txt) && /vos querés/.test(txt), pos + ': no explica la distancia en suspenso');
+        ok(!/width:\d+%;background:linear-gradient\(90deg,#5b9bd5/.test(h), pos + ': sigue la barra de distancia');
+        ok(!/Necesitás (alejarte|entrar)/.test(txt), pos + ': aconseja moverse sin poder hacerlo');
+        ok(/tu terreno|su terreno|neutro/.test(txt), pos + ': se perdió el terreno, que el motor sigue usando');
+      }
+    }
+    f.pos = 'stand'; f.cl.dist = 1.9;
+    const hp = c.CL.fightHUD();
+    ok(/DISTANCIA · /.test(hp) && /linear-gradient\(90deg,#5b9bd5/.test(hp), 'de pie se perdió la barra de distancia');
   });
 });
 
@@ -203,11 +220,11 @@ suite('RPG-10 · la defensa principal del plan llega a la pelea', () => {
                   reja: (pos, oa) => pos === 'stand' && oa === 'clinch' };
   const CLAVE = { cabeza: ['defense','footwork','fightiq','composure'], derribo: ['tdd','wrestling','footwork'], reja: ['tdd','wrestling','footwork'] };
   const OA = { stand: ['jab','combo','counter','lowkick','clinch','td','move'], clinch: ['knees','ctd','grind','break'] };
-  test('sólo en el intercambio en que él hace aquello de lo que te preparaste, y sólo en esa defensa', () => {
+  test('cubre lo que elegiste y descuida lo que cubren las otras dos; lo demás, igual', () => {
     const c = carrera(8); aLaJaula(c);
     const f = c.G.fight, p = c.G.player;
     const todas = [CLAVE.cabeza, CLAVE.derribo, ['boxing','accuracy','timing','power','kicks'], ['grappling','ground','submission']];
-    let cubiertos = 0;
+    let cubiertos = 0, descuidos = 0;
     for(const def of ['cabeza','derribo','reja']) for(const pos of ['stand','clinch']) for(const oa of OA[pos]) for(const pa of ['combo','jab','td']){
       f.pos = pos;
       f.gp = Object.assign({}, f.gp, { def: null });
@@ -218,13 +235,17 @@ suite('RPG-10 · la defensa principal del plan llega a la pelea', () => {
       todas.forEach((k, i) => ok(Math.abs(conO[i] - baseO[i]) < 1e-9, 'tu plan cambia el rendimiento del rival (' + def + ' · ' + oa + ')'));
       c.hookEmit('exchange:post', { pa, oa, p, o: c.F(f.opp) });
       const cubre = CUBRE[def](pos, oa, pa); if(cubre) cubiertos++;
+      /* ¿lo cubre otra defensa? entonces esa clave queda descuidada */
+      const otra = ['cabeza','derribo','reja'].find(d => d !== def && CUBRE[d](pos, oa, pa));
+      if(otra) descuidos++;
       todas.forEach((k, i) => {
-        const esp = (cubre && k === CLAVE[def]) || (cubre && def === 'reja' && k === CLAVE.derribo) ? c.GP_DEF_B : 0;
-        ok(Math.abs(con[i] - base[i] - esp) < 1e-9, def + ' · ' + pos + ' · él ' + oa + ' · vos ' + pa + ' · ' + k[0] + ': esperaba +' + esp + ', dio ' + (con[i] - base[i]));
+        const mismo = (a, b) => a.join() === b.join();          /* reja y derribo comparten la clave */
+        const esp = (cubre && mismo(k, CLAVE[def])) ? 3 : ((otra && mismo(k, CLAVE[otra])) ? -1.5 : 0);
+        ok(Math.abs(con[i] - base[i] - esp) < 1e-9, def + ' · ' + pos + ' · él ' + oa + ' · vos ' + pa + ' · ' + k[0] + ': esperaba ' + esp + ', dio ' + (con[i] - base[i]));
       });
     }
-    ok(cubiertos > 10, 'la prueba no recorrió casos cubiertos: ' + cubiertos);
-    eq(c.GP_DEF_B, 3, 'magnitud de la defensa');
+    ok(cubiertos > 10 && descuidos > 10, 'la prueba no recorrió casos: ' + cubiertos + ' cubiertos, ' + descuidos + ' descuidados');
+    eq(c.GP_DEF_B, 3, 'magnitud de la defensa'); eq(c.GP_DEF_COST, 1.5, 'costo de las otras dos');
     /* terminado el intercambio, deja de contar (aunque el último sí la cubriera) */
     f.pos = 'stand'; f.gp.def = 'cabeza';
     c.hookEmit('exchange:pre', { pa: 'jab', oa: 'combo', p, o: c.F(f.opp) });

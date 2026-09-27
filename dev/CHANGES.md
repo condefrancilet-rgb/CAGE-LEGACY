@@ -10,6 +10,49 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-08 · Fase 10, segunda pasada: la defensa del plan es un compromiso; el HUD sabe dónde está la pelea
+**Tipo** ajuste de diseño + presentación · **Cambio observable:** sí, en la pelea (si armás plan)
+y en el HUD fuera de la pelea de pie. **Nulo en la decisión del rival** y en el golden (las 5
+trazas y huellas idénticas a RPG-07). Archivo de partida: `a5eeb63`.
+
+**1. «Defensa principal» de suma cero.** En RPG-07 la defensa elegida sumaba +3 cuando él hacía
+eso y nada costaba: medido, era un empuje a favor del jugador en cualquier pelea (+1 a +3 pp de
+victorias) y la parte M pide no mover el balance sin necesidad. Ahora, como `aggrShift`, es un
+compromiso: +3 a lo que cubre la elegida y **−1,5** a lo que cubren las otras dos cuando él hace
+eso (`GP_DEF_COST`). Los dominios no se pisan, así que en cada intercambio cuenta a lo sumo una.
+Lo que decide es elegir la que pide ESE rival: por eso el sparring de la revancha ya ofrecía
+ajustarla (RPG-07).
+
+A/B, 400 peleas por variante, mismos rivales y dados, política básica:
+
+| defensa | victorias | daño recibido | derribos de él | te llevó al clinch |
+|---|---|---|---|---|
+| ninguna | 71,3 % | 24,99 | 1,45 | 1,00 |
+| cabeza | 73,3 % | **23,38** | 1,46 | 1,06 |
+| derribo | 72,5 % | 25,63 | **1,34** | 1,05 |
+| reja | 71,5 % | 25,86 | 1,48 | **0,96** |
+
+Cada una mejora lo suyo y empeora lo demás; las victorias quedan dentro del ruido (±2,3 pp).
+Separando por estilo del rival, la mejor contra golpeadores (320 peleas) es cabeza (76,3 % contra
+74,4 % sin defensa) y contra luchadores (80 peleas, ruido ±5,5 pp) es derribo (62,5 % contra
+58,8 %): la dirección es la esperada, con muestra chica del lado luchador.
+
+**2. El HUD distingue la pelea de pie del resto.** El motor sigue usando la distancia en el clinch
+y en el suelo (`CL.effMod`: tu terreno), pero ahí casi ninguna acción la mueve: queda la de antes.
+Esconderla sería esconder un factor real; mostrarla con una barra y «necesitás alejarte» era
+engañoso. Ahora, fuera de la pelea de pie: el encabezado dice la posición
+(`POSICIÓN · Suelo — arriba`), una línea dice «distancia en suspenso (media) hasta que vuelvan a
+estar de pie: vos querés media · él corta», el terreno sigue, y el consejo ya no pide alejarse ni
+entrar. De pie, igual que antes. La tarjeta del plan en la pelea muestra también la defensa.
+
+**Evidencia.** `dev/tests/22-fase10.js` (21 pruebas): la defensa se prueba contra una
+especificación escrita aparte, sobre 3 defensas × 11 acciones del rival × 3 tuyas × 2 posiciones y
+4 grupos de claves (+3 / −1,5 / 0, y el rival sin cambios); el HUD, en clinch, arriba y abajo, con
+distancia corta y larga. Mutantes de la fase **44/44** (se agregaron «sin costo», «costo al revés»,
+«barra en el suelo», «alejate en el suelo», «sin posición»). Golden idéntico (traza, final y
+huella), suite 304/304, navegador 77/77, 3/3 carreras completas: en una, el ciclo de rivalidad pasó
+por tensión y en los medios en juego real.
+
 ## RPG-07 · Fase 10: lo que se escribía y nadie leía, ahora llega a algún lado
 **Tipo** conexión de datos sin consumidor + 1 corrección de diseño + consolidación · **Cambio
 observable:** sí, en la pelea (sólo si usás la toma de espalda, La Última Puerta o armás plan), en
@@ -53,7 +96,8 @@ idénticos; sólo cambia la huella del estado). Archivo de partida: `7d694d0`.
   defensa 71,3 % de victorias, 24,99 de daño recibido, 1,45 derribos de él, 1,00 entradas al
   clinch. Cabeza: daño 22,98 (−8 %); derribo: derribos 1,34 (−8 %); reja: clinch 0,96 (−4 %).
   Victorias +1 a +3 pp (ruido ±2,3 pp). En la versión anterior las cuatro daban exactamente lo
-  mismo. Es un empuje pequeño a favor del jugador, en su propio terreno, y queda declarado.
+  mismo. Es un empuje pequeño a favor del jugador, en su propio terreno, y queda declarado
+  (en RPG-08 pasó a ser de suma cero).
 - Memoria del mundo (tope 100): en las 5 carreras del golden quedan 1–6 hitos de rivalidad; los
   resultados de pelea y los recuerdos de ayuda que sobreviven al final no cambian.
 - Legalidad del rival: 0 de 181.440 sorteos y 0 de 2.715 elecciones reales.
@@ -74,7 +118,8 @@ idénticos; sólo cambia la huella del estado). Archivo de partida: `7d694d0`.
 - Costo: el barrido semanal del ciclo mira 16 candidatos de 381 peleadores en 0,28 ms (una semana
   completa, ~200 ms) y no mueve el dado.
 
-**Hallazgos sin corregir.** El HUD de distancia se sigue mostrando en el suelo (previo). El
+**Hallazgos sin corregir.** El HUD de distancia se sigue mostrando en el suelo (previo; resuelto
+en RPG-08). El
 autopiloto del golden no arma plan, no usa técnicas ni hace sparring: esas vías se prueban con
 `22-fase10.js` y con las carreras completas, no con el golden. `CL.ufc().heat` queda en partidas
 viejas, sin uso.
