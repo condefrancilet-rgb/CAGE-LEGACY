@@ -1,0 +1,114 @@
+#!/usr/bin/env node
+'use strict';
+/* dev/rpg-carrera-completa.js — UNA CARRERA ENTERA, DEL DEBUT AL RETIRO
+   ---------------------------------------------------------------------------
+   dev/e5-largas.js avanza semanas sin pelear (sólo advanceWeek) y dev/sim.js
+   comprueba las invariantes una vez al final. Ninguno de los dos ejercita lo
+   que agregó la etapa RPG: el autopiloto no usa técnicas, no anticipa, no arma
+   gameplan y no anota lecciones.
+   Esto corre carreras completas (de los 21 a los 37 años, ~830 semanas) con
+   una política que SÍ usa todo eso por la vía del jugador —TQ.use con su
+   minijuego, «Anticipar», gpStart/gpConfirm, CMB.takeLesson, TQ.unlock—, y
+   comprueba las invariantes DESPUÉS DE CADA SEMANA. Al retiro revisa que el
+   final, el diario y el guardado estén enteros.
+     node dev/rpg-carrera-completa.js [--n 3] [--file otra.html]            */
+const H = require('./harness.js');
+const A = require('./autopilot.js');
+const INV = require('./invariants.js');
+const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i >= 0 ? process.argv[i + 1] : d; };
+const N = parseInt(arg('n', '3'), 10);
+const ARCHIVO = arg('file', null) || undefined;
+
+/* política: la básica, más lo que haría un jugador que usa el juego entero */
+A.POLITICAS.rpg = (ops, ctx) => {
+  const c = ctx.c, f = c.G.fight;
+  /* 1. una técnica del árbol lista (o su Ultimate): se ejecuta con su minijuego */
+  if(!c.G.mg && c.UI.sub !== 'corner' && ctx.rnd() < 0.35){
+    const ult = Object.keys(c.G.rpg.ult || {}).find(id => c.CMB.ultState(id).ok);
+    const lista = c.TQ.available().filter(e => e.s.ok);
+    if(ult || lista.length){
+      if(ult) c.CMB.ultUse(ult); else c.TQ.use(lista[0].t.id);
+      if(c.FX.S){ c.fxEnd(c.FX.S, 0.35 + ctx.rnd() * 0.65); c.fxFinish(); }
+      if(!c.G.fight || c.G.fight.over) return null;
+      ops = c.fightOptions();
+    }
+  }
+  /* 2. anticipar, cuando la lectura lo permite y lo más probable pesa */
+  const g = ops.find(o => o.k === 'iq_x') && c.CMB.guess();
+  if(g && g.p >= 0.30 && ctx.rnd() < 0.7) return 'iq_x';
+  return A.POLITICAS.basica(ops, ctx);
+};
+
+function semanaDeJugador(c, rnd){
+  /* gameplan en la primera semana del campamento */
+  if(c.G.camp && !c.G.camp.gameplan && c.G.camp.i >= 1 && !c.G.pending.length && !c.G.mg && c.G.nextFight && c.G.nextFight.weeks > 0){
+    c.gpStart();
+    const mg = c.G.mg;
+    if(mg && mg.type === 'gp'){
+      mg.dist = ['larga','media','corta'][Math.floor(rnd() * 3)];
+      mg.pace = ['bajo','medio','alto'][Math.floor(rnd() * 3)];
+      mg.prio = ['striking','counter','wrestling','clinch','grappling'][Math.floor(rnd() * 5)];
+      mg.def = ['cabeza','derribo','reja'][Math.floor(rnd() * 3)];
+      c.gpConfirm(); c.mgClose(true);
+    } else if(c.G.mg) c.mgClose(false);
+  }
+  /* lección de la última derrota */
+  if(c.G.rpg.lastLoss && rnd() < 0.8) c.CMB.takeLesson();
+  /* puntos de técnica: la más barata disponible */
+  for(let k = 0; k < 3; k++){
+    const t = c.TQ.T.filter(x => c.TQ.canUnlock(x.id).ok).sort((a, b) => a.cost - b.cost || a.lv - b.lv)[0];
+    if(!t) break;
+    c.TQ.unlock(t.id);
+  }
+  c.UI.screen = 'hub'; c.UI.tmp.tqNew = null;
+}
+
+const t0 = Date.now();
+let rotas = 0;
+for(let i = 0; i < N; i++){
+  const seed = 7100 + i * 31, metaSeed = 910000 + i * 7919;
+  const h = H.boot({ seed, file: ARCHIVO }); const c = h.ctx;
+  H.startCareer(h, { metaSeed, style: ['mma','boxer','wrest','bjj','muay'][i % 5], div: 'LW', age: 21 });
+  let s = seed >>> 0; const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  let semanas = 0, fallo = null;
+  const tc = Date.now();
+  while(!c.G.player.retired && c.ageOf(c.G.player) < 37 && semanas < 1000){
+    try {
+      A.correrCarrera(h, { maxWeeks: 1, politica: 'rpg', seedPolitica: seed * 1000 + semanas });
+      semanaDeJugador(c, rnd);
+    } catch(e){ fallo = 'excepción en la semana ' + semanas + ': ' + e.message; break; }
+    semanas++;
+    const malas = INV.checkInvariants(c.G, c.UI, {}) || [];
+    if(malas.length){ fallo = 'invariante en la semana ' + semanas + ': ' + JSON.stringify(malas[0]).slice(0, 160); break; }
+  }
+  const p = c.G.player, r = c.G.rpg;
+  let fin = {};
+  if(!fallo){
+    if(!p.retired) c.retire();
+    c.UI.screen = 'ending'; c.render();
+    const endH = c.document.getElementById('app').innerHTML;
+    c.UI.screen = 'diario'; c.render();
+    const diaH = c.document.getElementById('app').innerHTML;
+    const limpio = (x) => !/undefined|NaN/.test(x.replace(/onclick="[^"]*"/g, ''));
+    const rpg0 = JSON.stringify(r);
+    c.saveGame(true); const ok = c.loadGame(c.listSaves()[0].id);
+    fin = {
+      final: endH.indexOf('PERFIL DE CARRERA') >= 0 && limpio(endH),
+      diario: ['Carrera','Identidad','Personas','Rivalidades','Momentos','Legado'].every(x => diaH.indexOf('<summary>' + x + '</summary>') >= 0) && limpio(diaH),
+      guardado: ok && JSON.stringify(c.G.rpg) === rpg0,
+      bytes: rpg0.length
+    };
+    if(!fin.final || !fin.diario || !fin.guardado) fallo = 'retiro: ' + JSON.stringify(fin);
+  }
+  if(fallo) rotas++;
+  const mast = Object.entries(r.mast || {}).map(([k, m]) => k + ':' + m.n + '/' + m.p).join(' ');
+  console.log('carrera ' + (i + 1) + ' · semilla ' + seed + ' · ' + semanas + ' semanas · ' + ((Date.now() - tc) / 1000).toFixed(0) + ' s' + (fallo ? '  ✗ ' + fallo : '  ✓'));
+  console.log('   récord ' + p.rec.w + '-' + p.rec.l + '-' + p.rec.d + ' · títulos ' + p.titles + ' · defensas ' + p.defenses + ' · edad ' + c.ageOf(p) +
+              ' · identidad ' + (r.ident && r.ident.k) + ' · rasgos ' + Object.keys(r.traits || {}).join(',') +
+              ' · filosofía ' + JSON.stringify(r.philo && { f: r.philo.fight, c: r.philo.career }));
+  console.log('   ' + Object.values(r.fm || {}).length + ' rivales en memoria · victorias leyendo ' + ((r.cnt && r.cnt.iqW) || 0) + ' · lecciones aprendidas ' + (r.lessons || []).length +
+              ' · Ultimates ' + Object.keys(r.ult || {}).join(',') + ' · eras terminadas ' + (r.eraEnds || 0) + ' · técnicas ' + c.TQ.ownedAll());
+  console.log('   maestría ' + (mast || '—') + (fin.bytes ? ' · G.rpg ' + (fin.bytes / 1024).toFixed(1) + ' KB' : ''));
+}
+console.log('\n' + (N - rotas) + '/' + N + ' carreras completas sin fallos · invariantes cada semana (' + Object.keys(INV.SISTEMAS).length + ' sistemas) · ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
+process.exit(rotas ? 1 : 0);

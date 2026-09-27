@@ -44,9 +44,15 @@ const ESTADOS = {
        caso se elige comodo, la medicion no vale. */
     const ids = Object.keys(G.fighters).filter(k => k !== p.id && !G.fighters[k].retired);
     const rival = ids.sort((a,b) => (G.fighters[b].name||'').length - (G.fighters[a].name||'').length)[0];
-    G.nextFight = { oppId: rival, weeks: 5, purse: 250000, title: true,
-                    event: 'Campeonato mundial de peso ligero · cartelera estelar',
-                    org: p.org || 'RFL' };
+    const spec = { oppId: rival, weeks: 5, purse: 250000, title: true,
+                   event: 'Campeonato mundial de peso ligero · cartelera estelar',
+                   org: p.org || 'RFL' };
+    /* La guarda de G.nextFight (installNextFightGuard) rechaza una pelea de
+       título que no pasa la regla deportiva, y en silencio: este estado se
+       medía SIN pelea. Es un instrumento, no una partida: se escribe el valor
+       detrás de la guarda y se comprueba que quedó puesto. */
+    if(G.__nextFightGuard) G.__nextFight = spec; else G.nextFight = spec;
+    if(!G.nextFight || G.nextFight.oppId !== rival) throw new Error('peor caso: la pelea de título no quedó firmada');
   },
 };
 

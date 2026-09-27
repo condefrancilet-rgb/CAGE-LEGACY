@@ -190,3 +190,34 @@ cargar  ── loadGame ─▶ saveShape ▸ saveMigrate(v1..v5) ▸ saveValidat
    `pickStable` o texto determinista.
 4. **Casino intocable**: no se engancha nada dentro de `CAS`.
 5. **`remember()` es local**: exponer un escritor público en vez de duplicar el almacén.
+
+---
+
+## 6. Estado al cerrar la etapa (verificado con pruebas, no declarado)
+
+| pieza (sección) | estado | dónde se prueba |
+|---|---|---|
+| `allyForm`, `travelWith`, `watchFight` (2.1) | con entrada en la ficha social, según la etapa de la relación | `16-rpg-accesos.js` |
+| `podcastStart` (2.1) | con pantalla propia (`scrPod`) y entradas desde Vida y la ficha de un rival | `16-rpg-accesos.js` |
+| eliminatorias (2.2) | las produce el mánager (`MGR.push`); ganarla deja la pelea por el título | `16-rpg-accesos.js` |
+| `trilogyOpp`, `polemicalOpp` (2.2) | con productor al terminar una pelea | `16-rpg-accesos.js` |
+| `analyst`, `videoWall` (2.3) | scouting con la tendencia REAL del rival (`CL.oppWeightsFor`) y +6 de lectura | `18-rpg-combate.js` |
+| `teamCamp` (2.3) | +2 al gameplan con 2+ entrenadores; tercera vía en el desacuerdo de plan | `16`, `19` |
+| `eliteCampWeek/Boost` (2.3) | la promesa se cumple con `eliteCampAt` (6 semanas); las dos banderas viejas quedan escritas sin lector | `16-rpg-accesos.js` |
+| `chef` (2.3) | −2 desgaste y −0,35 lb por semana de camp | `16-rpg-accesos.js` |
+| `lockGym`, `lockDiv`, `short` (2.3) | `metaLock()` en todas las vías voluntarias; retiro a los 32 | `16-rpg-accesos.js` |
+| `wantTitleRematch`, `calloutTitle` (2.3) | producen la revancha por el título / la defensa contra el retador | `16-rpg-accesos.js` |
+| `considerDivisionChange`, `divTalk`, `betterDeal`, `freeAgent`, `wantMgr`, `dirtyMoney`, `fixed`, `dualGym` | cumplidas (RPG-05) | `20-rpg-promesas.js` |
+| `remember` local (2.4) | `CL.remember` público; lo usan ecos, maestría, eras y el reemplazo de un rival | ecos: `17-rpg-identidad.js`; el camino del reemplazo **no tiene prueba dedicada** |
+| «lectura» sin uso (3) | Fight IQ sobre `c.read` con la distribución real del rival | `18-rpg-combate.js` |
+| eras (1, "no existe") | `ERA`, derivadas de `G.champs` | `19-rpg-campo-mundo.js` |
+
+**Siguen escritas sin lector** (no prometen una consecuencia futura: son marcas de compra o de
+tipo de carrera): `apt`, `villa`, `estate`, `jet`, `foundation`, `stylist`, `brawler`, `late`,
+`needCheapGym` (su lectura se reemplazó por `CL.cheapGym`), `eliteCampWeek`, `eliteCampBoost`.
+
+**Bugs del juego encontrados durante la etapa** (además de B-1…B-7): el rival elegía acciones
+que no existen en la posición (RPG-03); peleadores nacidos a mitad de carrera sin `f.cl` (guardar
+y cargar cambiaba el mundo, RPG-03); `saveReplacer` compacta toda clave `st`/`pot`/`lr` (RPG-02);
+dos pantallas movían el RNG o creaban estado al dibujarse (RPG-01); el instrumento de rendimiento
+no medía el peor caso (RPG-05).

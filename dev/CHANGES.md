@@ -10,6 +10,47 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-05 · Fase 8: lo prometido pasa, y una carrera entera lo prueba
+**Tipo** conexión de promesas + instrumento + ajuste · **Cambio observable:** sí.
+
+**Seis promesas que los eventos hacían y no cumplían** (auditoría RPG, 2.3: sólo escribían una
+bandera sin lector). Cada una se cumple por el camino que el juego ya tenía:
+
+| el evento decía | ahora | camino existente |
+|---|---|---|
+| «Va a llegar algo mejor» (`betterDeal`) | la próxima oferta de contrato llega +20 % | `offers:made` |
+| «Todo el mundo sabe que estás disponible» (`freeAgent`) | con el contrato por vencer, otra organización se adelanta | `betterOrgForPlayer()` + `offers:made` |
+| «Tu equipo empieza a evaluar subir» / «La derrota abre una puerta» (`divTalk`, `considerDivisionChange`) | si tu cuerpo es de otra categoría, se arma el cambio; si no, el equipo lo descarta y lo dice | `planDivUp` → evento `body_divup` (ya existía); respeta «Sin cambiar de peso» |
+| «Empezás a buscar alternativas» (`wantMgr`) | dos representantes llaman; firmar cambia de mánager | `changeMgr()` |
+| «Dos periodistas empiezan a investigarte» (`dirtyMoney`) | doce semanas después sale la nota, y responderla cuesta o no | evento serializable |
+| «Vas a tener que perder a propósito en el segundo asalto» (`fixed`) | en el round 2 de la pelea siguiente aparece «Ir a la lona»; cumplirlo es perder (y deja eco); ganarla trae al empresario a cobrar | `fight:options`/`act:*`, `fight:applied` |
+| «Campamentos allá sin romper con tu equipo» (`dualGym`) | en campamento, el gimnasio de afuera pesa en la calidad del trabajo, con el peso que `trainQuality` le da al gimnasio | `train:adjust` |
+
+`x14_fix` ahora guarda el monto en la bandera (`G.flags.fixed = G.tmpAmt`), que era `true`.
+
+**Ajuste de las Ultimates.** Tres carreras completas mostraron que casi nunca despertaban: se
+pedían 3 notas PERFECTAS *después* de la resistencia del rival, y una ejecución perfecta del
+minijuego se degrada por azar. El requisito pasa a **3 ejecuciones perfectas del minijuego**
+(`q ≥ 0,86`, lo que depende del jugador), además de 8 usos y una pelea ganada con ella. Notas,
+niveles y puntos del árbol no cambian.
+
+**Instrumento de rendimiento.** `dev/perf/inicio.js` escribía `G.nextFight` directo; la guarda del
+juego rechazaba la pelea de título en silencio y el «peor caso» se medía **sin pelea**. Ahora
+escribe detrás de la guarda y falla si el estado no quedó puesto. Resultado real: «Avanzar» sigue
+sin scroll en los tres viewports, también con la pelea de título.
+
+**Carrera completa real** (`dev/rpg-carrera-completa.js`): `e5-largas.js` avanza semanas sin
+pelear; este script corre carreras del debut (21) al retiro (37), con una política que usa lo que
+agregó la etapa por la vía del jugador (técnicas con su minijuego, «Anticipar», gameplan,
+lecciones, puntos del árbol) y comprueba las invariantes **cada semana**. 3/3 carreras de ~762
+semanas sin fallos; al retiro, final con perfil, diario con sus 6 secciones y `G.rpg` idéntico
+tras guardar y cargar (24-29 KB).
+
+**Golden.** Las 5 trazas cambian; bisección: 404 y 505, el autopiloto había elegido «Cambiar de
+mánager» (semanas 4 y 12) y ahora llaman los representantes. Trazas regeneradas.
+**Pruebas:** `dev/tests/20-rpg-promesas.js`, 8 pruebas; mutantes 9/9 significativos (uno
+equivalente documentado: quitar `hp=0` antes de `finishFight('ko','o')`).
+
 ## RPG-04 · Fases 6 y 7: el campamento pregunta, el mundo recuerda
 **Tipo** decisiones + mundo (capa sobre lo existente) + fix · **Cambio observable:** sí.
 
@@ -50,6 +91,9 @@ Chromium: el momento se ve y se resuelve desde el inicio; la tarjeta de eras se 
 Golden: las 5 trazas cambian; primera diferencia por bisección: 505 y 101, la decisión de carga
 del primer campamento («lo que diga el coach»); 202, el eco del gimnasio que dejó (semana 40).
 Trazas regeneradas (`--solo-trazas`). Suite 254/254, navegador 77/77.
+Balance: con 60 carreras los campeones parecían bajar (53,3 → 46,7 %), dentro del error estándar
+(~6,5 pp). Repetido con 150 carreras por versión (`sim.js --n 150`): campeones **48,0 → 51,3 %**,
+win rate 78,2 → 78,7 %, 0 fallos de invariante en ambas. No hay una caída: era ruido.
 
 ## RPG-03 · Fase 5: la pelea se lee, se recuerda y enseña
 **Tipo** combate (capa sobre el motor existente) + 2 fixes · **Cambio observable:** sí.

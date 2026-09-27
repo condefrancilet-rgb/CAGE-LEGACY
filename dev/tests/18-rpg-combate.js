@@ -221,6 +221,8 @@ suite('RPG-5 · maestría y Ultimates, desde el árbol que ya existía', () => {
     conTecnica(c, 's_low');
     for(let i = 0; i < 6; i++) c.hookEmit('tq:resolved', { id: 's_low', t: c.TQ.node('s_low'), grade: i < 4 ? 'good' : 'fail', q: .6 });
     eq(c.CMB.mastTier('s_low'), 1, '6 ejecuciones con 4 buenas no la dejan dominada');
+    c.hookEmit('tq:resolved', { id: 's_low', t: c.TQ.node('s_low'), grade: 'good', q: .9 });
+    eq(c.G.rpg.mast.s_low.x, 1, 'una ejecución perfecta resistida por el rival no cuenta como ejecución perfecta');
     c.G.tq.use.s_low = 30;
     const t = c.TQ.node('s_low'), r1 = c.TQ.resist(t);
     Object.assign(c.G.rpg.mast.s_low, { n: 14, p: 4 });
@@ -231,9 +233,9 @@ suite('RPG-5 · maestría y Ultimates, desde el árbol que ya existía', () => {
   test('una L4 usada de verdad despierta su Ultimate, con el sello de tu identidad', () => {
     const c = carrera(31).ctx; conContrato(c);
     conTecnica(c, 's_perf');
-    c.G.rpg.mast.s_perf = { n: 8, p: 2, g: 3, f: 3, w: 1 };
-    eq(c.CMB.awaken(), [], 'despertó sin 3 perfectas');
-    c.G.rpg.mast.s_perf.p = 3; c.G.rpg.ident.k = 'finalizador';
+    c.G.rpg.mast.s_perf = { n: 8, p: 3, g: 3, f: 2, w: 1, x: 2 };
+    eq(c.CMB.awaken(), [], 'despertó sin 3 ejecuciones perfectas');
+    c.G.rpg.mast.s_perf.x = 3; c.G.rpg.ident.k = 'finalizador';
     eq(c.CMB.awaken(), ['s_perf'], 'no despertó con los requisitos');
     eq(c.G.rpg.ult.s_perf.v, 'espectaculo', 'el sello no sale de la identidad');
     ok(c.G.news.some(n => n.t.indexOf('Nace una técnica') >= 0), 'no es noticia');

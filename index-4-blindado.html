@@ -6394,7 +6394,7 @@ ev({id:'x13_street',w:6,drama:1,c:function(){return !seen('x13_street')&&G.playe
 ev({id:'x14_fix',w:5,drama:1,c:function(){return !seen('x14_fix')&&G.player.rec.w>7;},
  x:function(){G.tmpAmt=Math.round(300000+G.player.pop*8000);
   return 'Un empresario te invita a cenar y va directo al punto: '+money(G.tmpAmt)+' por irte a la lona en el segundo asalto. Dice que nadie se enteraría.';},
- o:[{t:'Aceptar',f:function(){G.cash+=G.tmpAmt;G.careerEarn+=G.tmpAmt;G.flags.fixed=true;
+ o:[{t:'Aceptar',f:function(){G.cash+=G.tmpAmt;G.careerEarn+=G.tmpAmt;G.flags.fixed=G.tmpAmt||true;
     G.player.st.confidence=cap(G.player.st.confidence-8);G.player.st.discipline=cap(G.player.st.discipline-6);
     return 'Cobrás '+money(G.tmpAmt)+'. Vas a tener que perder a propósito, y algo se rompe adentro tuyo.';}},
   {t:'Negarte y denunciarlo',f:function(){G.player.rep=clamp(G.player.rep+10,1,100);G.player.pop=clamp(G.player.pop+4,1,100);
@@ -29520,6 +29520,7 @@ RPG.CP_D = {
    mem: si se anota en la memoria narrativa (las frecuentes, no)
    -------------------------------------------------------------------------- */
 RPG.ECHO = {
+  took_dive:      {t:'Vendiste una pelea', ax:{disciplina:-2,lealtad:-1,ego:-1}, cp:{dinero:2}, mem:1},
   spar_drill:     {t:'Repetiste en el sparring lo que va a hacer el rival', ax:{disciplina:1,estrategia:1.5}, cp:{competencia:.5}, mem:0},
   camp_push:      {t:'Apretaste el campamento al límite', ax:{riesgo:1,disciplina:.5,ambicion:.5}, cp:{gloria:.5}, mem:0},
   camp_rest:      {t:'Descargaste en medio del campamento', ax:{riesgo:-1,estrategia:.5}, cp:{}, mem:0},
@@ -30706,9 +30707,12 @@ CMB.mastTier = function(id){
 };
 hookOn('tq:resolved','maestria', function(e){
   if(!e || !G || !G.fight || !TQ.MAP[e.id]) return;
-  var s=CMB.S(), m=s.mast[e.id]||(s.mast[e.id]={n:0,g:0,p:0,f:0,w:0});
+  var s=CMB.S(), m=s.mast[e.id]||(s.mast[e.id]={n:0,g:0,p:0,f:0,w:0,x:0});
   var before=CMB.mastTier(e.id);
   m.n++; if(e.grade==='perfect') m.p++; else if(e.grade==='good') m.g++; else m.f++;
+  /* ejecución perfecta del minijuego (antes de que el rival la resista): es
+     lo que depende del jugador, y lo que pide la evolución a Ultimate */
+  if(clN(e.q,0)>=0.86) m.x=safeInt(m.x,0)+1;
   var st=TQ.fs(); if(st && e.grade!=='fail'){ st.land=st.land||{}; st.land[e.id]=1; }
   if(e.t && e.t.ult && st){ st.ultDone=st.ultDone||{}; st.ultDone[e.id]=1; }
   var after=CMB.mastTier(e.id);
@@ -30741,7 +30745,9 @@ hookOn('tq:resist','maestria', function(v, x){
 /* --------------------------------------------------------------------------
    8. ULTIMATES — las técnicas legendarias, evolucionadas
    No son técnicas nuevas: son las L4 del árbol, llevadas al límite por uso real
-   (8 ejecuciones, 3 perfectas y haberla metido en una pelea ganada). Se
+   (8 ejecuciones, 3 de ellas perfectas en el minijuego —lo que depende de
+   vos, antes de que el rival la resista— y haberla metido en una pelea
+   ganada). Se
    ejecutan con TQ.use del mismo nodo: mismo uso por pelea, mismas
    condiciones, minijuego de clutch, misma nota y mismas recompensas. Una vez
    por pelea. El sello lo pone quién sos cuando despierta.
@@ -30773,8 +30779,8 @@ CMB.ultVariant = function(){
 };
 CMB.ultReady = function(id){
   var m=CMB.R().mast[id]||{};
-  return {n:safeInt(m.n,0), p:safeInt(m.p,0), w:safeInt(m.w,0),
-          ok: TQ.has(id) && safeInt(m.n,0)>=8 && safeInt(m.p,0)>=3 && safeInt(m.w,0)>=1};
+  return {n:safeInt(m.n,0), x:safeInt(m.x,0), w:safeInt(m.w,0),
+          ok: TQ.has(id) && safeInt(m.n,0)>=8 && safeInt(m.x,0)>=3 && safeInt(m.w,0)>=1};
 };
 CMB.awaken = function(){
   var s=CMB.S(), got=[];
@@ -30903,7 +30909,7 @@ hookOn('tq:ownInfo','maestria', function(h, x){
     var u=CMB.R().ult[t.id];
     if(u) h+='<p class="xs gold" style="margin:2px 0 0">✴ Evolucionó: '+esc(CMB.ULT[t.id].n)+' ('+esc(CMB.ULT_V[u.v].n)+': '+esc(CMB.ULT_V[u.v].d)+').</p>';
     else { var rd=CMB.ultReady(t.id);
-      h+='<p class="xs dim2" style="margin:2px 0 0">✴ Para evolucionar: 8 ejecuciones ('+rd.n+'), 3 perfectas ('+rd.p+') y meterla en una pelea ganada ('+rd.w+').</p>'; }
+      h+='<p class="xs dim2" style="margin:2px 0 0">✴ Para evolucionar: 8 ejecuciones ('+rd.n+'), 3 ejecutadas a la perfección ('+rd.x+') y meterla en una pelea ganada ('+rd.w+').</p>'; }
   }
   return h;
 }, 20);
@@ -31248,6 +31254,140 @@ hookOn('screen:fighter','rivalidad', function(h){
   return h+'<div class="card"><div class="hdr"><span class="b">⚔️ Rivalidad</span><span class="tag">'+esc(RPG.rivalStage(o))+' · '+w+'-'+l+'</span></div>'+
     '<p class="sm dim" style="margin:0">'+esc(nx)+'</p></div>';
 }, 65);
+
+/* ==========================================================================
+   PROMESAS QUE EL JUEGO HACÍA Y NO CUMPLÍA (auditoría RPG, 2.3)
+   --------------------------------------------------------------------------
+   Seis respuestas de eventos le decían al jugador que algo iba a pasar y sólo
+   escribían una bandera que nadie leía. Cada una se cumple ahora por el camino
+   que el juego ya tenía para eso: ofertas (offers:made), el evento de cambio
+   de categoría (planDivUp → body_divup), changeMgr, la regla de la pelea.
+   ========================================================================== */
+CL.mod('promesas','Las consecuencias que los eventos anunciaban y no ocurrían');
+var PROM = {};
+/* «Tu manager mueve piezas. Va a llegar algo mejor.» (contract_dispute) */
+hookOn('offers:made','promesas', function(){
+  if(!G || !Array.isArray(G.offers)) return;
+  var p=G.player;
+  if(G.flags.betterDeal){
+    var co=G.offers.filter(function(o){ return o && o.type==='contract'; });
+    if(co.length){
+      co.forEach(function(o){ o.purse=Math.round(clN(o.purse,0)*1.2); o.bonus=Math.round(clN(o.bonus,0)*1.2);
+        o.txt=(o.txt||'')+' Tu mánager movió piezas: +20 %.'; });
+      G.flags.betterDeal=false;
+    }
+  }
+  /* «Ahora todo el mundo sabe que estás disponible.» */
+  if(G.flags.freeAgent && G.contract && safeInt(G.contract.left,9)<=1){
+    var have=G.offers.some(function(o){ return o && o.type==='contract' && o.org!==p.org; });
+    var target=(typeof betterOrgForPlayer==='function')? betterOrgForPlayer() : null;
+    if(!target){
+      var cur=p.org&&G.orgs[p.org];
+      target=Object.keys(G.orgs).filter(function(k){ return k!==p.org && cur && G.orgs[k].tier===cur.tier; }).sort()[0]||null;
+    }
+    if(!have && target && G.orgs[target]){
+      var purse=Math.round(G.orgs[target].pay[0]*(1+clamp(clN(p.pop,0)/100*.5,0,.6)));
+      G.offers.push({type:'contract', org:target, purse:purse, bonus:Math.round(purse*.4), fights:4,
+        txt:G.orgs[target].n+' vio que estás disponible y se adelanta.'});
+    }
+    G.flags.freeAgent=false;
+  }
+}, 85);
+hookOn('week','promesas', function(){
+  var p=G&&G.player; if(!p || p.retired) return;
+  var now=RPG.stamp();
+  /* «Tu equipo empieza a evaluar la idea en serio.» / «La derrota abre una puerta…» */
+  if(G.flags.divTalk || G.flags.considerDivisionChange){
+    G.flags.divTalk=false; G.flags.considerDivisionChange=false;
+    var nat=(typeof naturalDiv==='function')? naturalDiv(p) : p.div;
+    if(metaLock('div')){ if(CL.thread) CL.thread('cuerpo','Tu equipo evaluó cambiar de categoría, pero elegiste una carrera sin cambios de peso.'); }
+    else if(nat && nat!==p.div && DIVS[nat]){
+      G.flags.planDivUp=1;               /* el evento body_divup ya existía: lo ofrece cuando corresponde */
+      if(CL.thread) CL.thread('cuerpo','Tu equipo lo evaluó: tu cuerpo es de '+DIVS[nat].n+'. Cuando no tengas pelea firmada, se hace.');
+    } else if(CL.thread) CL.thread('cuerpo','Tu equipo lo evaluó en serio: '+DIVS[p.div].n+' es tu categoría. No hay puerta ahí.');
+  }
+  if(G.pending.length) return;
+  /* «Empezás a buscar alternativas.» (mgr_conflict) */
+  if(G.flags.wantMgr){
+    var alts=(G.mgrs||[]).filter(function(m){ return m.id!==G.mgId; })
+      .sort(function(a,b){ return clN(b.a&&b.a.net,0)-clN(a.a&&a.a.net,0) || (a.id<b.id?-1:1); }).slice(0,2);
+    G.flags.wantMgr=false;
+    if(alts.length) CL.ask('prom_mgr', 'Preguntaste por ahí. Dos representantes te devuelven el llamado.',
+      alts.map(function(m){ return 'Firmar con '+m.name+' (comisión '+Math.round(m.cut*100)+' %)'; }).concat(['Quedarte con el que tenés']),
+      {ids:alts.map(function(m){ return m.id; })});
+    return;
+  }
+  /* «Dos periodistas empiezan a investigarte.» (x4_sponsor) */
+  if(G.flags.dirtyMoney===true) G.flags.dirtyMoney={at:now};
+  if(G.flags.dirtyMoney && typeof G.flags.dirtyMoney==='object' && now-safeInt(G.flags.dirtyMoney.at,now)>=12){
+    G.flags.dirtyMoney={at:safeInt(G.flags.dirtyMoney.at,now), done:1};
+    CL.ask('prom_invest', 'Sale la nota: "El logo que '+fname(p)+' lleva en el pecho paga con plata que nadie sabe de dónde viene."',
+      ['Negarlo todo','Asumirlo y cortar el contrato','No decir nada']);
+  }
+}, 78);
+CL.handler('prom_mgr', function(idx, d){
+  var id=d && d.ids && d.ids[idx];
+  if(id && mgrById(id)){ changeMgr(id); return 'Nuevo representante. Empieza otra forma de negociar.'; }
+  return 'Te quedás con tu mánager. Algo quedó dicho igual.';
+});
+CL.handler('prom_invest', function(idx){
+  var p=G.player;
+  if(idx===0){ p.rep=clamp(p.rep-6,1,100); p.pop=clamp(p.pop-2,1,100); RPG.echo('media_aggro', {t:'Negaste la investigación sobre tu patrocinador'});
+    return 'Lo negás. Aparece otra nota con recibos.'; }
+  if(idx===1){ p.rep=clamp(p.rep+2,1,100); p.pop=clamp(p.pop-1,1,100); RPG.echo('respect_reply', {t:'Asumiste lo del patrocinador turbio'});
+    return 'Lo asumís en público. Duele una semana; después se habla de otra cosa.'; }
+  p.rep=clamp(p.rep-3,1,100); return 'El silencio también se lee.';
+});
+
+/* «Vas a tener que perder a propósito» (x14_fix): la próxima pelea lo pide */
+PROM.fix = function(){ var v=G&&G.flags&&G.flags.fixed; return (v && v!=='done')? v : null; };
+hookOn('fight:options','arreglo', function(ops){
+  var f=G&&G.fight; if(!f || f.over || !Array.isArray(ops) || !PROM.fix() || f.round!==2) return ops;
+  ops.push({k:'prom_dive', t:'🤝 Ir a la lona (el arreglo)', d:'Lo que aceptaste en esa cena. Nadie en la jaula lo sabe.'});
+  return ops;
+}, 90);
+hookOn('act:translate','arreglo', function(k){
+  if(k!=='prom_dive') return k;
+  var f=G&&G.fight; if(f) f.promDive=1;
+  return 'guard';
+}, 90);
+hookOn('act:post','arreglo', function(ctx){
+  var f=G&&G.fight; if(!f || !f.promDive || f.over) return;
+  f.p.hp=0; flog(fname(G.player)+' cae y no se levanta. Algunos en la primera fila se miran.');
+  finishFight('ko','o');
+}, 97);
+hookOn('fight:pre','arreglo', function(c){
+  var f=G&&G.fight; c.promFix = PROM.fix() && f && f.result ? {won:f.result.winner==='p', dive:!!f.promDive} : null;
+}, 84);
+hookOn('fight:applied','arreglo', function(c){
+  var d=c.promFix; if(!d) return;
+  var amt=(typeof G.flags.fixed==='number')? G.flags.fixed : 0;
+  G.flags.fixed='done';
+  if(!d.won){
+    RPG.echo('took_dive', {t: d.dive? 'Te dejaste caer por plata' : 'Perdiste la pelea que habías vendido'});
+    if(CL.thread) CL.thread('legado','Una pelea de tu récord no fue una pelea.');
+    return;
+  }
+  CL.ask('prom_fix', 'Ganaste la pelea que habías vendido. El empresario de la cena te espera en el estacionamiento.',
+    ['Devolverle la plata con intereses','Denunciarlo ahora','Ignorarlo'], {amt:amt});
+}, 84);
+CL.handler('prom_fix', function(idx, d){
+  var p=G.player, amt=safeInt(d&&d.amt,0);
+  if(idx===0){ var back=Math.round(amt*1.3); G.cash-=back; return 'Le devolvés '+money(back)+'. Se va sin decir nada. Te queda la deuda y el alivio.'; }
+  if(idx===1){ p.rep=clamp(p.rep+6,1,100); p.pop=clamp(p.pop+2,1,100);
+    pushNews(fname(p)+' denuncia un intento de arreglo. La comisión abre una investigación.');
+    return 'Lo contás todo. Por un tiempo mirás dos veces antes de cruzar la calle.'; }
+  p.st.composure=cap(p.st.composure-4); p.st.confidence=cap(p.st.confidence-3);
+  return 'Hacés como que no pasó. Durante meses, cada auto estacionado es él.';
+});
+
+/* «Vas a poder hacer campamentos allá sin romper con tu equipo.» (x12_academy) */
+hookOn('train:adjust','campamentoAfuera', function(mm){
+  var alt=G.flags && G.flags.dualGym; if(!alt || !G.camp) return;
+  var g2=gymById(alt), g1=gymById(G.player.gym), t=TRAIN[mm.act]; if(!g2 || !g1 || !t || !g2.a || !g1.a) return;
+  var a2=clN(g2.a[t.g],0), a1=clN(g1.a[t.g],0);
+  if(a2>a1) mm.bonus=clN(mm.bonus,0)+(a2-a1)/Math.max(30,a1)*0.55;   /* el peso del gimnasio en trainQuality */
+}, 26);
 
 /* ==========================================================================
    FASES 4, 5 y 6 — BANCO DE PRUEBAS AISLADO, ESCENARIOS Y DETERMINISMO
