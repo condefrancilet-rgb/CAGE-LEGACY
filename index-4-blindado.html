@@ -29443,7 +29443,9 @@ RPG.DEF = function(){
     tempAsk:null,  /* último sello en que se preguntó por el temperamento       */
     /* combate (módulo CMB): memoria de cada rival, maestría por técnica,
        Ultimates despertadas, lecciones de derrotas */
-    fm:{}, mast:{}, ult:{}, lessons:[], lesson:null, lastLoss:null
+    fm:{}, mast:{}, ult:{}, lessons:[], lesson:null, lastLoss:null,
+    /* mundo: eras por división, gimnasios y entrenadores que dejaste */
+    era:{cur:{}, hist:{}}, prevGyms:[], prevCoaches:[], eraEnds:0
   };
 };
 /* LECTOR: nunca crea estado (las pantallas lo usan, B-001). */
@@ -29518,6 +29520,11 @@ RPG.CP_D = {
    mem: si se anota en la memoria narrativa (las frecuentes, no)
    -------------------------------------------------------------------------- */
 RPG.ECHO = {
+  spar_drill:     {t:'Repetiste en el sparring lo que va a hacer el rival', ax:{disciplina:1,estrategia:1.5}, cp:{competencia:.5}, mem:0},
+  camp_push:      {t:'Apretaste el campamento al límite', ax:{riesgo:1,disciplina:.5,ambicion:.5}, cp:{gloria:.5}, mem:0},
+  camp_rest:      {t:'Descargaste en medio del campamento', ax:{riesgo:-1,estrategia:.5}, cp:{}, mem:0},
+  camp_team:      {t:'Sentaste a todo el equipo a unificar el plan', ax:{lealtad:1,estrategia:1}, cp:{legado:.5}, mem:1},
+  plan_own:       {t:'Mantuviste tu plan contra la opinión de tu entrenador', ax:{ego:1,lealtad:-1,estrategia:.5}, cp:{libertad:1}, mem:1},
   lesson_taken:   {t:'Te llevaste una lección de una derrota', ax:{disciplina:1,estrategia:1,ego:-.5}, cp:{competencia:.5}, mem:1},
   lesson_learned: {t:'Aprendiste lo que te enseñó una derrota', ax:{disciplina:1.5,estrategia:.5}, cp:{legado:.5}, mem:1},
   short_notice:   {t:'Aceptaste pelear con poco tiempo de aviso', ax:{riesgo:2,ambicion:1}, cp:{competencia:1,dinero:1}, mem:1},
@@ -30011,12 +30018,13 @@ RPG.weekCheck = function(){
   if(safeInt(s.n,0)>=14 && !G.pending.length && !G.camp && (s.tempAsk===null || RPG.stamp()-safeInt(s.tempAsk,0)>=52)){
     var k=RPG.persFromAxes();
     if(k && k!==p.pers && k!==p.pers2 && !persConflict(p.pers,k)){
-      s.tempAsk=RPG.stamp();
       var tp=RPG.temper().map(function(x){ return x.n.toLowerCase(); }).join(', ');
       CL.ask('rpg_temper', 'En el gimnasio ya no te describen como '+PERS[p.pers].n.toLowerCase()+
         (p.pers2? ' y '+PERS[p.pers2].n.toLowerCase() : '')+'. Dicen otra cosa: '+tp+'. '+
         'Tu entrenador te lo dice sin vueltas: "Ya no sos el mismo que llegó."',
         ['Asumirlo: ahora también soy '+PERS[k].n.toLowerCase(), 'No: sigo siendo el de siempre'], {k:k});
+      /* sólo cuenta como preguntado si la cola lo admitió */
+      if(G.pending.some(function(e){ return e && e.h==='rpg_temper'; })) s.tempAsk=RPG.stamp();
     }
   }
 };
@@ -30250,7 +30258,7 @@ RPG.journalHTML = function(){
   });
   RPG.recentEchoes(10).forEach(function(m){ mom.push({y:m.y, t:'🗣️ '+m.t}); });
   /* lo que se ganó dentro de la jaula: técnicas que se volvieron tuyas */
-  ((G.story && G.story.memories)||[]).forEach(function(m){ if(m && (m.type==='ultimate'||m.type==='mastery')) mom.push({y:m.y, t:(m.type==='ultimate'?'✴ ':'🎯 ')+m.t}); });
+  ((G.story && G.story.memories)||[]).forEach(function(m){ if(m && (m.type==='ultimate'||m.type==='mastery'||m.type==='era_end'||m.type==='era_start')) mom.push({y:m.y, t:({ultimate:'✴ ',mastery:'🎯 ',era_end:'👑 ',era_start:'👑 '})[m.type]+m.t}); });
   mom.sort(function(a,b){ return b.y-a.y; });
   h+=CL.seccion('dMomentos','Momentos','<div class="card"><div class="log">'+(mom.length? mom.slice(0,14).map(function(x){ return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>'; }).join('') : '<div class="dim">Todavía nada.</div>')+'</div></div>');
   /* LEGADO */
@@ -30452,6 +30460,7 @@ CMB.level = function(){
   if(RPG.hasTrait('cerebro_frio')){ L+=10; why.push('Cerebro frío'); }
   var ls=CMB.R().lesson;
   if(ls && ls.fixLeft>0 && ls.fix && f.pos===ls.fix){ L+=8; why.push('la lección de '+CMB.LESSONS[ls.k].n.toLowerCase()); }
+  if(iq.camp && iq.camp.b===b){ L+=iq.camp.drill?10:5; why.push(iq.camp.drill? 'lo trabajaste en el sparring' : 'lo anotaste en el campamento'); }
   var t = L<25?0:(L<45?1:(L<65?2:3));
   return {L:L, tier:t, b:b, seen:sn, why:why};
 };
@@ -30936,6 +30945,309 @@ hookOn('screen:fighter','lectura', function(h){
   return h+'<div class="card"><h3>🧠 Lo que sabés de él</h3><ul class="sm dim" style="padding-left:18px;margin:0">'+
     L.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('')+'</ul></div>';
 }, 70);
+
+/* ==========================================================================
+   CAMPAMENTO QUE PREGUNTA · MUNDO QUE RECUERDA
+   --------------------------------------------------------------------------
+   El campamento ya tenía trabajo semanal, minijuegos, gameplan, consejo de
+   esquina y paciencia del entrenador. Lo que no tenía eran DECISIONES con
+   costo que salieran de su propio estado: acá aparecen como eventos
+   serializables (CL.ask), a lo sumo una por semana y cada una una vez por
+   campamento, sólo cuando el estado las justifica:
+     · el sparring te mostró algo del rival (su tendencia REAL, la de
+       CL.oppWeightsFor) → ¿lo repetís hasta que salga solo?
+     · el desgaste está alto → ¿descargar, apretar o lo que diga el coach?
+     · tu plan y el de tu entrenador no coinciden → ¿a quién le hacés caso?
+   El mundo: las ERAS de cada división (reinados largos, quién las termina),
+   decisiones que VUELVEN (el gimnasio que dejaste, el entrenador que dejaste
+   aparece en la esquina rival) y el ciclo de cada rivalidad a la vista.
+   ========================================================================== */
+CL.mod('campoMundo','Decisiones del campamento, eras, ecos que vuelven y ciclo de rivalidad');
+var CAMPO = {};
+
+/* las cuatro situaciones que el scouting ya usa, con su clave de lectura */
+CAMPO.SITS = [
+  ['de pie, cómodo', 'stand', {pos:'stand', gap:0}],
+  ['de pie y sin aire', 'stand:c', {pos:'stand', gap:0, tired:true}],
+  ['más cerca de lo que quiere', 'stand:e', {pos:'stand', gap:0.6}],
+  ['arriba tuyo', 'gbot', {pos:'gbot', gap:0}]
+];
+/* la tendencia más marcada del rival: la situación donde una acción pesa más */
+CAMPO.tell = function(o){
+  if(!o) return null;
+  var B=CL.styleAt(o), best=null;
+  CAMPO.SITS.forEach(function(sx){
+    var x=Object.assign({B:B, hurt:false, winning:false, tired:false, pHp:100, pStam:100, last:false}, sx[2]);
+    var w=CL.oppWeightsFor(o, x), tot=0, top=null;
+    w.forEach(function(e){ tot+=e[1]; if(!top || e[1]>top[1]) top=e; });
+    var p=top? top[1]/tot : 0;
+    if(top && (!best || p>best.p)) best={n:sx[0], b:sx[1], a:top[0], p:p};
+  });
+  return best;
+};
+/* ¿qué haría este entrenador con un campamento cargado? Lo dice su filosofía */
+CAMPO.PUSHERS = ['volume','grind','finish'];
+/* la cola de eventos admite uno a la vez (queueHasRoom): un momento sólo se
+   da por usado si de verdad entró, si no queda para otra semana */
+CAMPO.ask = function(key, h, txt, opts, data){
+  CL.ask(h, txt, opts, data);
+  var ok=G.pending.some(function(e){ return e && e.h===h; });
+  if(ok) G.camp.beats[key]=1;
+  return ok;
+};
+CAMPO.pusher = function(c){ var st=c&&CL.coachState(c); return !!(st && CAMPO.PUSHERS.indexOf(st.ph)>=0); };
+CAMPO.PRIO_N = {striking:'ganar de pie', counter:'contragolpear', wrestling:'llevarlo al piso', clinch:'el clinch', grappling:'el suelo'};
+
+hookOn('camp:week:post','campo', function(cx){
+  var c=G.camp, p=G.player; if(!c || !G.nextFight || p.retired || G.pending.length) return;
+  var left=safeInt(c.weeks,0)-safeInt(c.i,0); if(left<1) return;
+  var o=F(c.oppId), coach=coachById(p.coach); if(!o) return;
+  c.beats=c.beats||{};
+  /* 1. el sparring mostró algo */
+  if(cx && cx.actKey==='spar' && !c.beats.spar){
+    var t=CAMPO.tell(o); if(!t) return;
+    CAMPO.ask('spar', 'camp_spar', 'Tu compañero de sparring hizo de '+fname(o)+' toda la semana. Mirando los videos juntos aparece algo: '+
+      t.n+', elige '+CMB.n(t.a)+' '+Math.round(t.p*100)+' de cada 100 veces.',
+      ['Repetir esa situación hasta que salga sola','Anotarlo y seguir con el plan'], {o:o.id, b:t.b, a:t.a, p:t.p});
+    return;
+  }
+  /* 2. el cuerpo avisa */
+  if(c.fatigue>=62 && left>=2 && !c.beats.load){
+    CAMPO.ask('load', 'camp_load', 'Desgaste '+Math.round(c.fatigue)+' con '+left+' semanas por delante. '+
+      (coach? coach.name+' mira la planilla: '+(CAMPO.pusher(coach)? '"Para esto entrenamos. Se aprieta."' : '"Si seguimos así, llegás roto."') : 'Nadie en la esquina se anima a decidirlo por vos.'),
+      ['Descargar esta semana','Apretar: el cuerpo aguanta', coach? 'Hacer lo que diga '+coach.name.split(' ')[0] : 'Seguir igual'], {c:coach?coach.id:null});
+    return;
+  }
+  /* 3. tu plan contra el de tu entrenador (desde la mitad del campamento) */
+  var gp=c.unifiedGameplan||c.gameplan;
+  if(gp && coach && !c.beats.split && c.i>=Math.ceil(c.weeks/2)){
+    var ph=COACH_PHIL[coach.spec]||COACH_PHIL.mma;
+    if(ph.prio===gp.prio) return;
+    var opts=['Hacerle caso','Mantener tu plan'];
+    if(typeof teamCampActive==='function' && teamCampActive() && team().length>=2) opts.push('Sentar a todo el equipo y unificar');
+    CAMPO.ask('split', 'camp_split', coach.name+' mira tu plan ('+(CAMPO.PRIO_N[gp.prio]||gp.prio)+', distancia '+gp.dist+') y no está de acuerdo: "'+ph.t+'"', opts,
+      {c:coach.id, prio:ph.prio, dist:ph.dist, pace:ph.pace});
+  }
+}, 60);
+
+CL.handler('camp_spar', function(idx, d){
+  var c=G.camp; if(!c) return 'El campamento ya terminó.';
+  c.readPat={o:d.o, b:d.b, a:d.a, p:d.p, drill:idx===0};
+  if(idx===0){
+    c.sharp=clamp(clN(c.sharp,0)+4,0,100); c.fatigue=clamp(clN(c.fatigue,0)+6,0,100);
+    RPG.echo('spar_drill');
+    return 'Veinte veces la misma situación. La última ya no la pensás: la ves venir.';
+  }
+  return 'Queda anotado en la libreta. Lo vas a reconocer, aunque no lo tengas en el cuerpo.';
+});
+CL.handler('camp_load', function(idx, d){
+  var c=G.camp, p=G.player; if(!c) return 'El campamento ya terminó.';
+  var coach=d&&d.c? coachById(d.c) : null;
+  var push = idx===1 || (idx===2 && CAMPO.pusher(coach));
+  if(idx===2 && coach){ CL.coachPatience(+3, 'le hiciste caso con la carga del campamento'); RPG.echo('backed_coach'); }
+  if(push){
+    c.sharp=clamp(clN(c.sharp,0)+5,0,100); c.fatigue=clamp(clN(c.fatigue,0)+8,0,100);
+    p.fatigue=clamp(clN(p.fatigue,0)+6,0,100);                 /* el riesgo de lesión lo lee applyTrain */
+    RPG.echo('camp_push');
+    return (idx===2? coach.name+' no duda: se aprieta. ' : '')+'Más afilado, más cerca del límite. El riesgo de romperte sube.';
+  }
+  c.fatigue=clamp(clN(c.fatigue,0)-15,0,100); c.sharp=clamp(clN(c.sharp,0)-3,0,100);
+  RPG.echo('camp_rest');
+  return (idx===2 && coach? coach.name+' corta la carga. ' : '')+'Una semana de descarga: llegás más entero y un poco menos filoso.';
+});
+CL.handler('camp_split', function(idx, d){
+  var c=G.camp; if(!c) return 'El campamento ya terminó.';
+  var gp=c.unifiedGameplan||c.gameplan; if(!gp) return 'No hay plan que discutir.';
+  var coach=coachById(d.c);
+  if(idx===0){
+    c.gameplan=Object.assign({}, c.gameplan||gp, {prio:d.prio, dist:d.dist, pace:d.pace});
+    if(c.unifiedGameplan) c.unifiedGameplan=Object.assign({}, c.unifiedGameplan, {prio:d.prio, dist:d.dist, pace:d.pace});
+    CL.coachPatience(+6, 'cambiaste el plan cuando te lo pidió');
+    RPG.echo('backed_coach');
+    return 'El plan pasa a ser el suyo. '+(coach? coach.name.split(' ')[0]+' entrena distinto esta semana: se nota que cree en lo que hacen.' : '');
+  }
+  if(idx===2){
+    c.unifiedGameplan=Object.assign({}, gp, {prio:d.prio, pace:d.pace, dist:gp.dist, score:safeInt(gp.score,0)+1});
+    RPG.echo('camp_team');
+    return 'Tres horas de pizarra. Sale un plan con la prioridad del coach y tu distancia. Todos lo firman.';
+  }
+  CL.coachPatience(-6, 'no quisiste cambiar el plan');
+  RPG.echo('plan_own');
+  return 'Seguís con tu plan. '+(coach? coach.name.split(' ')[0]+' asiente, pero entrena con la cara larga.' : '');
+});
+/* lo que el sparring mostró llega a la pelea como lectura de esa situación */
+hookOn('fight:start','campo', function(){
+  var f=G&&G.fight, c=G.camp; if(!f || !f.iq || !c || !c.readPat || c.readPat.o!==f.opp) return;
+  f.iq.camp={b:c.readPat.b, a:c.readPat.a, drill:!!c.readPat.drill};
+}, 65);
+hookOn('scout:report','campo', function(s, x){
+  var c=G.camp, o=x&&x.o; if(!Array.isArray(s) || !c || !o || !c.readPat || c.readPat.o!==o.id) return s;
+  return s.concat(['Sparring: '+(CAMPO.SITS.filter(function(z){ return z[1]===c.readPat.b; })[0]||['en esa situación'])[0]+', '+
+    CMB.n(c.readPat.a)+' ('+Math.round(c.readPat.p*100)+' %)'+(c.readPat.drill?' — trabajado':'')+'.']);
+}, 25);
+
+/* --------------------------------------------------------------------------
+   ERAS — reinados largos de cada división, a partir de G.champs
+   Nadie escribía la historia de los cinturones: se derivan comparando los
+   campeones semana a semana. Una era es un reinado de 3+ defensas o 2 años.
+   -------------------------------------------------------------------------- */
+var ERA = {};
+ERA.S = function(){ var s=RPG.S(); if(!s.era || typeof s.era!=='object') s.era={cur:{}, hist:{}}; return s.era; };
+/* sin inicio conocido (el reinado ya venía cuando empezó tu carrera) sólo
+   cuentan las defensas: la duración sería inventada */
+ERA.isEra = function(r){ return safeInt(r.def,0)>=3 || (r.from!==null && r.from!==undefined && (safeInt(r.to,0)-safeInt(r.from,0))>=104); };
+ERA.tick = function(){
+  var e=ERA.S(), now=RPG.stamp(), p=G.player, out=[];
+  Object.keys(G.champs||{}).forEach(function(org){
+    var row=G.champs[org]||{};
+    Object.keys(row).forEach(function(div){
+      var key=org+'|'+div, id=row[div], cur=e.cur[key];
+      if(cur && cur.id===id){
+        /* una era que empieza: sólo se anuncia la del jugador */
+        if(id && p && id===p.id && !cur.ann){
+          var d=safeInt(p.defenses,0)-safeInt(cur.d0,0);
+          if(d>=3){ cur.ann=1; out.push({k:'start', org:org, div:div}); }
+        }
+        return;
+      }
+      if(cur && cur.id){
+        var old=F(cur.id);
+        var r={id:cur.id, n:old? fname(old) : cur.id, from:cur.since, to:now, def:Math.max(0, safeInt(old&&old.defenses,0)-safeInt(cur.d0,0)), by:id||null};
+        if(ERA.isEra(r)){
+          (e.hist[key]=e.hist[key]||[]).unshift(r);
+          if(e.hist[key].length>6) e.hist[key].pop();
+          if(p && id===p.id) out.push({k:'end', org:org, div:div, r:r});
+        }
+      }
+      var nf=id? F(id) : null;
+      /* la primera vez que se mira, el reinado ya venía: sus defensas de
+         campeón inicial cuentan (makeFighter les da 0-3 con el cinturón) */
+      var d0 = cur? safeInt(nf&&nf.defenses,0) : (nf && safeInt(nf.titles,0)<=1 ? 0 : safeInt(nf&&nf.defenses,0));
+      e.cur[key]= id? {id:id, since:cur? now : null, d0:d0} : null;
+    });
+  });
+  out.forEach(function(x){
+    var ab=(G.orgs[x.org]||{}).ab||x.org;
+    if(x.k==='end'){
+      var t='Terminaste la era de '+x.r.n+' ('+x.r.def+' defensas) en '+ab+'.';
+      RPG.S().eraEnds=safeInt(RPG.S().eraEnds,0)+1;
+      pushNews(fname(p)+' le puso fin a la era de '+x.r.n+'. '+x.r.def+' defensas, y se terminó una noche.');
+      if(CL.remember) CL.remember('era_end', {id:x.r.id, t:t});
+      if(CL.thread) CL.thread('legado', t);
+    } else {
+      var t2='Empieza tu era en '+ab+': tercera defensa del cinturón.';
+      pushNews('Ya no es un campeón: es una era. '+fname(p)+' suma su tercera defensa.');
+      if(CL.remember) CL.remember('era_start', {t:t2});
+      if(CL.thread) CL.thread('legado', t2);
+    }
+  });
+};
+hookOn('week','eras', function(){ if(G && G.player && !G.player.retired) ERA.tick(); }, 72);
+/* la era vigente de una división: reinado actual con años y defensas */
+ERA.now = function(org, div){
+  var e=RPG.R().era||{cur:{},hist:{}}, cur=e.cur&&e.cur[org+'|'+div];
+  if(!cur || !cur.id) return null;
+  var f=F(cur.id); if(!f) return null;
+  var since=cur.since===null? null : cur.since, def=Math.max(0, safeInt(f.defenses,0)-safeInt(cur.d0,0));
+  return {f:f, since:since, def:def, weeks: since===null? null : RPG.stamp()-since};
+};
+ERA.card = function(){
+  var p=G.player, org=p.org || (G.contract&&G.contract.org); if(!org || !G.orgs[org]) return '';
+  var key=org+'|'+p.div, e=RPG.R().era||{hist:{}}, h=e.hist&&e.hist[key]||[], now=ERA.now(org,p.div);
+  var s='<div class="card"><div class="hdr"><span class="b">Eras de tu división</span><span class="tag">'+esc(G.orgs[org].ab||org)+' · '+esc(DIVS[p.div].n)+'</span></div>';
+  if(now){
+    var y=now.weeks===null? 'desde antes de tu debut' : (now.weeks>=52? Math.floor(now.weeks/52)+' año'+(now.weeks>=104?'s':'')+' de reinado' : now.weeks+' semanas de reinado');
+    s+='<p class="sm"><span class="b'+(now.f.isPlayer?' gold':'')+'">'+esc(fname(now.f))+'</span> · '+y+' · '+now.def+' defensa'+(now.def===1?'':'s')+
+       (now.def>=3? ' · <span class="gold">es una era</span>' : '')+'</p>';
+  } else s+='<p class="sm dim">El cinturón está vacante.</p>';
+  if(h.length) s+='<div class="log">'+h.map(function(r){
+    var by=r.by? F(r.by) : null;
+    return '<div><span class="dim2 xs mono">'+(r.from===null? '…' : Math.floor(r.from/52))+'–'+Math.floor(r.to/52)+'</span> Era de '+esc(r.n)+' · '+r.def+' def.'+
+      (by? ' · la terminó '+esc(fname(by)) : '')+'</div>';
+  }).join('')+'</div>';
+  else s+='<p class="xs dim2">Ninguna era terminó desde que empezaste.</p>';
+  return s+'</div>';
+};
+hookOn('screen:mundo','eras', function(h){
+  var card=ERA.card(); if(!card) return h;
+  var i=h.indexOf('<div class="card"><div class="hdr"><span class="b">Noticias</span>');
+  return i<0? h+card : h.slice(0,i)+card+h.slice(i);
+}, 20);
+
+/* --------------------------------------------------------------------------
+   DECISIONES QUE VUELVEN
+   -------------------------------------------------------------------------- */
+/* los gimnasios y entrenadores que dejaste quedan anotados (el eco ya existía) */
+hookOn('rpg:echo','ecosQueVuelven', function(x){
+  var s=RPG.S(), p=G.player; if(!x || !p) return;
+  if(x.k==='left_gym' && s.gym && s.gym!==p.gym){ s.prevGyms=(s.prevGyms||[]).filter(function(g){ return g.id!==s.gym; }); s.prevGyms.unshift({id:s.gym, at:RPG.stamp()}); s.prevGyms=s.prevGyms.slice(0,4); }
+  if(x.k==='left_coach' && s.coach && s.coach!==p.coach){ s.prevCoaches=(s.prevCoaches||[]).filter(function(c){ return c.id!==s.coach; }); s.prevCoaches.unshift({id:s.coach, at:RPG.stamp()}); s.prevCoaches=s.prevCoaches.slice(0,4); }
+}, 10);
+/* 1. el gimnasio que dejaste: entre 20 y 60 semanas después, alguien de ahí */
+hookOn('week','ecosQueVuelven', function(){
+  var p=G&&G.player; if(!p || p.retired || G.pending.length || G.camp) return;
+  var s=RPG.S(), now=RPG.stamp();
+  (s.prevGyms||[]).forEach(function(g){
+    if(g.done || now-g.at<20 || now-g.at>60 || G.pending.length) return;
+    var mates=Object.keys(G.fighters).map(F).filter(function(f){
+      return f && !f.isPlayer && f.gym===g.id && !f.retired && f.active;
+    }).sort(function(a,b){ return clN((b.rel||{}).friend,50)-clN((a.rel||{}).friend,50) || (a.id<b.id?-1:1); });
+    g.done=1;
+    if(!mates.length) return;
+    var f=mates[0], gy=gymById(g.id);
+    CL.ask('eco_exgym', fname(f)+', de '+(gy? gy.name : 'tu viejo gimnasio')+', te cruza en un evento. Se nota que en '+
+      (gy? gy.name : 'ese gimnasio')+' todavía se habla de cómo te fuiste.',
+      ['Saludarlo como si nada','Pasar de largo','Decirle que te fuiste mal y que lo sabés'], {id:f.id, g:g.id});
+  });
+}, 76);
+CL.handler('eco_exgym', function(idx, d){
+  var f=F(d.id); if(!f) return 'Ya no está.';
+  if(idx===0){ addMemF(f,'te saludó como si nada después de irte del gimnasio',4);
+    return 'Charlan cinco minutos. Ninguno nombra lo que pasó, y está bien así.'; }
+  if(idx===1){ addMemF(f,'pasó de largo sin saludarte',-6);
+    RPG.echo('ignored_callout', {t:'Le diste la espalda a '+fname(f)+', de tu viejo gimnasio', who:f.id});
+    return 'Lo sentís mirarte la espalda. Eso, en este deporte, termina en una jaula.'; }
+  addMemF(f,'reconoció que se fue mal del gimnasio',7); f.rel.resent=clamp(clN(f.rel.resent,0)-8,0,100);
+  RPG.echo('respect_reply', {t:'Le pediste disculpas a '+fname(f)+' por cómo te fuiste', who:f.id});
+  return '"No hacía falta. Pero gracias." Algo se acomoda.';
+});
+/* 2. el entrenador que dejaste, en la esquina de enfrente: conoce tus hábitos */
+CAMPO.exCoach = function(o){
+  var s=RPG.R(); if(!o || !o.coach) return null;
+  var hit=(s.prevCoaches||[]).filter(function(c){ return c.id===o.coach; })[0];
+  return hit? coachById(hit.id) : null;
+};
+hookOn('fight:start','exEntrenador', function(){
+  var f=G&&G.fight, o=f&&F(f.opp), ec=CAMPO.exCoach(o); if(!ec || !f.identity) return;
+  f.identity.adaptation=clamp(safeInt(f.identity.adaptation,50)+12,0,95);
+  f.exCoach=ec.id;
+  flog('En la esquina de '+fname(o)+' está '+ec.name+'. Te entrenó: sabe lo que repetís.');
+}, 55);
+hookOn('scout:report','exEntrenador', function(s, x){
+  var ec=CAMPO.exCoach(x&&x.o); if(!Array.isArray(s) || !ec) return s;
+  return s.concat(['En su esquina está '+ec.name+', que te entrenó: te va a leer antes de lo normal.']);
+}, 30);
+
+/* --------------------------------------------------------------------------
+   EL CICLO DE UNA RIVALIDAD, A LA VISTA (RPG.rivalStage ya lo derivaba)
+   -------------------------------------------------------------------------- */
+CAMPO.rivalNext = function(f){
+  var p=G.player, fs=(p.career||[]).filter(function(x){ return x.oppId===f.id; });
+  var w=fs.filter(function(x){ return x.res==='W'; }).length, l=fs.filter(function(x){ return x.res==='L'; }).length;
+  if(!fs.length) return null;
+  if(fs.length===1) return l? 'Te debe una revancha el mundo: una pelea más y hay historia.' : 'Él quiere la revancha. Si se da, es una rivalidad.';
+  if(fs.length===2 && w===1 && l===1) return 'Uno a uno: la trilogía es la única salida.';
+  if(fs.length>=3) return 'Ya no es una rivalidad: es una parte de la carrera de los dos.';
+  return w>l? 'Dos veces arriba tuyo... por ahora.' : 'Dos veces te ganó. Una tercera sería otra historia.';
+};
+hookOn('screen:fighter','rivalidad', function(h){
+  var o=F(UI.sub); if(!o || o.isPlayer) return h;
+  var nx=CAMPO.rivalNext(o); if(!nx) return h;
+  var p=G.player, w=0, l=0;
+  (p.career||[]).forEach(function(x){ if(x.oppId===o.id){ if(x.res==='W') w++; else if(x.res==='L') l++; } });
+  return h+'<div class="card"><div class="hdr"><span class="b">⚔️ Rivalidad</span><span class="tag">'+esc(RPG.rivalStage(o))+' · '+w+'-'+l+'</span></div>'+
+    '<p class="sm dim" style="margin:0">'+esc(nx)+'</p></div>';
+}, 65);
 
 /* ==========================================================================
    FASES 4, 5 y 6 — BANCO DE PRUEBAS AISLADO, ESCENARIOS Y DETERMINISMO

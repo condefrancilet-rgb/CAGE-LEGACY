@@ -10,6 +10,47 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-04 · Fases 6 y 7: el campamento pregunta, el mundo recuerda
+**Tipo** decisiones + mundo (capa sobre lo existente) + fix · **Cambio observable:** sí.
+
+**Lo que ya había y se respetó.** El campamento tenía trabajo semanal, minijuegos, gameplan con
+consejo de esquina, filosofía y paciencia del entrenador (`CL.PHILO`, `CL.coachPatience`,
+`COACH_PHIL`). Faltaban decisiones con costo que salieran de su propio estado. Entran como eventos
+serializables (`CL.ask`/`CL.handler`), no como un menú nuevo: a lo sumo uno por semana (la cola
+del juego admite uno a la vez) y cada uno una vez por campamento.
+
+| momento | cuándo aparece (estado real) | qué cuesta / qué llega a la pelea |
+|---|---|---|
+| **El sparring mostró algo** | una semana de sparring en campamento | la tendencia más marcada del rival, calculada con `CL.oppWeightsFor` (la misma que decide en la jaula). Trabajarla: +4 afilado, +6 desgaste, +10 de lectura en esa situación; anotarla: +5 |
+| **El cuerpo avisa** | desgaste del camp ≥ 62 con 2+ semanas por delante | descargar (−15 desgaste, −3 afilado) · apretar (+5 afilado, +8 desgaste, +6 fatiga del peleador: la que lee el riesgo de lesión de `applyTrain`) · «lo que diga el coach»: hace lo que pide **su** filosofía (volumen/trabajo/finalizar aprietan; técnica/lectura/control descargan) y sube su paciencia |
+| **Tu plan contra el suyo** | desde la mitad del camp, si la prioridad de tu gameplan no es la de tu entrenador | hacerle caso cambia el plan que entra a la jaula (+6 paciencia) · mantenerlo (−6 paciencia, eco `plan_own`) · con camp de equipo: plan unificado (su prioridad, tu distancia) |
+
+**Mundo:**
+- **Eras** (`ERA`, en `G.rpg.era`): no existían. Se derivan comparando `G.champs` semana a semana:
+  un reinado de 3+ defensas (o 2 años con inicio conocido) es una era. Mundo muestra la era vigente
+  y las terminadas de tu división; terminar la era de otro o empezar la tuya es noticia, memoria
+  narrativa, hilo de legado y momento del diario.
+- **Decisiones que vuelven:** el gimnasio que dejaste (eco `left_gym`, que ya existía) vuelve entre
+  20 y 60 semanas después: alguien de ahí te cruza, y lo que hagas queda en su relación por
+  `addMemF` (el escritor canónico). El entrenador que dejaste, si está en la esquina del rival, le
+  suma +12 de adaptación (te lee antes: es la regla de adaptación de su identidad) y el scouting
+  lo advierte.
+- **Ciclo de rivalidad a la vista:** la ficha de un rival con historia muestra la etapa (la que ya
+  derivaba `RPG.rivalStage`), el récord entre ustedes y el paso siguiente (revancha, trilogía…).
+
+**Fix encontrado por las pruebas:** un reinado observado desde el inicio de la carrera (inicio
+desconocido) contaba como «más de 2 años» y quedaba como era. Sin inicio, sólo cuentan las
+defensas. **Fix de robustez:** un momento (y la pregunta de temperamento de RPG-02) sólo se da por
+usado si la cola lo admitió; antes, un rechazo lo consumía sin preguntarse.
+
+**Evidencia.** `dev/tests/19-rpg-campo-mundo.js`, 14 pruebas (la del sparring calcula la tendencia
+con los pesos del motor sin pasar por el módulo). Mutantes 10/10 (uno equivalente documentado:
+quitar el `return` tras la primera pregunta no cambia nada porque la cola admite un evento).
+Chromium: el momento se ve y se resuelve desde el inicio; la tarjeta de eras se dibuja en Mundo.
+Golden: las 5 trazas cambian; primera diferencia por bisección: 505 y 101, la decisión de carga
+del primer campamento («lo que diga el coach»); 202, el eco del gimnasio que dejó (semana 40).
+Trazas regeneradas (`--solo-trazas`). Suite 254/254, navegador 77/77.
+
 ## RPG-03 · Fase 5: la pelea se lee, se recuerda y enseña
 **Tipo** combate (capa sobre el motor existente) + 2 fixes · **Cambio observable:** sí.
 
