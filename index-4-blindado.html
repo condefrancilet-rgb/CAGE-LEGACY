@@ -1006,7 +1006,7 @@ function makeFighter(o){
     titles: 0, defenses: 0, bestRank: 99, earn: 0,
     mem: [], rel: {}, ent: o.ent || null, // ent = semana de entrada al mundo
     weeksIdle: 0, camps: 0, career:[],
-    championIdleWeeks:0, lastTitleDefenseWeek:null, titleEligibility:0, scheduledFightKey:null
+    championIdleWeeks:0, lastTitleDefenseWeek:null, scheduledFightKey:null
   };
   var _ctx={f:f};
   hookEmit('fighter:made', _ctx);
@@ -3422,9 +3422,14 @@ function titleEligible(f){
 function titleEligibilityInfo(f){
   return {eligible:titleEligible(f),fights:proFightCount(f),minimum:CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS};
 }
-function offerKeyFor(offer){
+/* `g` es opcional y existe por la carga: la migración v4->v5 y la validación
+   del save corren ANTES de que la partida pase a ser G (desde la portada, G es
+   null). Leer G.year ahí lanzaba y la partida entera no se podía abrir: medido
+   con la fixture 02 y con el save congelado, las dos con una pelea firmada. */
+function offerKeyFor(offer, g){
   if(!offer||!offer.oppId) return null;
-  var season=safeInt(G.year,0), bout=offer.boutKey||offer.event||'bout';
+  var st=g||G;
+  var season=safeInt(st&&st.year,0), bout=offer.boutKey||offer.event||'bout';
   return 'S'+season+'|'+bout+'|'+offer.oppId;
 }
 function seasonKey(org,div,year){ return String(year||G.year)+'|'+String(org||'')+'|'+String(div||''); }
@@ -3489,36 +3494,55 @@ function championSeasonTick(news){
   } else { p.championIdleWeeks=0; }
   if(G.nextFight) reconcileScheduledFight('championSeasonTick');
 }
-function validateScheduledFight(spec,phase){
-  phase=phase||'unknown'; spec=spec||{};
+/* LA REGLA, SIN EFECTOS. Devuelve '' si la pelea se puede programar hoy y, si
+   no, el motivo. validateScheduledFight() es esto mismo más el registro en el
+   engineLog; quien sólo necesita PREGUNTAR (la interfaz, el mánager, las
+   pruebas) usa ésta y no ensucia el registro persistente. */
+function fightSpecProblem(spec){
+  spec=spec||{};
   var p=G&&G.player, o=F(spec.oppId), org=spec.org|| (p&&p.org), div=p&&p.div;
-  function bad(reason,cat){ careerLog(cat||'SCHEDULE',reason,{phase:phase,oppId:spec.oppId}); return {ok:false,reason:reason}; }
-  if(!p) return bad('No existe jugador activo.');
-  if(!o) return bad('El rival no existe.');
-  if(o.id===p.id) return bad('Jugador y rival no pueden ser la misma persona.');
-  if(p.retired) return bad('El jugador está retirado.');
-  if(!o.active||o.retired) return bad(fname(o)+' está retirado o inactivo.');
-  if(o.inj||safeInt(o.injWeeks,0)>0) return bad(fname(o)+' está lesionado.');
-  if(!G.orgs[org]) return bad('La organización de la pelea no existe.');
-  if(o.org!==org) return bad(fname(o)+' no pertenece a la organización '+org+'.');
-  if(o.div!==div) return bad(fname(o)+' está fuera de división.');
-  if(!p.org || p.org!==org) return bad('La pelea no coincide con la organización actual del jugador.');
+  if(!p) return 'No existe jugador activo.';
+  if(!o) return 'El rival no existe.';
+  if(o.id===p.id) return 'Jugador y rival no pueden ser la misma persona.';
+  if(p.retired) return 'El jugador está retirado.';
+  if(!o.active||o.retired) return fname(o)+' está retirado o inactivo.';
+  if(o.inj||safeInt(o.injWeeks,0)>0) return fname(o)+' está lesionado.';
+  if(o.div!==div) return fname(o)+' está fuera de división.';
+  /* PELEA AMATEUR. Un agente libre sin organización tiene una sola vía de
+     pelea, y el juego la documenta: "acepto lo que sea" trae un show regional
+     contra quien haya en la división (módulo 27, clTakeAny). La capa de
+     integridad exigía organización a TODA pelea, así que esa oferta aparecía
+     en pantalla y fallaba al aceptarla. Sigue sin haber títulos ni
+     eliminatorias fuera de una organización. */
+  if(!org && !(p&&p.org)){
+    if(spec.title||spec.elim) return 'Un agente libre no disputa títulos ni eliminatorias.';
+    return '';
+  }
+  if(!G.orgs[org]) return 'La organización de la pelea no existe.';
+  if(o.org!==org) return fname(o)+' no pertenece a la organización '+org+'.';
+  if(!p.org || p.org!==org) return 'La pelea no coincide con la organización actual del jugador.';
   if(spec.title){
     var champ=G.champs[org]&&G.champs[org][div];
     var vacant=!champ;
     var pIsChamp=champ===p.id, oIsChamp=champ===o.id;
-    if(!vacant && !pIsChamp && !oIsChamp) return bad('Pelea marcada como título sin campeón/retador válido.');
-    if(pIsChamp && oIsChamp) return bad('Jugador y rival aparecen como campeones simultáneamente.');
-    if(!titleEligible(p)&&!pIsChamp) return bad('El jugador no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.');
-    if(!oIsChamp && !titleEligible(o)) return bad('El rival no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.');
+    if(!vacant && !pIsChamp && !oIsChamp) return 'Pelea marcada como título sin campeón/retador válido.';
+    if(pIsChamp && oIsChamp) return 'Jugador y rival aparecen como campeones simultáneamente.';
+    if(!titleEligible(p)&&!pIsChamp) return 'El jugador no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.';
+    if(!oIsChamp && !titleEligible(o)) return 'El rival no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.';
     var rr=rankOf(o), rp=rankOf(p);
-    if(vacant && (!(rp&&rp!=='C'&&rp<=8) || !(rr&&rr!=='C'&&rr<=8))) return bad('Pelea por cinturón vacante sin dos contendientes elegibles del top 8.');
+    if(vacant && (!(rp&&rp!=='C'&&rp<=8) || !(rr&&rr!=='C'&&rr<=8))) return 'Pelea por cinturón vacante sin dos contendientes elegibles del top 8.';
   }
   if(spec.elim){
-    if(!titleEligible(p)||!titleEligible(o)) return bad('Eliminatoria con peleador todavía inelegible.');
+    if(!titleEligible(p)||!titleEligible(o)) return 'Eliminatoria con peleador todavía inelegible.';
     var ar=rankOf(p), br=rankOf(o);
-    if(!(ar&&ar!=='C'&&ar<=12)||!(br&&br!=='C'&&br<=12)) return bad('Eliminatoria fuera del rango competitivo permitido.');
+    if(!(ar&&ar!=='C'&&ar<=12)||!(br&&br!=='C'&&br<=12)) return 'Eliminatoria fuera del rango competitivo permitido.';
   }
+  return '';
+}
+function validateScheduledFight(spec,phase){
+  phase=phase||'unknown'; spec=spec||{};
+  var reason=fightSpecProblem(spec);
+  if(reason){ careerLog('SCHEDULE',reason,{phase:phase,oppId:spec.oppId}); return {ok:false,reason:reason}; }
   return {ok:true,reason:''};
 }
 function scheduleFight(spec,source){
@@ -3531,7 +3555,6 @@ function scheduleFight(spec,source){
   spec.signedAt={year:G.year,week:G.week};
   G.nextFight=spec;
   G.player.scheduledFightKey=spec.offerKey||null;
-  G.player.titleEligibility=proFightCount(G.player);
   careerLog('SCHEDULE','Pelea programada contra '+fname(F(spec.oppId))+' · '+(spec.title?'TÍTULO':'normal'),{source:source,oppId:spec.oppId,offerKey:spec.offerKey});
   return {ok:true, fight:spec};
 }
@@ -3579,7 +3602,7 @@ function reconcileScheduledFight(reason){
        estudio del rival y cualquier cache del rival anterior no sobrevivan. */
     if(wasCamp){ G.camp=null; startCamp(spec); }
     G.__nextFight=spec; G.player.scheduledFightKey=spec.offerKey||null;
-    if(typeof remember==='function') remember('fight_replacement',{from:oldId,to:replacement.id,reason:chk.reason,title:!!spec.title});
+    if(typeof CL!=='undefined' && CL.remember) CL.remember('fight_replacement',{from:oldId,to:replacement.id,reason:chk.reason,title:!!spec.title});
     careerLog('REPLACEMENT',replacement.name+' elegido como reemplazo: misma división y organización; contexto '+(spec.title?'de campeonato':'normal'),{from:oldId,to:replacement.id,offerKey:spec.offerKey||null,purse:spec.purse||0,title:!!spec.title});
     pushNews(oldName+' quedó fuera por '+chk.reason+' y '+fname(replacement)+' entra como reemplazo.');
     return {ok:true,changed:true,replacement:replacement.id};
@@ -3945,6 +3968,23 @@ function toast(t){
    ========================================================================== */
 var HOOKS = {};
 hookOn('event:resolved','offersIntegrity',function(){ reconcileOffers('event:resolved'); }, 30);
+/* LA ÚLTIMA PUERTA DE VERDAD. makeOffers() filtra sus propias ofertas antes
+   de emitir 'offers:made', pero lo que agregan los suscriptores (rivalidad,
+   revancha, recomendación del gimnasio, "acepto lo que sea", pelea que
+   vende...) llegaba a la pantalla sin pasar por la regla, y fallaba recién al
+   aceptarla con "Oferta inválida". Peor: el jugador perdía esa oferta y el
+   resto de la mesa seguía igual. Corre al final del embudo (orden 99) y con
+   fightSpecProblem(), que no escribe nada. */
+hookOn('offers:made','puertaFinal',function(){
+  if(!G||!G.player||!Array.isArray(G.offers)) return;
+  G.offers=G.offers.filter(function(o){
+    if(!o||o.type!=='fight') return true;
+    o.div=G.player.div; o.offerKey=o.offerKey||offerKeyFor(o);
+    var why=fightSpecProblem(o);
+    if(why){ careerLog('MATCHMAKING','Oferta descartada antes de mostrarse: '+why,{offerKey:o.offerKey}); return false; }
+    return true;
+  });
+}, 99);
 
 /* --------------------------------------------------------------------------
    POLÍTICA DE FALLO DEL BUS — declarada, no implícita
@@ -13665,7 +13705,10 @@ var SAVE_STEPS = [
        var f=g.fighters[id]; if(!f||typeof f!=='object') return;
        f.championIdleWeeks=safeInt(f.championIdleWeeks,0);
        f.lastTitleDefenseWeek=(f.lastTitleDefenseWeek==null?null:safeInt(f.lastTitleDefenseWeek,0));
-       f.titleEligibility=proFightCount(f);
+       /* titleEligibility se guardaba como copia de proFightCount(f) y nadie la
+          leía: una copia sin dueño que se quedaba en 0 mientras el récord
+          crecía, y que la carga recalculaba, así que guardar y cargar alteraba
+          todos los peleadores (I3). La elegibilidad es titleEligible(f). */
        f.scheduledFightKey=f.scheduledFightKey||null;
      });
      /* Normalización de campeonatos por temporada: los saves viejos pueden
@@ -13687,7 +13730,7 @@ var SAVE_STEPS = [
      });
      if(g.nextFight&&typeof g.nextFight==='object'){
        g.nextFight.scheduledFightState=g.nextFight.scheduledFightState||'scheduled';
-       g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight);
+       g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight,g);
        g.nextFight.originalOppId=g.nextFight.originalOppId||g.nextFight.oppId;
        g.nextFight.replacementHistory=Array.isArray(g.nextFight.replacementHistory)?g.nextFight.replacementHistory:[];
      }
@@ -13765,7 +13808,6 @@ function saveValidateV4(g){
     if(!isPlainObject(f.rel))        f.rel={};
     f.championIdleWeeks=safeInt(f.championIdleWeeks,0);
     f.lastTitleDefenseWeek=(f.lastTitleDefenseWeek==null?null:safeInt(f.lastTitleDefenseWeek,0));
-    f.titleEligibility=proFightCount(f);
     f.scheduledFightKey=f.scheduledFightKey||null;
   });
   if(rotos.length) reparar(rotos.length+' entrada(s) del plantel no eran peleadores: se eliminan', function(){
@@ -13831,11 +13873,15 @@ function saveValidateV4(g){
   if(!isPlainObject(g.championSeasonStats)) g.championSeasonStats={};
   if(g.nextFight){
     g.nextFight.scheduledFightState=g.nextFight.scheduledFightState||'scheduled';
-    g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight);
+    g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight,g);
     g.nextFight.originalOppId=g.nextFight.originalOppId||g.nextFight.oppId;
     g.nextFight.replacementHistory=Array.isArray(g.nextFight.replacementHistory)?g.nextFight.replacementHistory:[];
-    var fv=validateScheduledFight(g.nextFight,'saveValidate');
-    if(!fv.ok) reparar('pelea firmada inválida al cargar: '+fv.reason,function(){g.nextFight=null;g.camp=null;});
+    /* La validación DEPORTIVA de la pelea firmada no va aquí: esta función
+       recibe `g` y la regla lee G (rankings, plantel, campeones). Desde la
+       portada G es null; desde otra partida, es OTRA partida, y podía anular
+       una pelea válida mirando el mundo equivocado. La hace
+       normalizeRuntime() -> reconcileScheduledFight() en cuanto la partida ya
+       es G, que además intenta un reemplazo antes de cancelar. */
   }
   if(g.camp && (!isPlainObject(g.camp) || !g.fighters[g.camp.oppId]))
     reparar('el campamento no tenía rival: se cierra', function(){ g.camp=null; });
@@ -27476,6 +27522,13 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     Object.keys(data||{}).forEach(function(k){m[k]=data[k];});
     s.memories.unshift(m);if(s.memories.length>100)s.memories.pop();return m;
   }
+  /* ESCRITOR PÚBLICO DE LA MEMORIA NARRATIVA. remember() era local a este
+     bloque, así que el resto del archivo no podía dejar constancia de nada:
+     reconcileScheduledFight() lo intentaba con `typeof remember` y nunca lo
+     encontraba (el reemplazo de un rival jamás quedó en la memoria). Hay UN
+     almacén de "lo que pasó" (G.story.memories) y ahora una sola puerta. */
+  CL.remember = remember;
+  CL.story = story;
   function recentEvent(id,weeks){
     var s=story(),cut=stamp()-weeks;
     return s.eventHistory.some(function(e){return e.id===id&&e.at>=cut;});
@@ -29396,7 +29449,7 @@ scn('13 · paridad de profundidad en organización tope',function(){ return TEST
   G.rs=1234567; var rb=simFight(bb,ob,3,false);
   return ra.winner===rb.winner&&ra.method===rb.method&&ra.round===rb.round ? true : 'el resultado cambió al cambiar de organización con estado equivalente';
 }); });
-scn('14 · migración v4→v5 conserva carrera y crea campos nuevos',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; bindTestOrg(G.player,'TFC'); var raw=JSON.parse(JSON.stringify(G)); raw.saveVersion=4; delete raw.championSeasonStats; delete raw.engineLog; delete raw.replacementHistory; delete raw.nextFight; Object.keys(raw.fighters||{}).forEach(function(id){delete raw.fighters[id].championIdleWeeks;delete raw.fighters[id].lastTitleDefenseWeek;delete raw.fighters[id].titleEligibility;delete raw.fighters[id].scheduledFightKey;}); var out=saveMigrate(raw); if(!out)return 'saveMigrate rechazó un save v4 válido'; if(out.saveVersion!==SAVE_VERSION)return 'no actualizó saveVersion'; if(!out.championSeasonStats||typeof out.championSeasonStats!=='object')return 'falta championSeasonStats'; if(!Array.isArray(out.engineLog)||!Array.isArray(out.replacementHistory))return 'faltan colecciones nuevas'; var pf=out.player||{}; return pf.titleEligibility!==undefined&&pf.championIdleWeeks!==undefined&&pf.scheduledFightKey!==undefined?true:'faltan campos nuevos del jugador'; }); });
+scn('14 · migración v4→v5 conserva carrera y crea campos nuevos',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; bindTestOrg(G.player,'TFC'); var raw=JSON.parse(JSON.stringify(G)); raw.saveVersion=4; delete raw.championSeasonStats; delete raw.engineLog; delete raw.replacementHistory; delete raw.nextFight; Object.keys(raw.fighters||{}).forEach(function(id){delete raw.fighters[id].championIdleWeeks;delete raw.fighters[id].lastTitleDefenseWeek;delete raw.fighters[id].titleEligibility;delete raw.fighters[id].scheduledFightKey;}); var out=saveMigrate(raw); if(!out)return 'saveMigrate rechazó un save v4 válido'; if(out.saveVersion!==SAVE_VERSION)return 'no actualizó saveVersion'; if(!out.championSeasonStats||typeof out.championSeasonStats!=='object')return 'falta championSeasonStats'; if(!Array.isArray(out.engineLog)||!Array.isArray(out.replacementHistory))return 'faltan colecciones nuevas'; var pf=out.player||{}; return pf.championIdleWeeks!==undefined&&pf.scheduledFightKey!==undefined?true:'faltan campos nuevos del jugador'; }); });
 scn('15 · oferta de campeonato no se duplica en la misma semana',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); G.champs[p.org][p.div]=p.id; G.week=17; p.inj=null; G.nextFight=null; G.offers=[]; championSeasonTick([]); var fs=(G.offers||[]).filter(function(o){return o&&o.type==='fight'&&o.title;}); var keys={}; fs.forEach(function(o){keys[o.offerKey||offerKeyFor(o)]=1;}); return fs.length===1&&Object.keys(keys).length===1?true:(fs.length+' ofertas de título en la misma semana'); }); });
 
 /* --------------------------------------------------------------------------

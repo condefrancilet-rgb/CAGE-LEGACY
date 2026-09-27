@@ -79,7 +79,8 @@ suite('D-007 · terminar una pelea ya terminada no hace nada', () => {
     const { h, c } = mundo(seed);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight);
     c.G.camp.i = c.G.camp.weeks;
@@ -126,7 +127,8 @@ suite('D-007 · terminar una pelea ya terminada no hace nada', () => {
     const { c } = mundo(4104);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.finishFight('ko', 'p');
@@ -143,7 +145,8 @@ suite('D-007 · terminar una pelea ya terminada no hace nada', () => {
     const { c } = mundo(4105);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     const r = c.finishFight('sub', 'p');
@@ -173,7 +176,8 @@ suite('D-010 · la pantalla de resultado no llama derrota a un empate', () => {
     const { c } = mundo(seed);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.G.fight.over = true;
@@ -204,7 +208,8 @@ suite('D-010 · la pantalla de resultado no llama derrota a un empate', () => {
     const { c } = mundo(4204);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.G.fight.over = true;
@@ -418,7 +423,8 @@ suite('E-001 · la agresividad del jugador deja de ser decorativa', () => {
     const p = c.G.player;
     if(agresividad !== undefined) p.st.aggression = agresividad;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     return c;
@@ -498,7 +504,8 @@ suite('H-010/011 · los articulos de la tienda cumplen lo que prometen', () => {
       const p = c.G.player;
       if(conCutman) c.G.flags.cutman = 1;
       const opp = Object.values(c.G.fighters)
-        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
       c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
       c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
       c.G.fight.p.hp = 40;
@@ -517,7 +524,8 @@ suite('H-010/011 · los articulos de la tienda cumplen lo que prometen', () => {
       const p = c.G.player;
       if(conLab) c.G.flags.recoveryLab = 1;
       const opp = Object.values(c.G.fighters)
-        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
       c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
       c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
       c.G.fight.p.stam = 30;
@@ -586,7 +594,8 @@ suite('H-010/011 · los articulos de la tienda cumplen lo que prometen', () => {
       const p = c.G.player;
       if(conNutri) c.G.flags.nutri = 1;
       const opp = Object.values(c.G.fighters)
-        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+        .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
       c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
       c.startCamp(c.G.nextFight);
       c.G.camp.missWeight = true;
@@ -653,7 +662,8 @@ suite('A-013 · la pantalla de resultado muestra un solo cobro, el real', () => 
     H.startCareer(h, { metaSeed: meta, style:'mma', div:'LW', age:24 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.G.cash = 0;
@@ -683,7 +693,8 @@ suite('A-013 · la pantalla de resultado muestra un solo cobro, el real', () => 
     H.startCareer(h, { metaSeed: 6291, style:'mma', div:'LW', age:24 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:10000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.G.camp.missWeight = true;

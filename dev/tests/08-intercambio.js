@@ -18,7 +18,8 @@ suite('cierres de intercambio (caracterizacion)', () => {
     H.startCareer(h, { metaSeed: 5150, style: 'mma', div: 'LW', age: 22 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'Test' };
     c.startCamp(c.G.nextFight);
     c.G.camp.i = c.G.camp.weeks;

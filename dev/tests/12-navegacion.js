@@ -26,7 +26,8 @@ suite('E2 · navegacion: lo que hace hoy', () => {
     const { c } = mundo(5001);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.finishFight('ko','p');
@@ -43,7 +44,8 @@ suite('E2 · navegacion: lo que hace hoy', () => {
     const { c } = mundo(5002);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     c.finishFight('ko','p');
@@ -127,7 +129,8 @@ suite('E2 · navegacion: lo que hace hoy', () => {
     const { c } = mundo(5009);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     ok(c.G.fight && !c.G.fight.over, 'no hay pelea viva');
@@ -177,7 +180,8 @@ suite('E2 · navegacion: lo que hace hoy', () => {
     const { c } = mundo(5008);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks:0, org:p.org, title:false, purse:8000, event:'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks; c.goFight();
     ok(c.G.fight && !c.G.fight.over, 'no hay pelea viva');

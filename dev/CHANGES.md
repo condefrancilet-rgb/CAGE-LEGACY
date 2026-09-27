@@ -5,6 +5,62 @@ evidencia (sim antes/después o test que lo reproduce).
 
 ---
 
+# ETAPA RPG — consolidación e integración sistémica
+
+> Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
+> las motivó está en `dev/RPG-AUDITORIA.md`.
+
+## RPG-00 · La base subida por el usuario, reparada
+**Commits** `7058abb` (el archivo tal cual) · `[base-fix]` (este).
+**Tipo** fix · **Severidad** CRÍTICA (B-1) · **Cambio observable:** las partidas con una
+pelea firmada vuelven a abrir; el show amateur vuelve a poder aceptarse.
+
+**De dónde se parte.** El archivo subido añade la capa de integridad de carrera
+(`scheduleFight`, `validateScheduledFight`, título a 5 peleas, temporada del campeón,
+reemplazos) y el save v5. Medido: **131 verdes / 62 rojas** en la suite del repo, que en
+`00be0a4` daba 193/193.
+
+**Qué se arregló (causa raíz → cambio):**
+
+1. **B-1 · no se podía abrir ninguna partida con pelea firmada.** La migración v4→v5 y
+   `saveValidate` trabajan sobre `g` antes de que sea `G`, pero `offerKeyFor()` y
+   `validateScheduledFight()` leían el `G` global (null desde la portada). Reproducido con
+   la fixture 02 y con el save congelado: `TypeError` en `offerKeyFor` → `loadGame=false`.
+   `offerKeyFor(offer, g)` recibe el estado; la validación deportiva sale de
+   `saveValidate` y queda en `normalizeRuntime → reconcileScheduledFight`, que ya corría
+   con la partida cargada y además intenta un reemplazo antes de cancelar.
+2. **B-2 · guardar y cargar alteraba ~430 peleadores.** `titleEligibility` era una copia
+   de `proFightCount(f)` que nadie leía, nacía en 0 y la carga la recalculaba. Se retira
+   el campo: la elegibilidad es `titleEligible(f)`.
+3. **B-3 · el agente libre no podía pelear nunca.** La regla exigía organización a toda
+   pelea y el show regional de "acepto lo que sea" (módulo 27) aparecía y fallaba al
+   aceptarlo. La regla vive ahora en `fightSpecProblem()` —pura, sin escribir el
+   `engineLog`— y admite la pelea amateur: sin organización, sin título, sin eliminatoria,
+   rival activo, sano y de la división.
+4. **B-7 · ofertas que no se podían aceptar.** Lo que agregan los suscriptores de
+   `offers:made` no pasaba por la regla. Nueva última puerta (`puertaFinal`, orden 99).
+5. **`remember()` era local** al módulo narrativo: el reemplazo de un rival nunca quedaba
+   en la memoria. Se expone `CL.remember` como escritor único de `G.story.memories`.
+
+**Pruebas adaptadas (no el juego):** 25 fixtures firmaban peleas de un agente libre contra
+"el primer peleador de la división"; ahora eligen un rival con `fightSpecProblem()`, la
+misma regla del juego. A-001 "otra organización" prueba el caso que sigue existiendo (un
+contrato de otra organización). F-002 usa `SAVE_VERSION` en vez de un 4 escrito a mano.
+
+**Golden master regenerado** (`make-baseline.js --solo-trazas`, flag nuevo: regenerar
+TODA la línea base habría reescrito las fixtures antiguas, que son la prueba de
+compatibilidad). **Evidencia de que la regeneración sólo recoge el cambio del archivo
+subido:** con el archivo subido tal cual y con esta base, la traza observable (160
+semanas, semana a semana y pelea a pelea) es **idéntica en las 5 semillas**; sólo cambia
+la huella interna. Contra la traza vieja de `00be0a4`, el archivo subido diverge entre la
+semana 3 y la 22 según la semilla, y el récord final pasa de 7-4, 8-4, 12-3, 10-1, 9-3 a
+12-1, 12-3, 9-2, 14-0, 7-5 (**16 → 11 derrotas en 5 carreras**). Queda anotado como
+riesgo de balance: el jugador gana más con la base subida.
+
+**Resultado:** 193/193 en `node dev/run-tests.js`.
+
+---
+
 ## Antes de F0 — corrección del salto al inicio (invariante I1)
 **Commit** `b9480fe` · **Tipo** fix · **Estado** cerrado antes de este encargo.
 **Qué cambia.** El despachador de pantallas (`clDraw`) llamaba a

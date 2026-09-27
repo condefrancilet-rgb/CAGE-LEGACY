@@ -75,7 +75,8 @@ suite('rollEvent (caracterizacion)', () => {
     const { c } = mundo(604);
     const p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 8, org: p.org, title: false, purse: 4000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = 3;
     eq(c.CL.dramaOk(), false, 'el caso de prueba no aplica: dramaOk es verdadero');
