@@ -162,6 +162,34 @@ suite('RPG-9 · lo que se lee sale de la decisión real', () => {
   });
 });
 
+suite('RPG-9 · el sparring muestra lo más perceptible del rival', () => {
+  test('en cada rival, el sparring elige la situación con la tendencia más marcada (calculada aparte)', () => {
+    const c = carrera(21);
+    const p = c.G.player, rivales = Object.values(c.G.fighters).filter(f => f && !f.isPlayer && f.div === p.div && f.active).slice(0, 40);
+    const SITS = [['stand', { pos: 'stand', gap: 0 }], ['stand:c', { pos: 'stand', gap: 0, tired: true }],
+                  ['stand:e', { pos: 'stand', gap: 0.6 }], ['gbot', { pos: 'gbot', gap: 0 }]];
+    const RANGO = { marcada: 3, clara: 2 };
+    let comparados = 0, conOpciones = 0;
+    for(const o of rivales){
+      if(c.G.story && c.G.story.npcSeeds && c.G.story.npcSeeds[o.id]) continue;   /* sin arquetipo: pesos puros */
+      const B = c.CL.styleAt(o); let best = null, perceptibles = new Set();
+      for(const [b, x] of SITS){
+        const w = c.CL.oppWeightsFor(o, Object.assign({ B, hurt: false, winning: false, tired: false, pHp: 100, pStam: 100, last: false }, x));
+        const t = w.reduce((a, e) => a + e[1], 0), d = {}; w.forEach(e => { d[e[0]] = e[1] / t; });
+        const band = bandaSpec(d, x.pos);
+        if(!RANGO[band]) continue;
+        perceptibles.add(band);
+        if(!best || RANGO[band] > RANGO[best.band]) best = { b, band };
+      }
+      const t = c.CAMPO.tell(o);
+      if(!best){ eq(t, null, 'el sparring muestra algo que no se percibe'); continue; }
+      eq(t && [t.b, t.band], [best.b, best.band], 'el sparring no eligió lo más perceptible de ' + o.id);
+      comparados++; if(perceptibles.size >= 2) conOpciones++;
+    }
+    ok(comparados >= 5 && conOpciones >= 1, 'la prueba necesita rivales con varias situaciones perceptibles: ' + comparados + '/' + conOpciones);
+  });
+});
+
 suite('RPG-9 · incertidumbre: cuánto se entiende depende de la información', () => {
   test('el mismo rival se entiende distinto en vivo, con analista, con sala de video, en el sparring y por memoria', () => {
     const c = carrera(7); const o = rival(c);

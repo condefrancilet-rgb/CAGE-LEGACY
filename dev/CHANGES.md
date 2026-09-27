@@ -50,7 +50,10 @@ el estado final **idéntico** a `b099e0d` en las 5 semillas; no se regeneró nad
 181.440 sorteos y 0 de 2.715 elecciones reales; y una prueba nueva lo verifica **con todas las
 piezas de la lectura desenganchadas**. `dev/tests/21-fightiq-capa.js`: 20 pruebas; 3 pruebas viejas
 (18, 19) pasaron del contrato de porcentajes al nuevo, con cálculo independiente de los pesos.
-Mutantes 17/17. Suite 282/282, navegador 77/77, 3/3 carreras completas.
+Mutantes de la fase 18/18 (uno, «el sparring elige la situación menos perceptible», sobrevivía y
+obligó a agregar una prueba sobre 40 rivales); los conjuntos de las fases 4, 5, 6-7 y 8 se
+re-ejecutaron sobre este archivo con sus blancos actualizados y siguen detectando (salvo los dos
+equivalentes ya documentados). Suite 283/283, navegador 77/77, 3/3 carreras completas.
 
 **Hallazgos sin corregir** (fuera de alcance o de diseño): la «toma de espalda» (`g_back`,
 `g_rev`) escribe una marca que nadie lee; La Última Puerta no mejora la sumisión a PERFECTA con
