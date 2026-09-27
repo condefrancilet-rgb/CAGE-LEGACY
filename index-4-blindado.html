@@ -1850,6 +1850,16 @@ function fightOptionsBase(){
     {k:'sweep', t:'Barrida / reversión', d:'Invertir posiciones.'}
   ];
 }
+/* Acciones que el motor resuelve para el RIVAL en cada posición (f.pos está
+   escrito desde el jugador: 'gbot' = el rival arriba). Es lo que
+   resolveExchangeCore lee; cualquier otra acción del rival no tiene efecto. */
+var OPP_ACTS = {
+  stand:  ['jab','combo','counter','lowkick','clinch','td','move'],
+  clinch: ['knees','ctd','grind','break'],
+  gbot:   ['gnp','pass','sub','hold','up'],
+  gtop:   ['getup','guard','bsub','sweep']
+};
+function oppCanDo(pos, a){ var l=OPP_ACTS[pos]; return !!(l && l.indexOf(a)>=0); }
 /* IA del rival */
 function oppActionBase(){
   var f = G.fight, o = F(f.opp), t = STYLES[o.style].t, pos = f.pos;
@@ -2704,7 +2714,9 @@ function scoutReport(o){
   if(st.aggression>78) s.push('Avanza siempre; se puede castigar con contras.');
   if(st.composure<60) s.push('Se frustra cuando el plan no funciona.');
   if(st.power>84) s.push('Una sola mano suya puede terminar la noche.');
-  return s;
+  /* 'scout:report' FILTRO: lo que se sabe de ÉL por haberlo peleado o
+     estudiado en video se suma acá, al mismo informe */
+  return hookFilter('scout:report', s, {o:o});
 }
 function gpStart(){
   G.mg={type:'gp',dist:null,pace:null,prio:null,def:null,done:false,council:false,consensus:null};
@@ -17375,6 +17387,11 @@ CL.f = function(f){
   if(!f.cl.rel || typeof f.cl.rel!=='object') f.cl.rel={};
   return f.cl;
 };
+/* Un peleador que NACE a mitad de carrera (prospectos, reemplazos) tiene que
+   ser igual al que vuelve de un guardado: la carga (CL.boot) le completa f.cl
+   y el recién nacido no lo tenía, así que guardar y cargar cambiaba el mundo.
+   Estaba latente: sólo se veía si nacía alguien justo antes de guardar. */
+hookOn('fighter:made','nucleo', function(c){ if(c && c.f) CL.f(c.f); }, 90);
 
 /* --- eventos dinámicos SERIALIZABLES -------------------------------------
    Los eventos de EVENTS[] son estáticos. Los del mundo vivo necesitan datos
@@ -17969,20 +17986,30 @@ CL.oppPlan = function(){
   var tired = f.o.stam<32, hurt = f.o.hp<40, winning = f.o.score>f.p.score || f.o.rd>f.p.rd;
   return {B:B, gap:gap, tired:tired, hurt:hurt, winning:winning, wantPace:30+B.pace*22};
 };
-CL.oppPick = function(basePick){
-  var f=G.fight, o=F(f.opp), c=CL.fightCtx(), pl=CL.oppPlan();
-  if(!pl||!c) return basePick;
-  var pos=f.pos, B=pl.B, w=[];
+/* Los PESOS con que el rival elige, como función pura de la situación. Antes
+   estaban dentro de CL.oppPick, mezclados con el sorteo; separados, la misma
+   cuenta sirve para decidir (oppPick) y para LEER al rival (la lectura de la
+   pelea y el scouting muestran estos números, no otros). Mismo cálculo, mismo
+   orden de pesos y mismo único wpick: el azar consumido no cambia. */
+CL.oppWeights = function(){
+  var f=G&&G.fight; if(!f) return null;
+  var o=F(f.opp), c=CL.fightCtx(), pl=CL.oppPlan();
+  if(!o||!pl||!c) return null;
+  return CL.oppWeightsFor(o, {pos:f.pos, B:pl.B, gap:pl.gap, tired:pl.tired, hurt:pl.hurt, winning:pl.winning,
+    pHp:f.p.hp, pStam:f.p.stam, last:f.round>=f.rounds});
+};
+CL.oppWeightsFor = function(o, x){
+  var pos=x.pos, B=x.B, w=[];
   function W(k,v){ w.push([k, Math.max(0.01, v)]); }
   if(pos==='stand'){
-    var far = pl.gap>0.35, close = pl.gap<-0.35;
+    var far = x.gap>0.35, close = x.gap<-0.35;
     W('jab',    0.18 + (far?0.30:0) + B.dist*0.10);
-    W('combo',  0.22*B.pace + (pl.hurt?-0.12:0) + (f.p.hp<40?0.35:0) + (close?0.12:0));
-    W('counter',0.10 + B.def*0.22 + (pl.tired?0.16:0));
+    W('combo',  0.22*B.pace + (x.hurt?-0.12:0) + (x.pHp<40?0.35:0) + (close?0.12:0));
+    W('counter',0.10 + B.def*0.22 + (x.tired?0.16:0));
     W('lowkick',0.12 + B.dist*0.08);
-    W('clinch', 0.06 + B.ctrl*0.14 + (close?0.20:0) + (pl.tired?0.10:0));
-    W('td',     0.05 + B.ctrl*0.22 + B.gnd*0.10 + (close?0.18:0) + (f.p.stam<40?0.14:0));
-    W('move',   0.04 + (pl.tired?0.55:0) + (pl.winning&&f.round>=f.rounds?0.30:0) + (far?0.10:0) + B.def*0.08);
+    W('clinch', 0.06 + B.ctrl*0.14 + (close?0.20:0) + (x.tired?0.10:0));
+    W('td',     0.05 + B.ctrl*0.22 + B.gnd*0.10 + (close?0.18:0) + (x.pStam<40?0.14:0));
+    W('move',   0.04 + (x.tired?0.55:0) + (x.winning&&x.last?0.30:0) + (far?0.10:0) + B.def*0.08);
     /* si le están imponiendo la distancia contraria, corrige con más ganas */
     if(far) { w[0][1]+=0.18; w[6][1]+=0.14; }
     if(close){ w[4][1]+=0.14; w[5][1]+=0.14; }
@@ -17991,21 +18018,25 @@ CL.oppPick = function(basePick){
   } else if(pos==='clinch'){
     W('knees', 0.22 + clN(o.st.muay)/300 + B.fin*0.10);
     W('ctd',   0.18 + B.ctrl*0.22);
-    W('grind', 0.20 + B.ctrl*0.16 + (pl.tired?0.18:0));
+    W('grind', 0.20 + B.ctrl*0.16 + (x.tired?0.18:0));
     W('break', 0.14 + (B.dist>1.4?0.36:0) + (B.gnd<0.5?0.10:0));
   } else if(pos==='gbot'){       /* el rival está arriba */
     W('gnp',  0.24 + clN(o.st.ground)/280 + B.fin*0.10);
     W('pass', 0.20 + B.ctrl*0.18);
     W('sub',  0.10 + clN(o.st.submission)/240 + B.gnd*0.14);
-    W('hold', 0.16 + B.ctrl*0.14 + (pl.winning?0.16:0));
+    W('hold', 0.16 + B.ctrl*0.14 + (x.winning?0.16:0));
     W('up',   0.06 + (B.dist>1.4?0.28:0));
   } else {                        /* el rival está abajo */
     W('getup', 0.28 + (B.dist>1.3?0.26:0) + (B.gnd<0.6?0.18:0));
-    W('guard', 0.18 + (pl.hurt?0.22:0));
+    W('guard', 0.18 + (x.hurt?0.22:0));
     W('bsub',  0.12 + clN(o.st.submission)/220 + B.gnd*0.16);
     W('sweep', 0.16 + clN(o.st.grappling)/260);
   }
-  return wpick(w);
+  return w;
+};
+CL.oppPick = function(basePick){
+  var w=CL.oppWeights();
+  return w ? wpick(w) : basePick;
 };
 
 /* --- ¿Qué me conviene ahora? (lectura en pantalla, no un número) ---------- */
@@ -21927,7 +21958,9 @@ TQ.resist = function(t){
   var car = clamp(safeInt(TQ.S().use[t.id],0)*0.0030, 0, 0.09); /* la tiene fichada */
   /* el techo importa: si la resistencia pudiera llegar al 50% ninguna técnica
      valdría lo que cuesta, y el jugador dejaría de usarlas. */
-  return clamp(lvl+iq+seen+car, 0, 0.36);
+  /* 'tq:resist' FILTRO: la maestría y la memoria de ESTE rival ajustan las
+     partes; el techo sigue siendo el mismo para todos. */
+  return clamp(hookFilter('tq:resist', lvl+iq+seen+car, {t:t, o:o, lvl:lvl, iq:iq, seen:seen, car:car}), 0, 0.36);
 };
 TQ.chance = function(t, q){
   var f=G&&G.fight;
@@ -21953,6 +21986,11 @@ TQ.use = function(id){
     var st=TQ.fs();
     st.u[t.id]=safeInt(st.u[t.id],0)+1;                /* el uso se consume ya */
     st.pend=t.id;
+    /* 'tq:node' FILTRO: la MISMA técnica puede ejecutarse en una forma
+       evolucionada (Ultimate). Mismo id, mismos usos, mismo minijuego del
+       motor FX, misma nota y mismas recompensas; cambia lo que la forma pide
+       y lo que hace si entra. */
+    t = hookFilter('tq:node', t, {id:id, phase:'use'}) || t;
     var mgKey='tq_'+(t.mg||'zone');
     var box={type:'tq', tech:t.id, diff:t.diff||1, kind:'tq'};
     TQ._cur=t;                       /* fxMods('tq') lo lee antes de que exista S.mg */
@@ -21971,7 +22009,7 @@ TQ.use = function(id){
 TQ.grade = function(q){ return q>=0.86? 'perfect' : (q>=0.50? 'good' : 'fail'); };
 TQ.resolve = function(id, res){
   return safeRun('tq/resolve', function(){
-    var t=TQ.node(id), f=G&&G.fight;
+    var t=hookFilter('tq:node', TQ.node(id), {id:id, phase:'resolve'}), f=G&&G.fight;
     TQ._cur=null;
     var st=TQ.fs(); if(st) st.pend=null;
     if(!t || !f || f.over){ if(typeof render==='function') render(); return; }
@@ -21991,6 +22029,9 @@ TQ.resolve = function(id, res){
     }
     if(st && g!=='fail') st.done=safeInt(st.done,0)+1;
     if(st && g==='perfect') st.perfect=safeInt(st.perfect,0)+1;
+    /* 'tq:resolved' EVENTO: la nota final de la ejecución (ya pasada por la
+       resistencia del rival). Aquí se cuenta la maestría. */
+    hookEmit('tq:resolved', {id:id, t:t, grade:g, q:q});
 
     TQ.apply(t,g,q);
   }, function(){ try{ if(typeof render==='function') render(); }catch(e){ errLog('L19198', e); } }, true);
@@ -22629,6 +22670,8 @@ TQ.nodeCard = function(t){
   if(own){
     var used=safeInt(s.use[t.id],0);
     h+='<p class="xs dim2" style="margin:0">'+(used? 'Usada '+used+' vez'+(used===1?'':'ces')+' en tu carrera. Los rivales de nivel empiezan a leerla.' : 'Todavía no la mostraste en el octágono.')+'</p>';
+    /* 'tq:ownInfo' FILTRO: maestría y evolución de la técnica */
+    h+=hookFilter('tq:ownInfo', '', {t:t});
   } else if(c.locked){
     h+='<div class="tq-req">🔒 '+esc(c.why)+'</div>';
   } else if(c.ok){
@@ -28844,22 +28887,41 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
 
   /* Tercera capa de oppAction, consolidada al mismo punto de extensión con
      orden 20: corre DESPUÉS de la de CL, igual que cuando la envolvía. */
-  hookOn('combat:oppPick','identidadRival', function(base){
-    var f=G&&G.fight; if(!f||f.over) return base;
-    var id=f.identity,o=F(f.opp); if(!id||!o) return base;
-    var key=f._clLastPlayerAction||f._lastPlayerAction;
+  /* Las reglas de la identidad del rival como DATOS, en el orden en que se
+     aplican: {p: probabilidad, to: acciones posibles (null = sortea pero no
+     cambia nada)}. El filtro de abajo las sortea igual que antes —mismas
+     condiciones, mismo orden, mismas llamadas a chance/pick— y la lectura de
+     la pelea (CMB) las compone para mostrar la distribución REAL. */
+  var IDR_COUNTER={jab:'counter',combo:'counter',lowkick:'td',td:'counter',clinch:'break',gnp:'sweep',pass:'sweep',sub:'guard'};
+  function oppIdentityRules(){
+    var f=G&&G.fight; if(!f||f.over) return [];
+    var id=f.identity,o=F(f.opp); if(!id||!o) return [];
+    var out=[], key=f._clLastPlayerAction||f._lastPlayerAction;
     /* fightAct() is the single writer for playerPatterns. oppAction() must only
        read the accumulated evidence; counting here used to double-count every
        action and made the AI adapt far too early. */
     var frequent=key&&id.playerPatterns[key]>=3;
+    /* Cada reemplazo tiene que ser una acción que EXISTA en la posición: el
+       motor sólo resuelve las del rival que corresponden a f.pos, y cualquier
+       otra no hace nada. Medido con 169 peleas del autopiloto: el rival
+       «tiraba una combinación» estando arriba en el suelo, o «controlaba»
+       dentro del clinch, y regalaba el intercambio. Ver oppCanDo(). */
     if(frequent&&id.adaptation>55){
-      var counter={jab:'counter',combo:'counter',lowkick:'td',td:'counter',clinch:'break',gnp:'pass',pass:'sweep',sub:'hold'}[key];
-      if(counter&&chance(clamp(.25+(id.adaptation-55)/140,0,.65)))base=counter;
+      var counter=IDR_COUNTER[key];
+      if(counter&&oppCanDo(f.pos,counter)) out.push({k:'adapt', why:key, p:clamp(.25+(id.adaptation-55)/140,0,.65), to:[counter]});
     }
-    if(id.archetype==='missile'&&f.round===1&&chance(.25))base=['combo','lowkick','td'][ri(0,2)];
-    if(id.archetype==='wall'&&f.o.stam>35&&chance(.18))base='combo';
-    if(id.archetype==='marathon'&&f.round>=3&&chance(.25))base=f.pos==='stand'?'jab':base;
-    if(id.archetype==='showman'&&chance(.12))base=pick(f.pos==='stand'?['jab','counter','move']:['break','hold']);
+    if(id.archetype==='missile'&&f.round===1&&f.pos==='stand') out.push({k:'missile', p:.25, to:['combo','lowkick','td']});
+    if(id.archetype==='wall'&&f.o.stam>35&&f.pos==='stand') out.push({k:'wall', p:.18, to:['combo']});
+    if(id.archetype==='marathon'&&f.round>=3) out.push({k:'marathon', p:.25, to:f.pos==='stand'?['jab']:null});
+    if(id.archetype==='showman'&&f.pos!=='gtop') out.push({k:'showman', p:.12, to:f.pos==='stand'?['jab','counter','move']:(f.pos==='clinch'?['break','grind']:['hold','up'])});
+    return out;
+  }
+  CL.oppRules = oppIdentityRules;
+  CL.IDR_COUNTER = IDR_COUNTER;
+  hookOn('combat:oppPick','identidadRival', function(base){
+    oppIdentityRules().forEach(function(r){
+      if(chance(r.p) && r.to) base = r.to.length===1 ? r.to[0] : pick(r.to);
+    });
     return base;
   }, 20);
   /* Tercera capa de fightAct, consolidada: registraba el patrón del jugador
@@ -28867,7 +28929,10 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
      (orden 95, después que la de CL). Se conserva ese orden exacto. */
   hookOn('act:pre','identidadRival', function(ctx){
     if(!G||!G.fight) return;
-    G.fight._lastPlayerAction = (typeof ctx.key==='string' && ctx.key.indexOf('cl_')===0) ? ctx.key.slice(3) : ctx.key;
+    /* lo que el rival VE es la acción que se resuelve: una tecla propia de un
+       rasgo o de la lectura («Cambio de marcha», «Anticipar») es, en la
+       jaula, una combinación o una contra, y así tiene que contarla */
+    G.fight._lastPlayerAction = (typeof ctx.key==='string' && ctx.key.indexOf('cl_')===0) ? ctx.key.slice(3) : (ctx.base||ctx.key);
     var id=G.fight.identity;
     if(id){ id.playerPatterns[G.fight._lastPlayerAction]=(id.playerPatterns[G.fight._lastPlayerAction]||0)+1; }
   }, 5);
@@ -29375,7 +29440,10 @@ RPG.DEF = function(){
        al cargar volvía como un array de 26 cincuentas. */
     cnt:{fights:0,wins:0,losses:0,draws:0,fin:0,decW:0,comeback:0,war:0,revW:0,gpW:0,
         weighStreak:0,weighMiss:0,press:0,iqW:0},
-    tempAsk:null   /* último sello en que se preguntó por el temperamento       */
+    tempAsk:null,  /* último sello en que se preguntó por el temperamento       */
+    /* combate (módulo CMB): memoria de cada rival, maestría por técnica,
+       Ultimates despertadas, lecciones de derrotas */
+    fm:{}, mast:{}, ult:{}, lessons:[], lesson:null, lastLoss:null
   };
 };
 /* LECTOR: nunca crea estado (las pantallas lo usan, B-001). */
@@ -29450,6 +29518,8 @@ RPG.CP_D = {
    mem: si se anota en la memoria narrativa (las frecuentes, no)
    -------------------------------------------------------------------------- */
 RPG.ECHO = {
+  lesson_taken:   {t:'Te llevaste una lección de una derrota', ax:{disciplina:1,estrategia:1,ego:-.5}, cp:{competencia:.5}, mem:1},
+  lesson_learned: {t:'Aprendiste lo que te enseñó una derrota', ax:{disciplina:1.5,estrategia:.5}, cp:{legado:.5}, mem:1},
   short_notice:   {t:'Aceptaste pelear con poco tiempo de aviso', ax:{riesgo:2,ambicion:1}, cp:{competencia:1,dinero:1}, mem:1},
   title_chase:    {t:'Fuiste por el cinturón', ax:{ambicion:2}, cp:{gloria:2}, mem:1},
   elim_signed:    {t:'Firmaste una eliminatoria', ax:{ambicion:1.5,riesgo:.5}, cp:{gloria:1,competencia:1}, mem:1},
@@ -30179,6 +30249,8 @@ RPG.journalHTML = function(){
     else if(x.res==='W' && /KO|sumisión|TKO/i.test(String(x.m)) && (x.oppRank||99)<=5) mom.push({y:x.y, t:'💥 Terminó a '+x.opp+' por '+x.m});
   });
   RPG.recentEchoes(10).forEach(function(m){ mom.push({y:m.y, t:'🗣️ '+m.t}); });
+  /* lo que se ganó dentro de la jaula: técnicas que se volvieron tuyas */
+  ((G.story && G.story.memories)||[]).forEach(function(m){ if(m && (m.type==='ultimate'||m.type==='mastery')) mom.push({y:m.y, t:(m.type==='ultimate'?'✴ ':'🎯 ')+m.t}); });
   mom.sort(function(a,b){ return b.y-a.y; });
   h+=CL.seccion('dMomentos','Momentos','<div class="card"><div class="log">'+(mom.length? mom.slice(0,14).map(function(x){ return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>'; }).join('') : '<div class="dim">Todavía nada.</div>')+'</div></div>');
   /* LEGADO */
@@ -30242,6 +30314,628 @@ hookOn('screen:ending','rpgPerfil', function(h){
    -------------------------------------------------------------------------- */
 hookOn('careerCreated','rpg', function(){ G.rpg=RPG.DEF(); if(G.player){ G.rpg.gym=G.player.gym; G.rpg.gymAt=RPG.stamp(); G.rpg.coach=G.player.coach; } }, 60);
 hookOn('load','rpg', function(){ if(G && G.player) RPG.S(); }, 60);
+
+/* ==========================================================================
+   COMBATE — LECTURA, MEMORIA DEL RIVAL, LECCIONES, MAESTRÍA Y ULTIMATES
+   --------------------------------------------------------------------------
+   Nada de esto es un motor nuevo. Todo se apoya en lo que la pelea ya hace:
+     · LECTURA (Fight IQ): lo que se muestra es la distribución REAL con la que
+       el rival va a elegir —los pesos de CL.oppWeights y las reglas de su
+       identidad (CL.oppRules), compuestos—, revelada según cuánto lo estás
+       leyendo (c.read, que ya existía), tu fightiq y lo que ya viste de él.
+       Se midió antes de diseñarlo: contar repeticiones y declarar «patrón»
+       acierta un 22-28 % (169 peleas); sería inventar patrones.
+     · ANTICIPAR: apostar a esa lectura. El bono existe sólo si el rival hace
+       de verdad lo que predijiste (se comprueba contra su elección real).
+     · MEMORIA: al terminar, lo que viste de él y lo que él vio de vos queda.
+       En la revancha vos lo leés antes, y él viene preparado para lo que más
+       repetiste y deja de hacer lo que le castigaste.
+     · LECCIONES: una derrota se explica con los números de esa pelea y se
+       puede convertir en trabajo de gimnasio (sin estadísticas regaladas).
+     · MAESTRÍA y ULTIMATES: una técnica del árbol usada muchas veces, bien,
+       se vuelve tuya; las legendarias (L4) evolucionan a una forma Ultimate
+       que se ejecuta con el MISMO TQ.use/TQ.resolve/TQ.apply.
+   Estado: G.fight.iq (por pelea) y G.rpg.{fm, mast, ult, lesson, lastLoss}.
+   ========================================================================== */
+CL.mod('lectura','Fight IQ con datos reales, memoria de revancha, lecciones, maestría y Ultimates');
+var CMB = {};
+
+/* estado persistente (dentro de G.rpg: un solo objeto de carrera) */
+CMB.S = function(){
+  var s=RPG.S();
+  if(!s.fm || typeof s.fm!=='object' || Array.isArray(s.fm)) s.fm={};
+  if(!s.mast || typeof s.mast!=='object' || Array.isArray(s.mast)) s.mast={};
+  if(!s.ult || typeof s.ult!=='object' || Array.isArray(s.ult)) s.ult={};
+  if(!Array.isArray(s.lessons)) s.lessons=[];
+  return s;
+};
+CMB.R = function(){ var r=RPG.R(); return {fm:r.fm||{}, mast:r.mast||{}, ult:r.ult||{}, lesson:r.lesson||null, lastLoss:r.lastLoss||null, lessons:r.lessons||[]}; };
+
+/* nombres de las acciones tal como se leen en la jaula */
+CMB.N = {jab:'el jab', combo:'la combinación', counter:'la contra', lowkick:'la patada baja', clinch:'el clinch',
+  td:'el derribo', move:'moverse y respirar', knees:'rodillas', ctd:'el derribo contra la reja', grind:'aplastarte contra la reja',
+  'break':'soltar el clinch', gnp:'el ground and pound', pass:'pasar tu guardia', sub:'la sumisión', hold:'controlarte',
+  up:'dejarte levantar', getup:'levantarse', guard:'cerrar la guardia', bsub:'la sumisión desde abajo', sweep:'la barrida'};
+CMB.n = function(a){ return CMB.N[a] || a; };
+CMB.N0 = function(a){ var t=CMB.n(a); return t.charAt(0).toUpperCase()+t.slice(1); };
+
+/* la respuesta que el MOTOR premia contra cada acción (resolveExchangeCore):
+   la contra anula su ataque de pie, tu derribo anula el suyo, tu clinch el
+   suyo, soltarte del clinch evita sus rodillas y su derribo, levantarte evita
+   lo que haga arriba, etc. Cada par es una lectura de ese código, no un número. */
+CMB.RESP = {
+  stand: {combo:'counter', jab:'counter', lowkick:'counter', td:'td', clinch:'clinch', move:'combo', counter:'td'},
+  clinch:{knees:'break', ctd:'break', grind:'knees', 'break':'knees'},
+  gbot:  {gnp:'bsub', pass:'sweep', sub:'getup', hold:'getup', up:'getup'},
+  gtop:  {getup:'sub', guard:'pass', bsub:'hold', sweep:'hold'}
+};
+CMB.WHY = {
+  counter:'Si entra, la contra ya está esperando: su ataque no llega a salir.',
+  td:'Cambiás de nivel primero: el que entra antes decide.',
+  clinch:'Le ganás el agarre antes de que lo cierre él.',
+  combo:'Mientras retrocede a respirar no hay contra: es el momento de cargar.',
+  'break':'Te soltás justo cuando va a apretar: lo que tenía preparado pega en el aire.',
+  knees:'Mientras te sostiene o se va, las rodillas entran.',
+  bsub:'Para pegarte tiene que levantar la postura, y ahí está el brazo.',
+  sweep:'Cuando mueve la cadera para pasar, la base queda liviana.',
+  getup:'Si se queda a controlar o busca el cuello, la salida está abierta.',
+  sub:'Para levantarse te da el cuello.',
+  pass:'Encerrado en la guardia no te ataca: es tiempo de pasar.',
+  hold:'Postura y peso: lo que busca desde abajo necesita que te muevas.'
+};
+
+/* SITUACIÓN: lo mismo que mira la IA del rival (CL.oppPlan), en palabras */
+CMB.BN = {'stand':'de pie, cómodo', 'stand:c':'de pie y sin aire', 'stand:h':'de pie y herido', 'stand:v':'de pie, con vos herido',
+  'stand:e':'de pie, más cerca de lo que quiere', 'stand:l':'de pie, más lejos de lo que quiere',
+  'clinch':'en el clinch', 'clinch:c':'en el clinch y sin aire', 'gbot':'arriba tuyo', 'gbot:c':'arriba tuyo y sin aire',
+  'gtop':'abajo tuyo', 'gtop:c':'abajo tuyo y sin aire'};
+CMB.bucket = function(){
+  var f=G&&G.fight; if(!f) return null;
+  var pl=CL.oppPlan(); if(!pl) return f.pos;
+  if(f.pos!=='stand') return f.pos+(pl.tired?':c':'');
+  if(pl.tired) return 'stand:c';
+  if(pl.hurt) return 'stand:h';
+  if(f.p.hp<40) return 'stand:v';
+  if(pl.gap>0.35) return 'stand:e';
+  if(pl.gap<-0.35) return 'stand:l';
+  return 'stand';
+};
+
+/* --------------------------------------------------------------------------
+   1. LA DISTRIBUCIÓN REAL DE LA PRÓXIMA ACCIÓN DEL RIVAL
+   Mismo orden que oppAction(): pesos de CL (wpick) → reglas de su identidad →
+   memoria de revancha. Sólo lee: se puede llamar al dibujar.
+   -------------------------------------------------------------------------- */
+CMB.memRules = function(){
+  var f=G&&G.fight; if(!f || f.over || !f.iq || !f.iq.sup) return [];
+  var b=CMB.bucket(), a=f.iq.sup[b]; if(!a || !oppCanDo(f.pos,a)) return [];
+  var to=OPP_ACTS[f.pos].filter(function(x){ return x!==a; });
+  return [{k:'mem', sup:a, p:0.5, to:to}];
+};
+CMB.dist = function(){
+  var w=CL.oppWeights && CL.oppWeights(); if(!w) return null;
+  var d={}, tot=0;
+  w.forEach(function(x){ var v=Math.max(.01,x[1]); d[x[0]]=(d[x[0]]||0)+v; tot+=v; });
+  for(var k in d) if(d.hasOwnProperty(k)) d[k]/=tot;
+  (CL.oppRules? CL.oppRules() : []).forEach(function(r){
+    if(!r.to) return;
+    for(var k2 in d) if(d.hasOwnProperty(k2)) d[k2]*=(1-r.p);
+    r.to.forEach(function(a){ d[a]=(d[a]||0)+r.p/r.to.length; });
+  });
+  CMB.memRules().forEach(function(r){
+    var pa=clN(d[r.sup],0)*r.p; d[r.sup]=clN(d[r.sup],0)-pa;
+    r.to.forEach(function(a){ d[a]=(d[a]||0)+pa/r.to.length; });
+  });
+  return d;
+};
+CMB.ranked = function(d){
+  return Object.keys(d||{}).map(function(k){ return {a:k, p:d[k]}; })
+    .sort(function(x,y){ return y.p-x.p; });
+};
+
+/* --------------------------------------------------------------------------
+   2. CUÁNTO LO ESTÁS LEYENDO
+   -------------------------------------------------------------------------- */
+CMB.TIER = ['Todavía no lo leés','Intuición','Lectura','Lo tenés leído'];
+CMB.seen = function(b){
+  var f=G&&G.fight, iq=f&&f.iq; if(!iq) return {now:0, before:0};
+  var sum=function(o){ var n=0; for(var k in (o||{})) if(o.hasOwnProperty(k)) n+=safeInt(o[k],0); return n; };
+  return {now:sum(iq.obs&&iq.obs[b]), before:sum(iq.prior&&iq.prior[b])};
+};
+CMB.level = function(){
+  var f=G&&G.fight; if(!f || f.over) return null;
+  var c=CL.fightCtx(), p=G.player, iq=f.iq||{}, b=CMB.bucket(), sn=CMB.seen(b);
+  var L = clN(c&&c.read,0)*0.55 + clamp(clN(p.st.fightiq,50)-50,0,45)*0.5 + Math.min(sn.now+Math.floor(sn.before/2),8)*3;
+  var why=[];
+  if(iq.mem){ L+=10; why.push('ya lo peleaste'); }
+  if(iq.scout){ L+=6; why.push('lo estudiaste en video'); }
+  if(RPG.hasTrait('cerebro_frio')){ L+=10; why.push('Cerebro frío'); }
+  var ls=CMB.R().lesson;
+  if(ls && ls.fixLeft>0 && ls.fix && f.pos===ls.fix){ L+=8; why.push('la lección de '+CMB.LESSONS[ls.k].n.toLowerCase()); }
+  var t = L<25?0:(L<45?1:(L<65?2:3));
+  return {L:L, tier:t, b:b, seen:sn, why:why};
+};
+
+/* lo que el RIVAL ya te leyó a vos: la regla de adaptación de su identidad */
+CMB.dangers = function(){
+  var f=G&&G.fight, id=f&&f.identity; if(!id || f.over || !(id.adaptation>55)) return [];
+  var out=[], P=clamp(.25+(id.adaptation-55)/140,0,.65);
+  Object.keys(id.playerPatterns||{}).forEach(function(k){
+    var n=safeInt(id.playerPatterns[k],0), c=CL.IDR_COUNTER&&CL.IDR_COUNTER[k];
+    if(n>=2 && c && oppCanDo(f.pos,c)) out.push({a:k, n:n, c:c, p:P, armed:n>=3});
+  });
+  return out.sort(function(x,y){ return y.n-x.n; }).slice(0,2);
+};
+
+/* --------------------------------------------------------------------------
+   3. ANTICIPAR — apostar a la lectura
+   -------------------------------------------------------------------------- */
+CMB.guess = function(){
+  var f=G&&G.fight; if(!f || f.over || f.pos===undefined) return null;
+  var lv=CMB.level(); if(!lv || lv.tier<2) return null;
+  var r=CMB.ranked(CMB.dist()); if(!r.length) return null;
+  var top=r[0], resp=CMB.RESP[f.pos] && CMB.RESP[f.pos][top.a];
+  if(!resp || top.p<0.20) return null;
+  return {pred:top.a, p:top.p, resp:resp, tier:lv.tier};
+};
+hookOn('fight:options','lectura', function(ops){
+  if(!Array.isArray(ops)) return ops;
+  var g=CMB.guess(); if(!g) return ops;
+  ops.push({k:'iq_x', t:'🧠 Anticipar '+CMB.n(g.pred), rec:'Tu lectura',
+    d:(g.tier>=3? 'Lo más probable ahora ('+Math.round(g.p*100)+' %). ' : '')+(CMB.WHY[g.resp]||'')+
+      ' Si acertás, el intercambio es tuyo; si no, quedaste jugado.'});
+  return ops;
+}, 45);
+hookOn('act:translate','lectura', function(k, ctx){
+  if(k!=='iq_x') return k;
+  var f=G&&G.fight, g=CMB.guess();
+  if(!f || !g) return ({clinch:'grind', gtop:'hold', gbot:'guard'})[f&&f.pos] || 'jab';
+  f.iq.pend={pred:g.pred, p:g.p};
+  return g.resp;
+}, 45);
+hookOn('combat:oppPick','lectura', function(base){
+  var f=G&&G.fight; if(f && f.iq && !f.over) f.iq._b=CMB.bucket();
+  return base;
+}, 1);
+/* la memoria de revancha: lo que le castigaste en esa situación, ya no lo repite tanto */
+hookOn('combat:oppPick','memoriaRival', function(base){
+  CMB.memRules().forEach(function(r){
+    if(base===r.sup && chance(r.p)) base=pick(r.to);
+  });
+  return base;
+}, 25);
+hookOn('combat:oppPick:after','lectura', function(ev){
+  var f=G&&G.fight, iq=f&&f.iq; if(!iq) return;
+  var b=iq._b; iq._b=null;
+  if(b){ var o=iq.obs[b]||(iq.obs[b]={}); o[ev.action]=safeInt(o[ev.action],0)+1; }
+  /* ¿esta elección salió de su lectura de vos? */
+  var ad=(CL.oppRules? CL.oppRules() : []).filter(function(r){ return r.k==='adapt'; })[0];
+  if(ad && ad.to && ad.to[0]===ev.action) iq.readBy=safeInt(iq.readBy,0)+1;
+  if(iq.pend){
+    var hit=(ev.action===iq.pend.pred);
+    iq.res=hit?'hit':'miss';
+    if(hit){ iq.hits=safeInt(iq.hits,0)+1; if(b){ iq.ex[b]=iq.pend.pred; } flog('🧠 Lo leíste: '+CMB.N0(ev.action)+', y ahí estabas.'); }
+    else { iq.miss=safeInt(iq.miss,0)+1; flog('Esperabas '+CMB.n(iq.pend.pred)+'; eligió '+CMB.n(ev.action)+'.'); }
+    iq.pend=null;
+  }
+}, 30);
+/* el acierto se nota en TODO el intercambio (ataque y defensa); el error, también */
+hookOn('combat:eff','lectura', function(v, ctx){
+  var f=G&&G.fight, iq=f&&f.iq; if(!iq || !iq.res || !ctx || ctx.side!=='p') return v;
+  return v + (iq.res==='hit'? 8 : -3);
+}, 60);
+hookOn('act:post','lectura', function(){ var f=G&&G.fight; if(f && f.iq) f.iq.res=null; }, 96);
+
+/* daño recibido según lo que hizo el rival: la materia de las lecciones */
+hookOn('exchange:pre','lectura', function(cx){ var f=G&&G.fight; if(f) cx._cmbHp=f.p.hp; }, 1);
+hookOn('exchange:post','lectura', function(cx){
+  var f=G&&G.fight, iq=f&&f.iq; if(!iq || typeof cx._cmbHp!=='number') return;
+  var d=cx._cmbHp-f.p.hp; if(d>0) iq.hurt[cx.oa]=Math.round((clN(iq.hurt[cx.oa],0)+d)*10)/10;
+}, 99);
+
+/* --------------------------------------------------------------------------
+   4. INICIO DE PELEA: lo que ya se sabe (memoria, video)
+   -------------------------------------------------------------------------- */
+hookOn('fight:start','lectura', function(){
+  var f=G&&G.fight; if(!f) return;
+  var m=CMB.R().fm[f.opp] || null;
+  f.iq={obs:{}, prior:{}, ex:{}, hurt:{}, hits:0, miss:0, readBy:0, pend:null, res:null, sup:{},
+        mem:!!m, scout:!!(G.flags && (G.flags.analyst || G.flags.videoWall))};
+  if(!m) return;
+  for(var b in (m.obs||{})) if(m.obs.hasOwnProperty(b)) f.iq.prior[b]=Object.assign({}, m.obs[b]);
+  /* él también se acuerda: lo que le castigaste con la lectura ya no lo repite
+     igual, y viene esperando lo que más usaste */
+  for(var b2 in (m.ex||{})) if(m.ex.hasOwnProperty(b2) && safeInt(m.ex[b2].n,0)>=2) f.iq.sup[b2]=m.ex[b2].a;
+  var id=f.identity, top=[];
+  if(id && m.pp){
+    top=Object.keys(m.pp).filter(function(k){ return safeInt(m.pp[k],0)>=4; })
+      .sort(function(x,y){ return m.pp[y]-m.pp[x]; }).slice(0,2);
+    top.forEach(function(k){ id.playerPatterns[k]=Math.max(safeInt(id.playerPatterns[k],0),2); });
+  }
+  var o=F(f.opp);
+  flog('Ya lo peleaste'+(m.n>1?' '+m.n+' veces':'')+'. Él también se acuerda'+
+       (top.length? ': viene esperando '+top.map(CMB.n).join(' y ')+'.' : '.'));
+}, 60);
+
+/* --------------------------------------------------------------------------
+   5. AL TERMINAR: memoria, lectura ganadora y lección
+   -------------------------------------------------------------------------- */
+hookOn('fight:pre','lectura', function(c){
+  var f=G&&G.fight; if(!f || !f.result || !f.iq){ c.cmb=null; return; }
+  var res=f.result, iq=f.iq, tq=f.tq||{};
+  c.cmb={oppId:f.opp, won:res.winner==='p', draw:res.winner==='d', method:res.method, round:safeInt(res.round,1),
+    rounds:safeInt(f.rounds,3), obs:iq.obs, ex:iq.ex, hurt:iq.hurt, hits:safeInt(iq.hits,0), miss:safeInt(iq.miss,0),
+    readBy:safeInt(iq.readBy,0), pp:Object.assign({}, (f.identity&&f.identity.playerPatterns)||{}),
+    tqU:Object.assign({}, tq.u||{}), land:Object.assign({}, tq.land||{}), ult:tq.ultDone? Object.assign({}, tq.ultDone):{},
+    oTd:safeInt(f.o.td,0), pStam:clN(f.p.stam,100), cards:(f.cards||[]).slice()};
+}, 82);
+hookOn('fight:applied','lectura', function(c){
+  var d=c.cmb; if(!d || !G || !G.player) return;
+  var s=CMB.S();
+  /* 1. memoria del rival (lo que viste, lo que él vio, lo que le castigaste) */
+  var m=s.fm[d.oppId] || {n:0, obs:{}, pp:{}, ex:{}, tq:{}, ult:{}};
+  m.n=safeInt(m.n,0)+1; m.y=G.year; m.w=G.week; m.res=d.draw?'D':(d.won?'W':'L'); m.m=d.method;
+  for(var b in d.obs) if(d.obs.hasOwnProperty(b)){
+    var mo=m.obs[b]||(m.obs[b]={});
+    for(var a in d.obs[b]) if(d.obs[b].hasOwnProperty(a)) mo[a]=Math.min(30, safeInt(mo[a],0)+safeInt(d.obs[b][a],0));
+  }
+  for(var k in d.pp) if(d.pp.hasOwnProperty(k)) m.pp[k]=Math.min(40, safeInt(m.pp[k],0)+safeInt(d.pp[k],0));
+  for(var b2 in d.ex) if(d.ex.hasOwnProperty(b2)){
+    var e=m.ex[b2]; m.ex[b2]={a:d.ex[b2], n:(e && e.a===d.ex[b2]? safeInt(e.n,0) : 0)+1};
+  }
+  for(var t in d.tqU) if(d.tqU.hasOwnProperty(t)) m.tq[t]=safeInt(m.tq[t],0)+1;
+  for(var u in d.ult) if(d.ult.hasOwnProperty(u)) m.ult[u]=safeInt(m.ult[u],0)+1;
+  s.fm[d.oppId]=m;
+  var ids=Object.keys(s.fm);
+  if(ids.length>60){ ids.sort(function(x,y){ return (s.fm[x].y*52+s.fm[x].w)-(s.fm[y].y*52+s.fm[y].w); }); delete s.fm[ids[0]]; }
+  /* 2. la lectura que gana peleas (rasgo Cerebro frío) */
+  if(d.won && d.hits>=2){ s.cnt.iqW=safeInt(s.cnt.iqW,0)+1; }
+  /* 3. maestría: una técnica que entró en una pelea ganada */
+  if(d.won) for(var t2 in d.land) if(d.land.hasOwnProperty(t2)){ var ms=s.mast[t2]; if(ms) ms.w=safeInt(ms.w,0)+1; }
+  CMB.awaken();
+  /* 4. lección: sólo las derrotas, y sólo lo que los números muestran */
+  s.lastLoss = (!d.won && !d.draw) ? CMB.lessonFrom(d) : null;
+  if(s.lesson && s.lesson.fixLeft>0 && s.lesson.learned) s.lesson.fixLeft--;
+}, 79);
+
+/* --------------------------------------------------------------------------
+   6. LECCIONES DE LAS DERROTAS
+   El entrenamiento que corresponde rinde más durante seis sesiones; aprendida
+   la lección, en las tres peleas siguientes leés antes esa parte de la pelea.
+   No regala estadísticas: si no entrenás eso, no pasa nada.
+   -------------------------------------------------------------------------- */
+CMB.LESSONS = {
+  contra:  {n:'Entrar sin preparar', act:'tech', fix:'stand', d:'Te esperó y te cobró las entradas con la contra.'},
+  golpeo:  {n:'La guardia', act:'box', fix:'stand', d:'Sus manos te encontraron de pie más de lo que tenías previsto.'},
+  derribos:{n:'La defensa de derribo', act:'wrest', fix:'stand', d:'Te llevó al suelo cuando quiso.'},
+  suelo:   {n:'El juego de abajo', act:'grap', fix:'gbot', d:'Arriba tuyo te hizo el daño que decidió la pelea.'},
+  clinch:  {n:'El clinch', act:'muay', fix:'clinch', d:'En el clinch te castigó y no encontraste la salida.'},
+  aire:    {n:'El aire', act:'cardio', fix:null, d:'Llegaste vacío al final.'},
+  lectura: {n:'Ser previsible', act:'spar', fix:'stand', d:'Repetiste lo mismo y te lo esperó.'}
+};
+CMB.lessonFrom = function(d){
+  var h=d.hurt||{}, g=function(k){ return clN(h[k],0); };
+  var tot=0; for(var k in h) if(h.hasOwnProperty(k)) tot+=clN(h[k],0);
+  var sc={
+    contra: g('counter'),
+    golpeo: g('combo')+g('jab')+g('lowkick'),
+    derribos: d.oTd*7,
+    suelo: g('gnp')+g('sub')+(d.method==='sub'?25:0),
+    clinch: g('knees'),
+    aire: d.pStam<25? 22+(25-d.pStam) : 0,
+    lectura: d.readBy*7
+  };
+  var best=null; for(var k2 in sc) if(sc.hasOwnProperty(k2) && (!best || sc[k2]>sc[best])) best=k2;
+  if(!best || sc[best]<8) return null;
+  var facts=[];
+  if(tot>0){
+    var top=Object.keys(h).sort(function(x,y){ return h[y]-h[x]; }).slice(0,2);
+    facts.push('Daño recibido: '+Math.round(tot)+' — '+top.map(function(a){ return Math.round(h[a])+' por '+CMB.n(a); }).join(', ')+'.');
+  }
+  if(d.oTd) facts.push('Te derribó '+d.oTd+' '+(d.oTd===1?'vez':'veces')+'.');
+  if(d.pStam<40) facts.push('Terminaste con '+Math.round(d.pStam)+' de aire.');
+  if(d.readBy) facts.push('Te esperó '+d.readBy+' '+(d.readBy===1?'vez':'veces')+' con lo que ya te había visto.');
+  return {k:best, opp:d.oppId, at:RPG.stamp(), facts:facts};
+};
+CMB.takeLesson = function(){
+  var s=CMB.S(), L=s.lastLoss; if(!L || !CMB.LESSONS[L.k]) return false;
+  var X=CMB.LESSONS[L.k];
+  s.lesson={k:L.k, act:X.act, fix:X.fix, left:6, done:0, learned:false, fixLeft:0, opp:L.opp, at:RPG.stamp()};
+  s.lastLoss=null;
+  RPG.echo('lesson_taken', {t:'Te llevaste una lección: '+X.n.toLowerCase()});
+  if(CL.thread) CL.thread('tecnica','Lección anotada: '+X.n+'. Se trabaja con '+TRAIN[X.act].n.toLowerCase()+'.');
+  toast('📓 Lección anotada: '+X.n);
+  if(typeof render==='function') render();
+  return true;
+};
+hookOn('train:adjust','leccion', function(mm){
+  var s=RPG.R(), L=s.lesson; if(!L || L.learned || L.left<=0 || mm.act!==L.act) return;
+  mm.bonus = clN(mm.bonus,0) + 0.12;
+  L.left--; L.done=safeInt(L.done,0)+1;
+  if(L.left<=0){
+    L.learned=true; L.fixLeft=3;
+    var X=CMB.LESSONS[L.k];
+    CMB.S().lessons.unshift({k:L.k, y:G.year, w:G.week});
+    if(CMB.S().lessons.length>20) CMB.S().lessons.pop();
+    RPG.echo('lesson_learned', {t:'Lección aprendida: '+X.n.toLowerCase()});
+    pushNews(fname(G.player)+' dice que la derrota le enseñó algo: '+X.n.toLowerCase()+'.');
+  }
+}, 25);
+CMB.lessonCard = function(){
+  var s=CMB.R(), L=s.lastLoss, h='';
+  if(L && CMB.LESSONS[L.k]){
+    var X=CMB.LESSONS[L.k];
+    h+='<div class="card hi"><h3>📓 Lo que te ganó la pelea</h3>'+
+      '<p class="sm"><span class="b">'+esc(X.n)+'.</span> '+esc(X.d)+'</p>'+
+      (L.facts.length? '<ul class="sm dim" style="padding-left:18px;margin:4px 0">'+L.facts.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('')+'</ul>' : '')+
+      '<p class="xs dim2">Anotarla: las próximas 6 sesiones de '+esc(TRAIN[X.act].n.toLowerCase())+' rinden más. Aprendida, en tus 3 peleas siguientes '+
+      (X.fix? 'leés antes al rival '+esc(CMB.POSN[X.fix])+'.' : 'lo vas a notar en cómo administrás.')+'</p>'+
+      '<button class="btn pri" onclick="CMB.takeLesson()">Anotar la lección</button></div>';
+  }
+  return h;
+};
+CMB.POSN = {stand:'de pie', clinch:'en el clinch', gbot:'cuando está arriba tuyo', gtop:'cuando está abajo tuyo'};
+hookOn('screen:fightresult','leccion', function(h){
+  if(!G.paid || !G.fight || !G.fight.result || G.fight.result.winner!=='o') return h;
+  var card=CMB.lessonCard(); if(!card) return h;
+  var i=h.indexOf('<div class="card"><h3>Después de la pelea</h3>');
+  return i<0 ? h+card : h.slice(0,i)+card+h.slice(i);
+}, 60);
+
+/* --------------------------------------------------------------------------
+   7. MAESTRÍA — la técnica que usaste muchas veces, bien, se vuelve tuya
+   Respeta el árbol tal cual: niveles L1-L4, notas PERFECTA/BUENA/FALLA y los
+   puntos (+1/+2/+3, techo 5) no cambian. La maestría ensancha la ventana de
+   ejecución del minijuego y hace que tus rivales la anticipen menos.
+   -------------------------------------------------------------------------- */
+CMB.MT = [null, {n:'Dominada', win:.05, tol:.04, car:0}, {n:'Firma', win:.09, tol:.07, car:.5}];
+CMB.mastTier = function(id){
+  var m=CMB.R().mast[id]; if(!m) return 0;
+  if(safeInt(m.n,0)>=14 && safeInt(m.p,0)>=4) return 2;
+  if(safeInt(m.n,0)>=6 && safeInt(m.g,0)+safeInt(m.p,0)>=4) return 1;
+  return 0;
+};
+hookOn('tq:resolved','maestria', function(e){
+  if(!e || !G || !G.fight || !TQ.MAP[e.id]) return;
+  var s=CMB.S(), m=s.mast[e.id]||(s.mast[e.id]={n:0,g:0,p:0,f:0,w:0});
+  var before=CMB.mastTier(e.id);
+  m.n++; if(e.grade==='perfect') m.p++; else if(e.grade==='good') m.g++; else m.f++;
+  var st=TQ.fs(); if(st && e.grade!=='fail'){ st.land=st.land||{}; st.land[e.id]=1; }
+  if(e.t && e.t.ult && st){ st.ultDone=st.ultDone||{}; st.ultDone[e.id]=1; }
+  var after=CMB.mastTier(e.id);
+  if(after>before){
+    var t=TQ.node(e.id);
+    pushNews(fname(G.player)+': «'+t.n+'» ya es '+(after===2?'su firma':'una técnica dominada')+'.');
+    if(CL.remember) CL.remember('mastery', {id:e.id, tier:after, t:t.n+' · '+CMB.MT[after].n});
+  }
+}, 20);
+hookOn('fx:mods','maestria', function(m, ctx){
+  if(!ctx || ctx.kind!=='tq' || !m || typeof m!=='object') return m;
+  var t=TQ._cur; if(!t) return m;
+  var tier=CMB.mastTier(t.id); if(!tier) return m;
+  var M=CMB.MT[tier];
+  m.win=clamp(clN(m.win,1)+M.win, 0.56, 1.46);
+  m.tol=clamp(clN(m.tol,1)+M.tol, 0.60, 1.36);
+  return m;
+}, 35);
+hookOn('tq:resist','maestria', function(v, x){
+  if(!x || !x.t) return v;
+  var tier=CMB.mastTier(x.t.id);
+  if(tier) v -= clN(x.car,0)*CMB.MT[tier].car;          /* la firma se disimula */
+  var f=G&&G.fight, m=f && CMB.R().fm[f.opp];            /* ÉL ya la vio */
+  if(m && m.tq) v += clamp(safeInt(m.tq[x.t.id],0)*0.04, 0, 0.08);
+  if(m && m.ult && x.t.ult) v += clamp(safeInt(m.ult[x.t.id],0)*0.06, 0, 0.12);
+  if(x.t.ult && x.t.ultV==='precision') v -= clN(x.car,0);
+  return v;
+}, 20);
+
+/* --------------------------------------------------------------------------
+   8. ULTIMATES — las técnicas legendarias, evolucionadas
+   No son técnicas nuevas: son las L4 del árbol, llevadas al límite por uso real
+   (8 ejecuciones, 3 perfectas y haberla metido en una pelea ganada). Se
+   ejecutan con TQ.use del mismo nodo: mismo uso por pelea, mismas
+   condiciones, minijuego de clutch, misma nota y mismas recompensas. Una vez
+   por pelea. El sello lo pone quién sos cuando despierta.
+   -------------------------------------------------------------------------- */
+CMB.ULT = {
+  s_perf:{n:'⚡ TALÓN DEL VERDUGO', d:'La spinning hook perfecta, pero ya no la buscás: aparece.',
+    fx:{dmg:[26,34], kd:0.62, finish:0.64, fin:'ko', sig:4, log:'⚡ TALÓN DEL VERDUGO. Ni siquiera se ve el giro: se ve la caída.'},
+    bad:{dmg:[7,11], drainP:14, log:'La giraste con todo y el talón corta el aire.'}},
+  w_sup:{n:'💣 SUPLEX DE LA TIERRA', d:'El suplex de siempre, desde cualquier agarre y hasta la reja.',
+    fx:{td:1, pos:'gtop', ctrl:10, dmg:[20,28], kd:0.50, finish:0.30, fin:'ko', log:'💣 SUPLEX DE LA TIERRA. La lona suena como un disparo.'},
+    bad:{dmg:[6,10], drainP:18, pos:'stand', log:'Lo despegás del suelo y se te escapa en el aire.'}},
+  g_def:{n:'💀 LA ÚLTIMA PUERTA', d:'La cadena definitiva sin un solo hueco: cada salida es la entrada de la siguiente.',
+    fx:{sub:0.80, drainO:26, ctrl:8, sig:2, log:'💀 LA ÚLTIMA PUERTA. Cierra una salida, abre otra, y la otra también es tuya.'},
+    bad:{pos:'gbot', drainP:14, log:'Encuentra la única rendija que quedaba.'}},
+  i_last:{n:'🔥 ÚLTIMO ALIENTO', d:'El Last Chance de alguien que ya lo sobrevivió todo.',
+    fx:{dmg:[24,32], kd:0.55, finish:0.50, fin:'ko', sig:3, restP:18, healP:6, log:'🔥 ÚLTIMO ALIENTO. De donde no había nada sale la mano más pesada de la noche.'},
+    bad:{dmg:[8,13], drainP:20, log:'Lo das todo y no alcanza: ahora sí no queda nada.'}}
+};
+CMB.ULT_V = {
+  espectaculo:{n:'Espectáculo', d:'si entra, termina más a menudo', ids:['finalizador','showman']},
+  precision:  {n:'Precisión', d:'no la ven venir: lo que tus rivales saben de ella no cuenta', ids:['tecnico','estratega','contra']},
+  desgaste:   {n:'Desgaste', d:'aunque no termine, le saca el aire', ids:['presion','veterano','capitan']},
+  pura:       {n:'Pura', d:'la técnica, sin más', ids:[]}
+};
+CMB.ultVariant = function(){
+  var id=RPG.officialIdentity(), k=id&&id.k;
+  for(var v in CMB.ULT_V) if(CMB.ULT_V.hasOwnProperty(v) && CMB.ULT_V[v].ids.indexOf(k)>=0) return v;
+  return 'pura';
+};
+CMB.ultReady = function(id){
+  var m=CMB.R().mast[id]||{};
+  return {n:safeInt(m.n,0), p:safeInt(m.p,0), w:safeInt(m.w,0),
+          ok: TQ.has(id) && safeInt(m.n,0)>=8 && safeInt(m.p,0)>=3 && safeInt(m.w,0)>=1};
+};
+CMB.awaken = function(){
+  var s=CMB.S(), got=[];
+  Object.keys(CMB.ULT).forEach(function(id){
+    if(s.ult[id] || !CMB.ultReady(id).ok) return;
+    var v=CMB.ultVariant(), U=CMB.ULT[id];
+    s.ult[id]={v:v, y:G.year, w:G.week, used:0, landed:0};
+    got.push(id);
+    pushNews('Nace una técnica: «'+U.n.replace(/^[^A-ZÁÉÍÓÚÑ]+/,'')+'». '+fname(G.player)+' llevó '+TQ.node(id).n.replace(/^[^A-ZÁÉÍÓÚÑ]+/,'')+' más lejos que nadie.');
+    if(CL.remember) CL.remember('ultimate', {id:id, v:v, t:'Ultimate: '+U.n});
+    if(CL.thread) CL.thread('tecnica','Tu '+TQ.node(id).n+' evolucionó: '+U.n+' ('+CMB.ULT_V[v].n+').');
+    toast('✴ ULTIMATE: '+U.n);
+    hookEmit('rpg:ultimate', {id:id, v:v});
+  });
+  return got;
+};
+/* el nodo evolucionado: mismo id, misma rama y nivel, forma Ultimate */
+CMB.ultNode = function(t){
+  var u=CMB.R().ult[t.id], U=CMB.ULT[t.id]; if(!u || !U) return t;
+  var fx=Object.assign({}, U.fx);
+  if(u.v==='espectaculo' && fx.finish) fx.finish=Math.min(0.80, fx.finish+0.08);
+  if(u.v==='espectaculo' && fx.sub) fx.sub=Math.min(0.85, fx.sub+0.05);
+  if(u.v==='desgaste') fx.drainO=clN(fx.drainO,0)+10;
+  return Object.assign({}, t, {n:U.n, mg:'clutch', diff:4, fx:fx, bad:U.bad, ult:true, ultV:u.v});
+};
+hookOn('tq:node','ultimate', function(t, x){
+  if(!t || !x) return t;
+  var st=TQ.fs(); if(!st) return t;
+  if(x.phase==='use' && st.ultReq===t.id){ st.ultLive=t.id; return CMB.ultNode(t); }
+  if(x.phase==='resolve' && st.ultLive===t.id){ st.ultLive=null; return CMB.ultNode(t); }
+  return t;
+}, 20);
+CMB.ultState = function(id){
+  var f=G&&G.fight; if(!f || f.over) return {ok:false};
+  if(!CMB.R().ult[id]) return {ok:false};
+  var st=TQ.fs(); if(st && st.ultDone && st.ultDone[id]) return {ok:false, why:'ya la usaste esta pelea'};
+  var s=TQ.state(TQ.node(id)); if(!s.ok) return {ok:false, why:s.why};
+  return {ok:true};
+};
+CMB.ultUse = function(id){
+  var s=CMB.ultState(id); if(!s.ok){ toast(s.why||'Todavía no.'); return false; }
+  var st=TQ.fs(); st.ultReq=id;
+  try{ TQ.use(id); } finally { st.ultReq=null; }
+  return true;
+};
+hookOn('tq:resolved','ultimate', function(e){
+  if(!e || !e.t || !e.t.ult) return;
+  var u=CMB.S().ult[e.id]; if(!u) return;
+  u.used=safeInt(u.used,0)+1;
+  if(e.grade==='fail') return;
+  u.landed=safeInt(u.landed,0)+1;
+  if(u && u.v==='espectaculo' && e.grade==='perfect' && CL.audAdd) CL.audAdd('casual', +2);
+}, 30);
+
+/* --------------------------------------------------------------------------
+   9. PANTALLAS
+   -------------------------------------------------------------------------- */
+CMB.bar = function(p){ return clBar(Math.round(clamp(p,0,1)*100), 100, 'y'); };
+CMB.panel = function(){
+  var f=G&&G.fight; if(!f || f.over || UI.sub==='corner' || !f.iq) return '';
+  var lv=CMB.level(); if(!lv) return '';
+  var r=CMB.ranked(CMB.dist()), sn=lv.seen, h='';
+  h+='<div class="card tight"><div class="hdr"><span class="b sm">🧠 LECTURA · '+esc(CMB.TIER[lv.tier])+'</span>'+
+     clTag(CMB.BN[lv.b]||lv.b)+'</div>';
+  if(!r.length){ h+='</div>'; return h; }
+  if(lv.tier===0){
+    h+='<p class="xs dim" style="margin:0">Todavía no sabés qué va a hacer. El jab, la contra y moverte te dejan leerlo; pelear a lo loco, no.</p>';
+  } else if(lv.tier===1){
+    h+='<p class="sm" style="margin:0">Te parece que va a buscar <span class="b">'+esc(CMB.n(r[0].a))+'</span>.</p>';
+  } else if(lv.tier===2){
+    var rd=function(p){ return Math.max(10, Math.round(p*10)*10); };
+    h+='<p class="sm" style="margin:0">Lo más probable: <span class="b">'+esc(CMB.n(r[0].a))+'</span> (~'+rd(r[0].p)+' %)'+
+       (r[1]? ', después '+esc(CMB.n(r[1].a))+' (~'+rd(r[1].p)+' %)' : '')+'.</p>';
+  } else {
+    r.slice(0,3).forEach(function(x){
+      h+='<div class="kv xs"><span>'+esc(CMB.n(x.a))+'</span><span class="mono">'+Math.round(x.p*100)+' %</span></div>'+CMB.bar(x.p);
+    });
+  }
+  if(lv.tier>=1 && (sn.now || sn.before)){
+    var o=(f.iq.obs[lv.b]||{}), parts=Object.keys(o).sort(function(x,y){ return o[y]-o[x]; }).slice(0,3)
+      .map(function(a){ return CMB.n(a)+' '+o[a]; });
+    h+='<p class="xs dim2" style="margin:4px 0 0">Así lo viste esta noche: '+(parts.length? esc(parts.join(' · ')) : 'nada todavía')+
+       (sn.before? ' · de antes: '+sn.before+' veces' : '')+'.</p>';
+  }
+  if(lv.why.length) h+='<p class="xs dim2" style="margin:2px 0 0">Te ayuda: '+esc(lv.why.join(', '))+'.</p>';
+  CMB.dangers().forEach(function(dg){
+    h+='<p class="xs '+(dg.armed?'bad':'gold')+'" style="margin:4px 0 0">⚠️ Ya te vio '+esc(CMB.n(dg.a))+' '+dg.n+' veces: '+
+      (dg.armed? 'te está esperando con ' : 'a la próxima te espera con ')+esc(CMB.n(dg.c))+
+      (lv.tier>=2? ' ('+Math.round(dg.p*100)+' %)' : '')+'.</p>';
+  });
+  h+='</div>';
+  return h;
+};
+hookOn('screen:fight','lectura', function(h){
+  return safeRun('cmb/panel', function(){
+    var panel=CMB.panel(); if(!panel) return h;
+    var anchor='<div class="card"><p class="sm dim" style="margin-bottom:8px">';
+    var i=h.indexOf(anchor);
+    return i<0 ? h+panel : h.slice(0,i)+panel+h.slice(i);
+  }, function(){ return h; }, true) || h;
+}, 42);
+/* el botón de la Ultimate va junto a las técnicas, cuando la técnica está lista */
+hookOn('screen:fight','ultimate', function(h){
+  var f=G&&G.fight; if(!f || f.over || UI.sub==='corner') return h;
+  var btn='';
+  Object.keys(CMB.R().ult).forEach(function(id){
+    if(!CMB.ULT[id] || !TQ.MAP[id]) return;
+    var s=CMB.ultState(id); if(!s.ok) return;
+    var u=CMB.R().ult[id];
+    btn+='<button class="tq-act rdy" onclick="CMB.ultUse(\''+id+'\')"><b>✴ ULTIMATE · '+esc(CMB.ULT[id].n)+'</b>'+
+      '<small>'+esc(CMB.ULT_V[u.v].n)+' · 1 por pelea · clutch '+TQ.MGDIFF(4)+'</small></button>';
+  });
+  if(!btn) return h;
+  var card='<div class="card gold"><div class="tq-bar">'+btn+'</div></div>';
+  var anchor='<div class="card gold"><div class="hdr"><span class="b">Finalización</span>';
+  var i=h.indexOf(anchor);
+  return i<0 ? h+card : h.slice(0,i)+card+h.slice(i);
+}, 46);
+/* el árbol dice cuánto la dominás y cuánto le falta para evolucionar */
+hookOn('tq:ownInfo','maestria', function(h, x){
+  var t=x&&x.t; if(!t || t.t!=='a') return h;
+  var m=CMB.R().mast[t.id], tier=CMB.mastTier(t.id);
+  if(m) h+='<p class="xs dim2" style="margin:2px 0 0">Ejecuciones: '+safeInt(m.n,0)+' · perfectas '+safeInt(m.p,0)+' · buenas '+safeInt(m.g,0)+
+    (tier? ' · <span class="gold">'+CMB.MT[tier].n+'</span>' : '')+'</p>';
+  if(CMB.ULT[t.id]){
+    var u=CMB.R().ult[t.id];
+    if(u) h+='<p class="xs gold" style="margin:2px 0 0">✴ Evolucionó: '+esc(CMB.ULT[t.id].n)+' ('+esc(CMB.ULT_V[u.v].n)+': '+esc(CMB.ULT_V[u.v].d)+').</p>';
+    else { var rd=CMB.ultReady(t.id);
+      h+='<p class="xs dim2" style="margin:2px 0 0">✴ Para evolucionar: 8 ejecuciones ('+rd.n+'), 3 perfectas ('+rd.p+') y meterla en una pelea ganada ('+rd.w+').</p>'; }
+  }
+  return h;
+}, 20);
+
+/* lo que se sabe de un rival: informe de scouting y ficha */
+CMB.knowLines = function(o){
+  var out=[]; if(!o) return out;
+  var m=CMB.R().fm[o.id];
+  if(m){
+    out.push('Ya lo peleaste '+m.n+' '+(m.n===1?'vez':'veces')+' ('+(m.res==='W'?'última: ganaste':(m.res==='L'?'última: perdiste':'última: empate'))+').');
+    var best=null;
+    for(var b in (m.obs||{})) if(m.obs.hasOwnProperty(b)){
+      var ob=m.obs[b], n=0, top=null;
+      for(var a in ob) if(ob.hasOwnProperty(a)){ n+=ob[a]; if(!top || ob[a]>ob[top]) top=a; }
+      if(n>=4 && (!best || n>best.n)) best={b:b, a:top, k:ob[top], n:n};
+    }
+    if(best) out.push('Contra vos, '+CMB.BN[best.b]+': '+CMB.n(best.a)+' '+best.k+' de '+best.n+' veces.');
+    var pp=Object.keys(m.pp||{}).sort(function(x,y){ return m.pp[y]-m.pp[x]; })[0];
+    if(pp && m.pp[pp]>=4) out.push('Él se acuerda de '+CMB.n(pp)+': lo usaste '+m.pp[pp]+' veces.');
+  }
+  if(G.flags && (G.flags.analyst || G.flags.videoWall)){
+    var B=CL.styleAt(o), sits=[['de pie, cómodo',{pos:'stand',gap:0}],['de pie y sin aire',{pos:'stand',gap:0,tired:true}]];
+    if(G.flags.videoWall){ sits.push(['más cerca de lo que quiere',{pos:'stand',gap:0.6}]); sits.push(['arriba tuyo',{pos:'gbot',gap:0}]); }
+    sits.forEach(function(sx){
+      var x=Object.assign({B:B, hurt:false, winning:false, tired:false, pHp:100, pStam:100, last:false}, sx[1]);
+      var w=CL.oppWeightsFor(o, x), tot=0, top=null;
+      w.forEach(function(e){ tot+=e[1]; if(!top || e[1]>top[1]) top=e; });
+      if(top) out.push('Video, '+sx[0]+': '+CMB.n(top[0])+' ('+Math.round(top[1]/tot*100)+' %).');
+    });
+  }
+  return out;
+};
+hookOn('scout:report','lectura', function(s, x){
+  return Array.isArray(s) ? s.concat(CMB.knowLines(x&&x.o)) : s;
+}, 20);
+hookOn('screen:fighter','lectura', function(h){
+  var o=F(UI.sub); if(!o || o.isPlayer) return h;
+  var L=CMB.knowLines(o); if(!L.length) return h;
+  return h+'<div class="card"><h3>🧠 Lo que sabés de él</h3><ul class="sm dim" style="padding-left:18px;margin:0">'+
+    L.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join('')+'</ul></div>';
+}, 70);
 
 /* ==========================================================================
    FASES 4, 5 y 6 — BANCO DE PRUEBAS AISLADO, ESCENARIOS Y DETERMINISMO

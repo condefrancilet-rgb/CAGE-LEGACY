@@ -10,6 +10,61 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-03 · Fase 5: la pelea se lee, se recuerda y enseña
+**Tipo** combate (capa sobre el motor existente) + 2 fixes · **Cambio observable:** sí.
+
+**Antes de diseñar se midió.** La idea obvia —contar qué hace el rival en cada situación y
+declarar un «patrón» tras 3-4 repeticiones— se probó contra 169 peleas del autopiloto
+(8 estilos, 250 semanas): la predicción acertaba **22-28 %**. Mostrar eso sería inventar
+patrones. Por eso la lectura muestra otra cosa: **la distribución real con la que la IA del
+rival va a elegir**, compuesta con las mismas piezas que usa `oppAction()`.
+
+**Refactors neutrales para poder leer al rival sin tocar el azar** (verificado: estado final
+idéntico en las 5 semillas contra la versión sin refactor):
+- `CL.oppPick` = `wpick(CL.oppWeights())`; los pesos viven en `CL.oppWeightsFor(o, situación)`,
+  función pura (la usan la pelea, la lectura y el scouting: los mismos números).
+- la capa «identidad del rival» pasa a reglas-dato (`CL.oppRules()`): mismas condiciones, mismo
+  orden, mismas llamadas a `chance`/`pick`.
+- puntos de extensión en el árbol de técnicas: `tq:node` (forma de una técnica), `tq:resist`,
+  `tq:resolved`, `tq:ownInfo`; y `scout:report` en `scoutReport()`.
+
+**Fix 1 · el rival elegía acciones imposibles.** Los arquetipos «Misil», «Pared» y «Showman» y la
+contra-lectura de la identidad del rival reemplazaban su elección sin mirar la posición:
+«combinación» estando arriba en el suelo, «controlar» dentro del clinch. El motor no resuelve
+esas acciones y el rival perdía el turno. Medido en las 169 peleas: aparecían `combo`, `td`,
+`lowkick` en el suelo y `hold` en el clinch. Ahora cada reemplazo pasa por `oppCanDo(pos, a)`
+(tabla `OPP_ACTS`, la que lee `resolveExchangeCore`). Balance (`sim.js --n 60`): win rate
+80,4 → 79,1 %, campeones 55 → 56,7 %.
+
+**Fix 2 · guardar y cargar cambiaba el mundo (latente).** Un peleador nacido a mitad de carrera
+no tenía `f.cl`; la carga (`CL.boot`) se lo agregaba. Sólo se veía si nacía alguien justo antes
+de guardar, y el fix 1 lo destapó en la prueba *guardar → cargar → continuar*. Ahora nace con
+él (`fighter:made`, el evento que ya existía). Trazas idénticas con y sin este fix.
+
+| pieza | qué hace | de dónde salen los datos |
+|---|---|---|
+| **Lectura** (panel en la pelea) | 4 niveles: nada → intuición (lo más probable) → lectura (~%) → leído (% exactos) | `CMB.dist()` = pesos de `CL.oppWeights` + reglas de identidad + memoria; el nivel sale de `c.read` (ya existía: jab/contra/moverse leen, pelear a lo loco no), `fightiq`, lo visto esta noche y antes, video, «Cerebro frío» |
+| **Anticipar** | opción en la pelea desde el nivel «lectura»: responde a lo más probable con la acción que el motor premia contra eso | +8 de eficacia al intercambio **sólo si el rival hace lo predicho** (se compara con su elección real); −3 si no |
+| **Te está leyendo** | aviso cuando repetiste algo 2 veces: a la tercera te espera con su contra, y con qué probabilidad | la regla de adaptación exacta de su identidad |
+| **Memoria de revancha** (`G.rpg.fm`) | vos lo leés antes (+10); él viene esperando lo que más usaste y hace la mitad lo que le castigaste anticipando | lo observado, lo que él te vio (`playerPatterns`) y tus aciertos, por rival |
+| **Scouting** | con analista / sala de video, la tendencia real en 2 / 4 situaciones; lo que ya sabés de él en su ficha | `CL.oppWeightsFor`, memoria |
+| **Lecciones** | una derrota se explica con sus números (daño por acción del rival, derribos, aire, veces que te esperó) y se puede anotar | 6 sesiones del entrenamiento que corresponde rinden +0,12; aprendida, 3 peleas leyendo antes esa parte. **Ninguna estadística gratis** |
+| **Maestría** | Dominada (6 usos, 4 buenas) y Firma (14 usos, 4 perfectas) | ventana del minijuego más ancha; la Firma disimula la mitad de «la tiene fichada». Notas PERFECTA/BUENA/FALLA, niveles y puntos del árbol intactos |
+| **Ultimates** (4) | las L4 del árbol evolucionadas (8 ejecuciones, 3 perfectas, metida en una pelea ganada): Talón del Verdugo, Suplex de la Tierra, La Última Puerta, Último Aliento | se ejecutan con `TQ.use` del **mismo nodo**: gastan su uso, mismas condiciones, clutch dificultad 4, una por pelea; sello (Espectáculo/Precisión/Desgaste/Pura) según la identidad al despertar; un rival que ya te la vio la resiste más |
+
+**Evidencia.** `dev/tests/18-rpg-combate.js`, 17 pruebas; la central sortea al rival 3.000-6.000
+veces con la cadena real de filtros y compara con lo que muestra la lectura (±2,5 %), en pie,
+con la regla de adaptación armada, en el suelo con arquetipos y con memoria. Mutantes 11/11
+(el de «el panel escribe» obligó a endurecer la prueba de pureza: ahora compara desde antes del
+primer dibujado). En Chromium real: panel visible, anticipar resuelto contra la elección real,
+la Ultimate abre el clutch del motor FX y se resuelve con `TQ.apply`; sin errores de JS.
+Golden: sobre el fix 1, sólo cambia la semilla 101, en la **tercera** pelea contra el mismo rival
+(la memoria: viene esperando el jab del autopiloto). Trazas regeneradas (`--solo-trazas`).
+Balance con todo el módulo, contra el fix 1 solo (`sim.js --n 60 --weeks 250`): win rate 79,1 → 78,9 %,
+campeones 56,7 → 53,3 %, 0 fallos de invariante (el autopiloto no anticipa ni anota lecciones: lo
+que le llega es la memoria de revancha). `e5-largas.js --n 20 --weeks 300`: 20/20 sin fallos con
+invariantes cada semana. Suite 241/241, navegador 77/77.
+
 ## RPG-02 · Fase 4: la carrera deja huella
 **Tipo** sistema de identidad (capa sobre lo existente) + fix · **Cambio observable:** sí,
 también en la carrera del autopiloto (ver evidencia).
