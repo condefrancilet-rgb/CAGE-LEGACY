@@ -1005,7 +1005,8 @@ function makeFighter(o){
     inj: null, injWeeks: 0, retired:false, active:true, retireAge: o.retireAge || ri(34,41),
     titles: 0, defenses: 0, bestRank: 99, earn: 0,
     mem: [], rel: {}, ent: o.ent || null, // ent = semana de entrada al mundo
-    weeksIdle: 0, camps: 0, career:[]
+    weeksIdle: 0, camps: 0, career:[],
+    championIdleWeeks:0, lastTitleDefenseWeek:null, titleEligibility:0, scheduledFightKey:null
   };
   var _ctx={f:f};
   hookEmit('fighter:made', _ctx);
@@ -1054,7 +1055,8 @@ function newWorld(startYear, seed){
         rank:{}, champs:{}, events:[], player:null, offers:[], nextFight:null,
         camp:null, fight:null, cash: 2500, careerEarn:0, spons:[], mgId:null,
         pending:[], flags:{}, hist:[], seasonEvents:[], mgState:null, retiredList:[],
-        settings:{}, weekLog:[] };
+        settings:{}, weekLog:[],
+        championSeasonStats:{}, engineLog:[], replacementHistory:[] };
 
   // gimnasios
   GYMDEF.forEach(function(g,i){
@@ -1119,10 +1121,12 @@ function newWorld(startYear, seed){
         var ch = l[0];
         G.champs[o][d]=ch; F(ch).titles=1; F(ch).defenses=ri(0,3);
         F(ch).pop = clamp(F(ch).pop+12,1,100);
+        F(ch).championIdleWeeks=0; F(ch).lastTitleDefenseWeek=null;
         recalcRank(o,d);
       }
     });
   });
+  installNextFightGuard(G);
   hookEmit('world:created', {year:startYear, seed:seed});
   return G;
 }
@@ -1341,6 +1345,8 @@ function advanceWeek(){
   finally{ G._weekBusy = false; }
 }
 function advanceWeekCore(){
+  ensureNextFightGuard();
+  reconcileScheduledFight('advanceWeek:pre');
   if(typeof STATE!=='undefined') STATE.bumpWorld();   /* worldTick/yearTick mutan NPC */
   normalizeFighterState(G.player);
   G.week++;
@@ -1349,6 +1355,9 @@ function advanceWeekCore(){
   worldTick(newsWeek);
   historicalUfcTick();
   queueEvent(historicAdvicePending());
+  reconcileScheduledFight('advanceWeek:post-world');
+  reconcileOffers('advanceWeek:post-world');
+  championSeasonTick(newsWeek);
   // jugador
   var p = G.player;
   p.weeksIdle++;
@@ -1600,6 +1609,17 @@ function worldTick(news){
 /* ---------- simulación rápida NPC vs NPC ---------- */
 /* La implementacion base de simFight quedo inalcanzable: el modulo de resistencia la reemplazo sin llamarla. */
 var simFight = null;   /* lo asigna su modulo, mas abajo */
+function combatStyleRoute(a,b,ctx){
+  var A=STYLES[a.style]&&STYLES[a.style].t||{}, B=STYLES[b.style]&&STYLES[b.style].t||{};
+  var edge=0,dist=ctx&&ctx.dist||1,pace=ctx&&ctx.pace||0.5;
+  edge += (A.strike-B.strike)*3.0*(dist===1?1.15:.85);
+  edge += (A.counter-B.counter)*2.8*(pace<.45?1.15:.85);
+  edge += (A.clinch-B.clinch)*2.5*(dist<.8?1.15:.8);
+  edge += (A.td-B.td)*3.0*(ctx&&ctx.pos==='ground'?1.2:1);
+  edge += (A.keep-B.keep)*1.8*(dist>1.4?1.15:.9);
+  return clamp(edge,-12,12);
+}
+
 function fightPower(f){
   var fat = 1 - (f.fatigue/260) - (f.dmg/300);
   var a = ageOf(f);
@@ -1706,6 +1726,17 @@ var POS_ES = {stand:'De pie',clinch:'Clinch',gtop:'Suelo — arriba',gbot:'Suelo
    ========================================================================== */
 function fightStart(oppId, cfg){
   cfg = cfg || {};
+  ensureNextFightGuard();
+  var spec={oppId:oppId,weeks:cfg.weeks || (G.nextFight&&G.nextFight.oppId===oppId?G.nextFight.weeks:1),
+    org:cfg.org || (G.nextFight&&G.nextFight.oppId===oppId?G.nextFight.org:G.player.org),
+    title:!!cfg.title,purse:cfg.purse || (G.nextFight&&G.nextFight.oppId===oppId?G.nextFight.purse:0),
+    event:cfg.event || (G.nextFight&&G.nextFight.oppId===oppId?G.nextFight.event:''),offerKey:cfg.offerKey || (G.nextFight&&G.nextFight.oppId===oppId?G.nextFight.offerKey:null)};
+  var chk=validateScheduledFight(spec,'fight:start');
+  if(!chk.ok){
+    cancelScheduledFight(chk.reason,'SCHEDULE');
+    pushNews('La pelea no puede comenzar: '+chk.reason);
+    return false;
+  }
   hookEmit('fight:start:pre', {oppId:oppId, cfg:cfg});
   var p = G.player, o = F(oppId);
   if(!o){ // el rival desapareció del mundo: la pelea se cancela sin romper la carrera
@@ -1716,9 +1747,10 @@ function fightStart(oppId, cfg){
     return;
   }
   G.fight = {
+    depthModel:'deep-v1', depthFactors:['attributes','style','matchup','distance','pace','gameplan','reading','fatigue','damage','position','defense','adaptation','execution'],
     opp: oppId, rounds: cfg.rounds||3, title: !!cfg.title, org: cfg.org || p.org,
     round: 1, ex: 0, exPer: 6, clock: 300, pos:'stand', over:false, result:null,
-    gp: G.camp && G.camp.gameplan ? G.camp.gameplan : {dist:'media',pace:'medio',prio:'striking'},
+    gp: G.camp && (G.camp.unifiedGameplan||G.camp.gameplan) ? (G.camp.unifiedGameplan||G.camp.gameplan) : {dist:'media',pace:'medio',prio:'striking'},
     p:{hp:100,stam:100,score:0,sig:0,td:0,ctrl:0,kd:0,rd:0,acc:0},
     o:{hp:100,stam:100,score:0,sig:0,td:0,ctrl:0,kd:0,rd:0,acc:0},
     cards:[], log:[], purse: cfg.purse||0, event: cfg.event||'',
@@ -2374,10 +2406,15 @@ function gainText(g){
 
 /* ---------- CAMPAMENTO ---------- */
 function startCamp(fight){
+  ensureNextFightGuard();
+  var chk=validateScheduledFight(fight,'camp:start');
+  if(!chk.ok){ cancelScheduledFight(chk.reason,'SCHEDULE'); return false; }
   G.camp = {oppId:fight.oppId, weeks:fight.weeks, i:0, fatigue:0, sharp:35, cutPenalty:0,
     gameplan:null, scouted:false, log:[], sparDone:0, drillCombos:[], weighDone:false, pressDone:false,
-    org:fight.org, title:fight.title, purse:fight.purse, rounds:fight.title?5:3, event:fight.event};
+    org:fight.org, title:!!fight.title, purse:fight.purse, rounds:fight.title?5:3, event:fight.event,
+    unifiedGameplan:null, replacementHistory:Array.isArray(fight.replacementHistory)?fight.replacementHistory.slice():[]};
   G.player.camps++;
+  return true;
 }
 /* ==========================================================================
    SEMANA DE CAMPAMENTO — IMPLEMENTACIÓN CANÓNICA ÚNICA
@@ -2703,7 +2740,9 @@ function gpConfirm(){
   }
   var fit = STYLES[p.style].t;
   if(mg.prio==='striking' && fit.strike<.3) { score-=2; notes.push('Tu esquina duda: no es tu terreno natural.'); }
-  G.camp.gameplan={dist:mg.dist,pace:mg.pace,prio:mg.prio,def:mg.def,score:score};
+  G.camp.unifiedGameplan={dist:mg.dist,pace:mg.pace,prio:mg.prio,def:mg.def,score:score,
+    reasons:notes.slice(0,3),coachConsensus:!!(mg.council&&mg.consensus),source:'coach-consensus'};
+  G.camp.gameplan=G.camp.unifiedGameplan;
   G.camp.scouted=true;
   var r = campWeek('mind', .7, score*0.05);
   mg.done=true; mg.score=score; mg.notes=notes; mg.weekApplied=true;
@@ -3010,14 +3049,14 @@ var EVENTS = [
  o:[{t:'Aceptar sin dudarlo',f:function(){
       if(!G.tmpOpp) return 'La pelea se cae antes de firmarse.';
       var o=F(G.tmpOpp);
-      G.nextFight={oppId:o.id,weeks:2,org:G.player.org,title:false,
-        purse:Math.round(G.orgs[G.player.org].pay[0]*1.5),event:'Evento de emergencia',shortNotice:true};
-      startCamp(G.nextFight);
+      scheduleFight({oppId:o.id,weeks:2,org:G.player.org,div:G.player.div,title:false,
+        purse:Math.round(G.orgs[G.player.org].pay[0]*1.5),event:'Evento de emergencia',shortNotice:true},'event-short-notice');
+      if(!G.nextFight) return 'La pelea fue invalidada.'; startCamp(G.nextFight);
       G.player.pop=clamp(G.player.pop+3,1,100);G.player.rep=clamp(G.player.rep+4,1,100);
       return 'Firmaste. Dos semanas para prepararte. La organización no lo va a olvidar.';}},
     {t:'Pedir más dinero primero',f:function(){if(chance(.5)&&G.tmpOpp){var o=F(G.tmpOpp);
-      G.nextFight={oppId:o.id,weeks:2,org:G.player.org,title:false,purse:Math.round(G.orgs[G.player.org].pay[0]*2.4),event:'Evento de emergencia',shortNotice:true};
-      startCamp(G.nextFight);return 'Aceptan pagar más. La pelea es tuya.';}
+      scheduleFight({oppId:o.id,weeks:2,org:G.player.org,div:G.player.div,title:false,purse:Math.round(G.orgs[G.player.org].pay[0]*2.4),event:'Evento de emergencia',shortNotice:true},'event-short-notice-money');
+      if(!G.nextFight) return 'La pelea fue invalidada.'; startCamp(G.nextFight);return 'Aceptan pagar más. La pelea es tuya.';}
       return 'Se lo dan a otro. "No había tiempo para negociar."';}},
     {t:'Rechazar: no estás en forma',f:function(){G.player.rep=clamp(G.player.rep-2,1,100);return 'Nadie te lo reprocha en voz alta, pero queda anotado.';}}]},
 
@@ -3085,8 +3124,8 @@ var EVENTS = [
       if(chance(.55)){var d=G.player.div;var pool=(G.rank[G.player.org][d]||[]).slice(0,8).filter(function(i){return i!==G.player.id&&i!==G.tmpOpp;});
         if(!pool.length)return 'No encuentran rival disponible.';
         var opp=F(pick(pool));
-        G.nextFight={oppId:opp.id,weeks:3,org:G.player.org,title:false,purse:Math.round(G.orgs[G.player.org].pay[1]*.6),event:'Evento principal (reemplazo)'};
-        startCamp(G.nextFight);return '¡Te dan la pelea contra '+fname(opp)+' en 3 semanas!';}
+        scheduleFight({oppId:opp.id,weeks:3,org:G.player.org,div:G.player.div,title:false,purse:Math.round(G.orgs[G.player.org].pay[1]*.6),event:'Evento principal (reemplazo)'},'event-top10-replacement');
+        if(!G.nextFight) return 'No encontraron un rival elegible.'; startCamp(G.nextFight);return '¡Te dan la pelea contra '+fname(opp)+' en 3 semanas!';}
       return 'Eligen a otro. "Todavía no sos el nombre que buscamos."';}},
     {t:'Esperar tu turno',f:function(){return 'Seguís tu camino. No siempre hay que saltar.';}}]},
 
@@ -3348,6 +3387,237 @@ function resolveEventCore(idx){
   render();
 }
 
+
+/* ==========================================================================
+   CARRERA — INTEGRIDAD CANÓNICA DE PELEAS, TÍTULOS Y ACTIVIDAD DE CAMPEÓN
+   --------------------------------------------------------------------------
+   Un solo límite de estado para G.nextFight y una sola política para la
+   elegibilidad, lesiones, reemplazos y ofertas de campeonato. Todo lo que
+   quiera programar una pelea pasa por scheduleFight(); las asignaciones
+   históricas de G.nextFight quedan protegidas por un setter de estado para que
+   tampoco los eventos narrativos puedan saltarse estas reglas.
+   ========================================================================== */
+var CAREER_RULES={
+  MIN_TITLE_ELIGIBLE_FIGHTS:5,
+  CHAMPION_OPPORTUNITIES_PER_SEASON:3,
+  CHAMPION_OFFER_GAP:17,
+  IDLE_THRESHOLDS:[8,16,26,40],
+  IDLE_POP:[0,.15,.30,.55, .85],
+  IDLE_REP:[0,0,.08,.16,.28]
+};
+function careerLog(cat,msg,meta){
+  if(!G) return;
+  G.engineLog=Array.isArray(G.engineLog)?G.engineLog:[];
+  var row={at:safeInt(G.year,0)*52+safeInt(G.week,0),year:G.year,week:G.week,cat:cat,msg:msg};
+  if(meta) Object.keys(meta).forEach(function(k){row[k]=meta[k];});
+  G.engineLog.unshift(row); if(G.engineLog.length>160) G.engineLog.pop();
+  if(typeof errRecord==='function' && (cat==='MATCHMAKING'||cat==='SCHEDULE'||cat==='REPLACEMENT'))
+    errRecord(cat,{message:msg},ERR.SEV.INFO||ERR.SEV.WARN);
+}
+function proFightCount(f){ return f&&f.rec ? Math.max(0,safeInt(f.rec.w,0)+safeInt(f.rec.l,0)+safeInt(f.rec.d,0)) : 0; }
+function titleEligible(f){
+  var n=proFightCount(f);
+  return !!(f&&!f.retired&&f.active&&n>=CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS);
+}
+function titleEligibilityInfo(f){
+  return {eligible:titleEligible(f),fights:proFightCount(f),minimum:CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS};
+}
+function offerKeyFor(offer){
+  if(!offer||!offer.oppId) return null;
+  var season=safeInt(G.year,0), bout=offer.boutKey||offer.event||'bout';
+  return 'S'+season+'|'+bout+'|'+offer.oppId;
+}
+function seasonKey(org,div,year){ return String(year||G.year)+'|'+String(org||'')+'|'+String(div||''); }
+function championStats(org,div){
+  if(!G.championSeasonStats||typeof G.championSeasonStats!=='object') G.championSeasonStats={};
+  var k=seasonKey(org,div,G.year), s=G.championSeasonStats[k];
+  if(!s||typeof s!=='object') s=G.championSeasonStats[k]={year:G.year,org:org,div:div,championId:(G.champs[org]&&G.champs[org][div])||null,offers:0,elims:0,validOffers:{},lastOfferWeek:0,lastDefenseWeek:null};
+  s.year=G.year; s.org=org; s.div=div;
+  return s;
+}
+function issueChampionOpportunity(offer){
+  if(!offer||!offer.oppId||!offer.org||!offer.div) return false;
+  var p=G.player, org=offer.org, div=offer.div, champ=G.champs[org]&&G.champs[org][div], s=championStats(org,div);
+  var key=offer.offerKey||offerKeyFor(offer);
+  if(!key || s.validOffers[key]) return false;
+  var opp=F(offer.oppId); if(!opp||opp.inj||opp.retired||!opp.active||opp.org!==org||opp.div!==div) return false;
+  if(offer.title && !titleEligible(opp) && opp.id!==champ) return false;
+  if(!validateScheduledFight(offer,'champion-opportunity').ok) return false;
+  s.validOffers[key]=1; s.offers++;
+  if(offer.elim) s.elims++;
+  s.lastOfferWeek=G.week; offer.offerKey=key; offer.championshipOpportunity=true;
+  careerLog('MATCHMAKING','Oportunidad de campeonato registrada: '+fname(opp)+' · '+key,{offerKey:key});
+  return true;
+}
+function championPressure(p,news){
+  if(!p||rankOf(p)!=='C'||p.retired) return;
+  var weeks=safeInt(p.championIdleWeeks,0);
+  var idx=weeks<=8?0:(weeks<=16?1:(weeks<=26?2:(weeks<=40?3:4)));
+  if(idx>0){
+    var pd=CAREER_RULES.IDLE_POP[idx], rd=CAREER_RULES.IDLE_REP[idx];
+    p.pop=clamp(p.pop-pd,1,100); p.rep=clamp(p.rep-rd,1,100);
+    if(news && (weeks===9||weeks===17||weeks===27||weeks===41))
+      news.push(weeks>=41?'La promotora exige que defiendas el título cuanto antes.':(weeks>=27?'La prensa cuestiona cuánto tiempo llevás sin defender.': 'Empiezan las críticas por inactividad.'));
+  }
+}
+function championSeasonTick(news){
+  var p=G.player; if(!p||p.retired) return;
+  var org=p.org, div=p.div, champ=org&&G.champs[org]&&G.champs[org][div];
+  if(champ===p.id){
+    var cs=championStats(org,div);
+    p.championIdleWeeks=safeInt(p.championIdleWeeks,0)+1;
+    cs.championId=p.id;
+    championPressure(p,news);
+
+    /* OBLIGACION DEPORTIVA CANONICA
+       No depende de que alguna pantalla haya decidido llamar makeOffers().
+       La oportunidad se intenta desde el tick semanal real del campeón. El
+       espaciado evita fabricar tres ofertas en una misma semana y la propia
+       makeOffers()/issueChampionOpportunity() se encargan de la validación,
+       identidad única y disponibilidad del rival. Si el campeón está lesionado
+       o ya tiene una pelea vigente, la oportunidad queda pendiente hasta que
+       vuelva a estar disponible. */
+    var due=(cs.offers<CAREER_RULES.CHAMPION_OPPORTUNITIES_PER_SEASON) &&
+            (safeInt(G.week,1)>=(safeInt(cs.lastOfferWeek,0)+CAREER_RULES.CHAMPION_OFFER_GAP));
+    if(due && !p.inj && !G.nextFight){
+      makeOffers();
+      if(cs.offers<CAREER_RULES.CHAMPION_OPPORTUNITIES_PER_SEASON &&
+         !G.offers.some(function(o){return o&&o.type==='fight'&&o.championshipOpportunity;})){
+        careerLog('MATCHMAKING','El campeón alcanzó una ventana de oportunidad pero no hubo retador elegible disponible.',{org:org,div:div,week:G.week});
+      }
+    }
+  } else { p.championIdleWeeks=0; }
+  if(G.nextFight) reconcileScheduledFight('championSeasonTick');
+}
+function validateScheduledFight(spec,phase){
+  phase=phase||'unknown'; spec=spec||{};
+  var p=G&&G.player, o=F(spec.oppId), org=spec.org|| (p&&p.org), div=p&&p.div;
+  function bad(reason,cat){ careerLog(cat||'SCHEDULE',reason,{phase:phase,oppId:spec.oppId}); return {ok:false,reason:reason}; }
+  if(!p) return bad('No existe jugador activo.');
+  if(!o) return bad('El rival no existe.');
+  if(o.id===p.id) return bad('Jugador y rival no pueden ser la misma persona.');
+  if(p.retired) return bad('El jugador está retirado.');
+  if(!o.active||o.retired) return bad(fname(o)+' está retirado o inactivo.');
+  if(o.inj||safeInt(o.injWeeks,0)>0) return bad(fname(o)+' está lesionado.');
+  if(!G.orgs[org]) return bad('La organización de la pelea no existe.');
+  if(o.org!==org) return bad(fname(o)+' no pertenece a la organización '+org+'.');
+  if(o.div!==div) return bad(fname(o)+' está fuera de división.');
+  if(!p.org || p.org!==org) return bad('La pelea no coincide con la organización actual del jugador.');
+  if(spec.title){
+    var champ=G.champs[org]&&G.champs[org][div];
+    var vacant=!champ;
+    var pIsChamp=champ===p.id, oIsChamp=champ===o.id;
+    if(!vacant && !pIsChamp && !oIsChamp) return bad('Pelea marcada como título sin campeón/retador válido.');
+    if(pIsChamp && oIsChamp) return bad('Jugador y rival aparecen como campeones simultáneamente.');
+    if(!titleEligible(p)&&!pIsChamp) return bad('El jugador no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.');
+    if(!oIsChamp && !titleEligible(o)) return bad('El rival no tiene '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas profesionales para disputar el título.');
+    var rr=rankOf(o), rp=rankOf(p);
+    if(vacant && (!(rp&&rp!=='C'&&rp<=8) || !(rr&&rr!=='C'&&rr<=8))) return bad('Pelea por cinturón vacante sin dos contendientes elegibles del top 8.');
+  }
+  if(spec.elim){
+    if(!titleEligible(p)||!titleEligible(o)) return bad('Eliminatoria con peleador todavía inelegible.');
+    var ar=rankOf(p), br=rankOf(o);
+    if(!(ar&&ar!=='C'&&ar<=12)||!(br&&br!=='C'&&br<=12)) return bad('Eliminatoria fuera del rango competitivo permitido.');
+  }
+  return {ok:true,reason:''};
+}
+function scheduleFight(spec,source){
+  source=source||'unknown';
+  if(!spec||!spec.oppId) return {ok:false,reason:'No hay rival.'};
+  var chk=validateScheduledFight(spec,'schedule:'+source); if(!chk.ok) return chk;
+  spec.org=spec.org||G.player.org; spec.weeks=Math.max(1,safeInt(spec.weeks,1)); spec.title=!!spec.title;
+  spec.scheduledFightState='scheduled'; spec.offerKey=spec.offerKey||offerKeyFor(spec);
+  spec.originalOppId=spec.originalOppId||spec.oppId; spec.replacementHistory=Array.isArray(spec.replacementHistory)?spec.replacementHistory:[];
+  spec.signedAt={year:G.year,week:G.week};
+  G.nextFight=spec;
+  G.player.scheduledFightKey=spec.offerKey||null;
+  G.player.titleEligibility=proFightCount(G.player);
+  careerLog('SCHEDULE','Pelea programada contra '+fname(F(spec.oppId))+' · '+(spec.title?'TÍTULO':'normal'),{source:source,oppId:spec.oppId,offerKey:spec.offerKey});
+  return {ok:true, fight:spec};
+}
+function cancelScheduledFight(reason,cat){
+  if(!G) return false; var prev=G.__nextFight || null;
+  if(prev) careerLog(cat||'SCHEDULE','Pelea cancelada: '+reason,{oppId:prev.oppId});
+  G.__nextFight=null; G.camp=null;
+  if(G.player) G.player.scheduledFightKey=null;
+  return !!prev;
+}
+function candidateReplacement(spec){
+  var p=G.player, org=spec.org, div=p.div, champ=G.champs[org]&&G.champs[org][div], pool=(G.orgs[org]&&G.orgs[org].roster||[]).map(F).filter(function(f){return f&&!f.isPlayer&&f.active&&!f.retired&&!f.inj&&f.org===org&&f.div===div;});
+  pool=pool.filter(function(f){return f.id!==spec.oppId && proFightCount(f)>=CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS;});
+  if(spec.title){
+    if(champ && p.id!==champ){ pool=pool.filter(function(f){return f.id===champ;}); }
+    else { pool=pool.filter(function(f){var r=rankOf(f); return r&&r!=='C'&&r<=8;}); if(champ===p.id) pool=pool.filter(function(f){return f.id!==p.id;}); }
+  }
+  if(!pool.length) return null;
+  var oldRank=rankOf(F(spec.oppId));
+  pool.sort(function(a,b){
+    var ra=rankOf(a), rb=rankOf(b);
+    var da=(oldRank&&ra&&ra!=='C'&&oldRank!=='C')?Math.abs(oldRank-ra):0;
+    var db=(oldRank&&rb&&rb!=='C'&&oldRank!=='C')?Math.abs(oldRank-rb):0;
+    if(da!==db) return da-db;
+    return rankScoreSafe(b)-rankScoreSafe(a);
+  });
+  return pool[0];
+}
+function reconcileScheduledFight(reason){
+  ensureNextFightGuard(); var spec=G&&G.__nextFight; if(!spec) return {ok:true,changed:false};
+  var chk=validateScheduledFight(spec,'reconcile:'+reason);
+  if(chk.ok) return {ok:true,changed:false};
+  var old=F(spec.oppId), replacement=candidateReplacement(spec);
+  if(replacement){
+    var wasCamp=!!G.camp, oldId=spec.oppId, oldName=old?fname(old):'rival anterior';
+    spec.oppId=replacement.id; spec.oppRank=rankOf(replacement); spec.replacementHistory=Array.isArray(spec.replacementHistory)?spec.replacementHistory:[];
+    spec.replacementHistory.push({from:oldId,to:replacement.id,reason:chk.reason,year:G.year,week:G.week});
+    G.replacementHistory=Array.isArray(G.replacementHistory)?G.replacementHistory:[];
+    G.replacementHistory.push({from:oldId,to:replacement.id,reason:chk.reason,year:G.year,week:G.week,org:spec.org,div:spec.div||G.player.div,title:!!spec.title,offerKey:spec.offerKey||null});
+    spec.event=(spec.event||G.orgs[spec.org].ab)+' · REEMPLAZO';
+    spec.txt='REEMPLAZO: '+fname(replacement)+' por '+oldName;
+    spec.replacementReason=chk.reason;
+    spec.scheduledFightState='replaced';
+    /* Rehacer el campamento desde la misma pelea garantiza que gameplan,
+       estudio del rival y cualquier cache del rival anterior no sobrevivan. */
+    if(wasCamp){ G.camp=null; startCamp(spec); }
+    G.__nextFight=spec; G.player.scheduledFightKey=spec.offerKey||null;
+    if(typeof remember==='function') remember('fight_replacement',{from:oldId,to:replacement.id,reason:chk.reason,title:!!spec.title});
+    careerLog('REPLACEMENT',replacement.name+' elegido como reemplazo: misma división y organización; contexto '+(spec.title?'de campeonato':'normal'),{from:oldId,to:replacement.id,offerKey:spec.offerKey||null,purse:spec.purse||0,title:!!spec.title});
+    pushNews(oldName+' quedó fuera por '+chk.reason+' y '+fname(replacement)+' entra como reemplazo.');
+    return {ok:true,changed:true,replacement:replacement.id};
+  }
+  cancelScheduledFight(chk.reason,'SCHEDULE');
+  pushNews('La pelea se cayó: '+(old?fname(old):'el rival')+' quedó fuera y no encontraron un reemplazo elegible.');
+  return {ok:false,changed:true,cancelled:true,reason:chk.reason};
+}
+function reconcileOffers(reason){
+  if(!G||!Array.isArray(G.offers)) return;
+  var kept=[], dropped=0;
+  G.offers.forEach(function(o){
+    if(!o||o.type!=='fight'){ kept.push(o); return; }
+    var chk=validateScheduledFight(o,'offers:reconcile:'+reason);
+    if(chk.ok){ kept.push(o); return; }
+    dropped++;
+    var f=o.oppId&&F(o.oppId);
+    careerLog('MATCHMAKING','Se descartó una oferta vigente'+(f?' contra '+fname(f):'')+': '+chk.reason,{oppId:o.oppId,offerKey:o.offerKey||offerKeyFor(o)});
+  });
+  if(dropped){ G.offers=kept; pushNews(dropped===1?'Una oferta de pelea quedó invalidada porque el contexto cambió.':dropped+' ofertas de pelea quedaron invalidadas porque cambió su contexto.'); }
+}
+
+function installNextFightGuard(g){
+  if(!g || g.__nextFightGuard) return g;
+  var initial=g.nextFight||null;
+  try{ delete g.nextFight; }catch(e){}
+  Object.defineProperty(g,'__nextFight',{value:initial,writable:true,enumerable:false,configurable:true});
+  Object.defineProperty(g,'nextFight',{enumerable:true,configurable:true,get:function(){return g.__nextFight;},set:function(v){
+    if(v===null){g.__nextFight=null; if(g.player)g.player.scheduledFightKey=null; return;}
+    var chk=validateScheduledFight(v,'direct-write');
+    if(!chk.ok){ careerLog('SCHEDULE','Asignación directa rechazada: '+chk.reason,{oppId:v&&v.oppId}); return; }
+    g.__nextFight=v; if(g.player)g.player.scheduledFightKey=v.offerKey||null;
+  }});
+  Object.defineProperty(g,'__nextFightGuard',{value:true,writable:true,enumerable:false,configurable:true});
+  return g;
+}
+function ensureNextFightGuard(){ if(G&&!G.__nextFightGuard) installNextFightGuard(G); return G&&G.nextFight; }
+
 /* ---------- OFERTAS DE PELEA ---------- */
 /* ==========================================================================
    OFERTAS — IMPLEMENTACIÓN CANÓNICA ÚNICA
@@ -3408,22 +3678,43 @@ function makeOffers(){
     var weeks = ri(6,11);
     G.offers.push({type:'fight', oppId:o.id, org:orgId, weeks:weeks, title:false,
       purse: Math.round(base*mult), event: org.ab+' '+ri(100,320),
+      reason:'Pelea contextual: nivel, ranking, actividad y disponibilidad del rival.', mandatory:false,
       txt: fname(o)+' ('+recStr(o)+', '+rankLabel(o)+')'});
   }
-  // pelea de título
+  // peleas de título: la puerta de 5 combates es central y se comprueba dos veces.
   var champ = G.champs[orgId][p.div];
-  if(champ && champ!==p.id && myRank!=='C' && myRank && myRank<=3 && p.streak>=2){
+  if(titleEligible(p) && champ && champ!==p.id && myRank!=='C' && myRank && myRank<=3 && p.streak>=2){
     var c = F(champ);
-    G.offers.unshift({type:'fight', oppId:champ, org:orgId, weeks:ri(9,13), title:true,
-      purse: Math.round(org.pay[1]*1.4), event:org.ab+' — Pelea de campeonato',
-      txt:'POR EL TÍTULO: '+fname(c)+' ('+recStr(c)+')'});
+    if(c && titleEligible(c)){
+      var titleOffer={type:'fight',oppId:champ,org:orgId,div:p.div,weeks:ri(9,13),title:true,
+        purse:Math.round(org.pay[1]*1.4),event:org.ab+' — Pelea de campeonato',boutKey:'title-challenger-'+champ,
+        reason:'Pelea por el título: ranking, racha y elegibilidad competitiva.', mandatory:false,
+        txt:'POR EL TÍTULO: '+fname(c)+' ('+recStr(c)+')'};
+      if(validateScheduledFight(titleOffer,'makeOffers').ok) G.offers.unshift(titleOffer);
+    }
   }
   if(myRank==='C'){
-    var top = (G.rank[orgId][p.div]||[])[0];
-    if(top){
-      G.offers.unshift({type:'fight', oppId:top, org:orgId, weeks:ri(9,14), title:true,
-        purse: Math.round(org.pay[1]*1.8), event:org.ab+' — Defensa de título',
-        txt:'DEFENSA DE TÍTULO vs '+fname(F(top))+' ('+recStr(F(top))+')'});
+    var top=(G.rank[orgId][p.div]||[]).filter(function(id){return id!==p.id;})[0];
+    if(top && F(top) && titleEligible(F(top))){
+      var defenseOffer={type:'fight',oppId:top,org:orgId,div:p.div,weeks:ri(9,14),title:true,
+        purse:Math.round(org.pay[1]*1.8),event:org.ab+' — Defensa de título',boutKey:'champion-defense-'+top,
+        reason:'Defensa del campeonato: sos el campeón y el rival es el siguiente contendiente disponible.', mandatory:true,
+        txt:'DEFENSA DE TÍTULO vs '+fname(F(top))+' ('+recStr(F(top))+')'};
+      if(validateScheduledFight(defenseOffer,'makeOffers').ok && issueChampionOpportunity(defenseOffer)) G.offers.unshift(defenseOffer);
+    }
+  }
+  /* temporada del campeón: oportunidades únicas, sin spam y sin contar rivales lesionados */
+  if(myRank==='C' && !p.inj){
+    var cs=championStats(orgId,p.div), count=cs.offers;
+    if(count<CAREER_RULES.CHAMPION_OPPORTUNITIES_PER_SEASON && safeInt(G.week,1)>=(safeInt(cs.lastOfferWeek,0)+CAREER_RULES.CHAMPION_OFFER_GAP)){
+      var rr=(G.rank[orgId][p.div]||[]).filter(function(id){return id!==p.id;}).map(F).filter(function(f){return f&&!f.inj&&!f.retired&&f.active&&titleEligible(f);});
+      if(rr.length){ rr.sort(function(a,b){return rankScoreSafe(b)-rankScoreSafe(a);}); var target=rr[0];
+        var co={type:'fight',oppId:target.id,org:orgId,div:p.div,weeks:ri(8,12),title:true,boutKey:'season-defense-'+safeInt(G.week,1),
+          purse:Math.round(org.pay[1]*1.8),event:org.ab+' — Defensa obligatoria',mandatory:true,
+          reason:'Oportunidad obligatoria de campeonato correspondiente a la temporada actual.',
+          txt:'DEFENSA OBLIGATORIA: '+fname(target)+' ('+rankLabel(target)+')'};
+        if(issueChampionOpportunity(co)) G.offers.unshift(co);
+      }
     }
   }
   // pedido especial del jugador
@@ -3443,6 +3734,14 @@ function makeOffers(){
     G.offers.push({type:'contract', org:up, purse:G.orgs[up].pay[0], bonus:Math.round(G.orgs[up].pay[0]*0.6),
       fights:4, txt:G.orgs[up].n+' quiere firmarte. Cambia todo.'});
   }
+  /* última puerta: ninguna oferta de pelea sale de esta función si no es ejecutable hoy. */
+  G.offers=G.offers.filter(function(o){
+    if(o.type!=='fight') return true;
+    o.div=p.div; o.offerKey=o.offerKey||offerKeyFor(o);
+    var v=validateScheduledFight(o,'offers:finalize');
+    if(!v.ok){ careerLog('MATCHMAKING','Se descartó a '+(o.oppId&&F(o.oppId)?fname(F(o.oppId)):'rival')+': '+v.reason,{offerKey:o.offerKey}); return false; }
+    return true;
+  });
   hookEmit('offers:made', {});
 }
 /* ==========================================================================
@@ -3454,31 +3753,20 @@ function makeOffers(){
    oferta rota. Ahora se valida primero, en la propia función.
    ========================================================================== */
 function acceptFight(i){
+  ensureNextFightGuard();
   var o = G && G.offers && G.offers[i];
-  /* E5-3. G.offers mezcla ofertas de PELEA y de CONTRATO. Si llegaba aqui una
-     de contrato —no tiene oppId— se la trataba como "pelea caducada": se le
-     decia al jugador que la oferta ya no estaba disponible y SE LA BORRABA.
-     Hoy ninguna via de la interfaz llega asi (scrOffers manda los contratos a
-     negoStart), pero la bateria de autotest llama acceptFight(0) a ciegas.
-     Ahora una oferta que no es de pelea se deja donde esta. */
-  if(o && !o.oppId){
-    errNote('Esa oferta es un contrato: se negocia, no se acepta.');
-    return false;
-  }
-  if(!o || !F(o.oppId)){
-    errNote('Esa oferta ya no está disponible.');
-    if(G && G.offers && i>=0) G.offers.splice(i,1);
-    render();
-    return false;
-  }
-  var ctx = {i:i, offer:o};
-  hookEmit('fight:accept:pre', ctx);
-  G.nextFight = {oppId:o.oppId, weeks:o.weeks, org:o.org, title:o.title, purse:o.purse, event:o.event};
-  startCamp(G.nextFight);
+  if(o && !o.oppId){ errNote('Esa oferta es un contrato: se negocia, no se acepta.'); return false; }
+  if(!o || !F(o.oppId)){ errNote('Esa oferta ya no está disponible.'); if(G&&G.offers&&i>=0)G.offers.splice(i,1); render(); return false; }
+  var ctx={i:i,offer:o};
+  hookEmit('fight:accept:pre',ctx);
+  var scheduled=Object.assign({},o,{div:G.player.div,scheduledFightState:'scheduled'});
+  var ok=scheduleFight(scheduled,'acceptFight');
+  if(!ok.ok){ errNote('Oferta inválida: '+ok.reason); G.offers.splice(i,1); return false; }
+  if(!startCamp(G.nextFight)) return false;
   G.offers=[];
   var opp=F(o.oppId); addMemF(opp,'firmaron una pelea juntos',0);
   toast('Pelea firmada contra '+fname(opp));
-  hookEmit('fight:accepted', ctx);
+  hookEmit('fight:accepted',ctx);
   return true;
 }
 
@@ -3572,11 +3860,11 @@ function applyWinLossResult(){
   // títulos
   if(f.title){
     if(won){
-      if(G.champs[orgId][p.div]===p.id){ p.defenses++; }
-      else { G.champs[orgId][p.div]=p.id; p.titles++; p.pop=clamp(p.pop+10,1,100); }
+      if(G.champs[orgId][p.div]===p.id){ p.defenses++; p.championIdleWeeks=0; p.lastTitleDefenseWeek=G.week; p.pop=clamp(p.pop+4,1,100); p.rep=clamp(p.rep+2,1,100); championStats(orgId,p.div).lastDefenseWeek=G.week; }
+      else { G.champs[orgId][p.div]=p.id; p.titles++; p.pop=clamp(p.pop+10,1,100); p.championIdleWeeks=0; p.lastTitleDefenseWeek=G.week; championStats(orgId,p.div).lastDefenseWeek=G.week; }
     } else {
-      if(G.champs[orgId][p.div]===p.id){ G.champs[orgId][p.div]=o.id; o.titles++; }
-      else if(G.champs[orgId][p.div]===o.id){ o.defenses++; }
+      if(G.champs[orgId][p.div]===p.id){ G.champs[orgId][p.div]=o.id; o.titles++; o.championIdleWeeks=0; o.lastTitleDefenseWeek=G.week; }
+      else if(G.champs[orgId][p.div]===o.id){ o.defenses++; o.championIdleWeeks=0; o.lastTitleDefenseWeek=G.week; }
     }
   }
   // memoria / relaciones
@@ -3656,6 +3944,8 @@ function toast(t){
    funciones, disponibles una vez que CL existe.
    ========================================================================== */
 var HOOKS = {};
+hookOn('event:resolved','offersIntegrity',function(){ reconcileOffers('event:resolved'); }, 30);
+
 /* --------------------------------------------------------------------------
    POLÍTICA DE FALLO DEL BUS — declarada, no implícita
    Un enganche que revienta deja su efecto a medias. Hay dos respuestas
@@ -4705,12 +4995,28 @@ function estadoCard(){
 }
 
 /* ================= HUB ================= */
+function championDashboardCard(){
+  if(!G||!G.player) return '';
+  var p=G.player, org=p.org, div=p.div, champ=org&&G.champs[org]&&G.champs[org][div];
+  if(champ!==p.id) return '';
+  var cs=championStats(org,div), idle=safeInt(p.championIdleWeeks,0);
+  var pressure=idle<=8?'Sin presión relevante':(idle<=16?'Críticas iniciales':(idle<=26?'La prensa cuestiona la actividad':(idle<=40?'Presión institucional creciente':'Defensa obligatoria en riesgo')));
+  var last=p.lastTitleDefenseWeek==null?'—':p.lastTitleDefenseWeek;
+  var offers=cs.offers+'/'+CAREER_RULES.CHAMPION_OPPORTUNITIES_PER_SEASON;
+  return '<div class="card gold"><div class="hdr"><h3 style="margin:0">🏆 Estado del campeón</h3><span class="tag gold">'+esc(G.orgs[org].ab)+' · '+esc(DIVS[div].n)+'</span></div>'+
+    '<div class="grid g3"><div><div class="xs dim2">Sin defender</div><div class="mono">'+idle+' sem</div></div>'+
+    '<div><div class="xs dim2">Oportunidades</div><div class="mono">'+offers+'</div></div>'+
+    '<div><div class="xs dim2">Última defensa</div><div class="mono">'+last+'</div></div></div>'+
+    '<div class="ticker">'+esc(pressure)+'</div>'+
+    '<p class="xs dim2" style="margin:6px 0 0">La actividad del campeón afecta apoyo público, prensa, ofertas y presión de la promotora.</p></div>';
+}
 function scrHub(){
   var p=G.player, nf=G.nextFight;
   var h='<div class="topbar"><div class="r1"><div><h2 style="margin:0">'+esc(fname(p))+'</h2>'+
     '<span class="sm dim">'+DIVS[p.div].n+' · '+(p.org? G.orgs[p.org].ab : 'Agente libre')+' · '+rankLabel(p)+'</span></div>'+
     '<div class="center"><div class="mono sm">'+weekDate()+'</div><div class="xs dim2">semana '+G.week+'</div></div></div></div>';
   h+=avisosStrip();       /* la señal, arriba del pliegue */
+  h+=championDashboardCard();
 
   // evento pendiente
   if(G.pending.length){
@@ -4792,6 +5098,9 @@ function accesosCard(){
     '<button class="btn" onclick="go(\'people\')">Personajes<small>Equipo y rivales</small></button>'+
     '<button class="btn" onclick="go(\'gym\')">Gimnasio<small>Cambiar equipo</small></button>'+
     '<button class="btn" onclick="go(\'contracts\')">Contratos<small>Dinero y patrocinios</small></button>'+
+    '<button class="btn" onclick="CAS.enterScreen()">🎰 Casino<small>Entrar al casino</small></button>'+
+    '<button class="btn" onclick="go(\'shop\')">🛒 Shop<small>Invertir en tu carrera</small></button>'+
+    '<button class="btn" onclick="go(\'social\')">🤝 Interacciones<small>Relaciones y grupo</small></button>'+
     '</div></div>';
 }
 
@@ -4898,7 +5207,8 @@ function scrOffers(){
       var opp=F(o.oppId);
       h+='<div class="card '+(o.title?'gold':'')+'"><div class="hdr"><h3 style="margin:0">'+esc(o.txt)+'</h3><span class="tag">'+o.weeks+' sem</span></div>'+
        '<p class="sm dim">'+STYLES[opp.style].n+' · '+ageOf(opp)+' años · OVR '+ovr(opp)+' · racha '+(opp.streak>0?'+'+opp.streak:opp.streak)+'</p>'+
-       '<div class="ticker">'+esc(o.event)+' · Bolsa '+money(o.purse)+'</div>'+
+       '<div class="ticker">'+esc(o.event)+' · Bolsa '+money(o.purse)+(o.mandatory?' · OBLIGATORIA':'')+'</div>'+
+       (o.reason?'<div class="xs dim2" style="margin-top:5px">Motivo: '+esc(o.reason)+'</div>':'')+
        '<div class="grid g2"><button class="btn pri" onclick="acceptFight('+i+');go(\'hub\')">Aceptar</button>'+
        '<button class="btn" onclick="go(\'fighter\',\''+opp.id+'\')">Ver ficha</button></div></div>';
     } else {
@@ -5204,9 +5514,10 @@ function scrFightResult(){
     h+='<button class="btn pri" onclick="confirmFight()">Ver consecuencias</button>';
   } else {
     var pay=G.fightPayout;
+    var bonusLabel=(G.contract && G.fight && G.contract.org===G.fight.org)?'Bonus negociado':'Bonus';
     h+='<div class="card"><h3>Después de la pelea</h3>'+
      '<div class="kv"><span>Cobro neto</span><span class="mono gold">'+money(pay.net)+'</span></div>'+
-     '<div class="kv"><span>Bonus</span><span class="mono">'+money(pay.bonus)+'</span></div>'+
+     '<div class="kv"><span>'+bonusLabel+'</span><span class="mono">'+money(pay.bonus)+'</span></div>'+
      '<div class="kv"><span>Comisión del manager</span><span class="mono bad">-'+money(pay.cut)+'</span></div>'+
      '<div class="kv"><span>Récord</span><span class="mono">'+recStr(p)+'</span></div>'+
      '<div class="kv"><span>Ranking</span><span class="mono">'+rankLabel(p)+'</span></div>'+
@@ -5761,6 +6072,29 @@ function coachRecs(){
   }
   return hookFilter('coach:recs', recs, {});
 }
+
+hookOn('screen:offers','careerIntegrityUI',function(h){
+  if(!G||!G.player) return h;
+  var org=G.player.org,div=G.player.div, champ=org&&G.champs[org]&&G.champs[org][div];
+  var pre='<div class="card gold"><div class="hdr"><span class="b">Integridad de carrera</span><span class="tag '+(titleEligible(G.player)?'gr':'red')+'">'+proFightCount(G.player)+' / '+CAREER_RULES.MIN_TITLE_ELIGIBLE_FIGHTS+' peleas para título</span></div>';
+  if(champ===G.player.id){
+    var cs=championStats(org,div); pre+='<div class="kv"><span>Campeón activo</span><span class="mono gold">'+safeInt(G.player.championIdleWeeks,0)+' sem sin defender</span></div>' +
+      '<div class="kv"><span>Oportunidades de temporada</span><span class="mono">'+cs.offers+'/'+CAREER_RULES.CHAMPION_OPPORTUNITIES_PER_SEASON+'</span></div>' +
+      '<div class="kv"><span>Última defensa</span><span class="mono">'+(G.player.lastTitleDefenseWeek||'—')+'</span></div>';
+  } else { pre+='<div class="kv"><span>Estado</span><span class="mono">'+(titleEligible(G.player)?'Elegible para título/eliminatoria':'Todavía no elegible para título')+'</span></div>'; }
+  pre+='</div>';
+  return pre+h;
+},5);
+hookOn('screen:fight','careerFightGuardUI',function(h){
+  var f=G.fight, gp=(G.camp&&(G.camp.unifiedGameplan||G.camp.gameplan)); if(!f||!gp) return h;
+  var reasons=(gp.reasons||[]).slice(0,3).map(function(x){return '<li>'+esc(x)+'</li>';}).join('');
+  var box='<div class="card gold"><div class="hdr"><span class="b">🧠 Plan unificado de la esquina</span><span class="tag gr">Motor: '+esc(gp.prio)+'</span></div>'+
+    '<div class="kv"><span>Distancia</span><span class="mono">'+esc(gp.dist)+'</span></div>'+
+    '<div class="kv"><span>Ritmo</span><span class="mono">'+esc(gp.pace)+'</span></div>'+
+    (reasons?'<div class="xs dim" style="margin-top:6px">Por qué este plan:</div><ul class="xs dim">'+reasons+'</ul>':'')+'</div>';
+  return box+h;
+},5);
+
 function recsHTML(){
   var mg=(G.mg&&G.mg.type==='gp')?G.mg:null;
   var h='<div class="card"><h3>Qué dice tu esquina</h3>';
@@ -5898,7 +6232,11 @@ ev({id:'x8_dojo',w:6,c:function(){return !seen('x8_dojo');},
   {t:'Invitarlos a entrenar en vez de competir',f:function(){G.player.st.adaptability=cap(G.player.st.adaptability+3);G.player.rep=clamp(G.player.rep+3,1,100);
     return 'Terminan intercambiando técnicas. Te llevás dos detalles que nunca habías visto.';}}]});
 
-ev({id:'x9_weight',w:8,c:function(){return !seen('x9_weight')&&!!G.camp;},
+ev({id:'x9_weight',w:8,c:function(){
+  if(seen('x9_weight')||!G.camp) return false;
+  var remaining=Math.max(0,safeInt(G.camp.weeks,0)-safeInt(G.camp.i,0));
+  return remaining===1;
+},
  x:function(){return 'Faltan 24 horas para el pesaje y estás casi 3 kilos por encima del límite. La balanza no negocia.';},
  o:[{t:'Corte extremo de urgencia',f:function(){if(G.camp){G.camp.cutPenalty=(G.camp.cutPenalty||0)+16;}
     G.player.weightNow=DIVS[G.player.div].lb;return 'Das el peso. Vas a entrar al octágono vacío, y lo vas a sentir en el tercer round.';}},
@@ -6710,6 +7048,8 @@ function repairCritical(){
 }
 function normalizeRuntime(){
   if(!G) return;
+  installNextFightGuard(G);
+  reconcileScheduledFight('normalizeRuntime');
   NORM.stats.runtime++;
   normalizeGlobals();
   repairCritical();
@@ -7077,10 +7417,10 @@ drillStart=function(){
   }
 };
 
-/* Gameplan: el consejo de esquina ya existe; esta versión exige al menos dos voces. */
+/* Gameplan: el consejo de esquina es opcional; para confirmar basta con una voz válida. */
 hookOn('gp:confirm:pre','dosVoces', function(c){
-  if(team().length<2){
-    toast('Para confirmar un gameplan necesitas al menos dos entrenadores.');
+  if(team().filter(Boolean).length<1){
+    toast('Necesitás al menos un entrenador para confirmar el gameplan.');
     c.reject=true;
   }
 }, 10);
@@ -7204,7 +7544,7 @@ function scrMGArcade(){
       h+='<div class="arcade-board">'+miniHud('GAMEPLAN','TABLERO TÁCTICO',''+(mg.council?'🤝 CONSENSO':''));
       cols.forEach(function(g){h+='<div class="micro" style="margin-top:9px">'+g[1]+'</div><div class="arcade-grid two">';g[2].forEach(function(o){var n=gpRecNames(g[0],o[0]);h+='<button class="mini-tile '+(mg[g[0]]===o[0]?'move-green':'move-blue')+'" onclick="gpSet(\''+g[0]+'\',\''+o[0]+'\')"><span class="move-name">'+o[1]+'</span><small>'+(n.length?'✓ '+esc(n.slice(0,2).join(' + ')):'')+'</small></button>';});h+='</div>';});
       if(!mg.council) h+='<button class="btn go" onclick="gpCouncil()">🤝 HACER REUNIÓN DE ESQUINA</button>';
-      h+='<button class="btn pri" onclick="gpConfirm()" '+((mg.dist&&mg.pace&&mg.prio&&mg.def&&team().length>=2)?'':'disabled')+'>CONFIRMAR</button></div>';
+      h+='<button class="btn pri" onclick="gpConfirm()" '+((mg.dist&&mg.pace&&mg.prio&&mg.def)?'':'disabled')+'>CONFIRMAR</button></div>';
     } else h+='<div class="card"><div class="big gold">'+mg.score+'/10</div><p class="sm">Plan cerrado. '+esc((mg.notes&&mg.notes[0])||'Listo.')+'</p><button class="btn pri" onclick="mgClose(true)">TERMINAR</button></div>';
     return h;
   }
@@ -13101,7 +13441,9 @@ hookOn('fight:applied','economia', function(c){
        Como este hook es el que reconcilia la caja, es el que tiene la verdad:
        deja G.fightPayout sincronizado y la pantalla pasa a decir una sola
        cosa. */
-    G.fightPayout={net:safeInt(q.net,0), bonus:safeInt(q.gross,0)-safeInt(q.base,0),
+    var hasNegotiatedBonus=!!(G.contract && f && G.contract.org===f.org);
+    var displayedBonus=hasNegotiatedBonus ? safeInt(G.contract.bonus,0) : safeInt(q.gross,0)-safeInt(q.base,0);
+    G.fightPayout={net:safeInt(q.net,0), bonus:displayedBonus,
                    cut:safeInt(q.fee,0)};
     /* La cuenta de peleas del contrato la lleva applyWinLossResult, que es
        quien sabe bajo que organizacion se peleo. Aqui solo se ajusta la caja. */
@@ -13142,7 +13484,7 @@ hookOn('offers:made','pisoDeBolsa', function(){
    se lo tragaba en silencio (saveGame(true)) y el jugador creía haber guardado.
    Ahora: una clave por partida + índice liviano + poda + versión + migración.
    ========================================================================== */
-var SAVE_VERSION = 4;
+var SAVE_VERSION = 5;
 var SAVE_BAK = 'cagelegacy_bak_';   /* copia intacta del slot antes de migrarlo */
 var SAVE_IDX = 'cagelegacy_idx_v3';
 var SAVE_ONE = 'cagelegacy_slot_';
@@ -13313,6 +13655,42 @@ var SAVE_STEPS = [
      if(g.story && typeof g.story==='object' && g.story.feedSchema===undefined) g.story.feedSchema=1;
      /* Banderas de sesión que nunca debieron guardarse (ver SESSION_KEYS). */
      delete g._weekBusy; delete g._autoBusy; delete g._autoStamp;
+   }},
+  {from:4, to:5, id:'v4->v5 · integridad de carrera y campeonato',
+   fn:function(g){
+     g.championSeasonStats=(g.championSeasonStats&&typeof g.championSeasonStats==='object')?g.championSeasonStats:{};
+     g.engineLog=Array.isArray(g.engineLog)?g.engineLog:[];
+     g.replacementHistory=Array.isArray(g.replacementHistory)?g.replacementHistory:[];
+     Object.keys(g.fighters||{}).forEach(function(id){
+       var f=g.fighters[id]; if(!f||typeof f!=='object') return;
+       f.championIdleWeeks=safeInt(f.championIdleWeeks,0);
+       f.lastTitleDefenseWeek=(f.lastTitleDefenseWeek==null?null:safeInt(f.lastTitleDefenseWeek,0));
+       f.titleEligibility=proFightCount(f);
+       f.scheduledFightKey=f.scheduledFightKey||null;
+     });
+     /* Normalización de campeonatos por temporada: los saves viejos pueden
+        traer la colección pero entradas incompletas o con tipos incorrectos.
+        Se reparan de forma conservadora; nunca se inventa una oportunidad ya
+        disputada. */
+     Object.keys(g.championSeasonStats).forEach(function(k){
+       var s=g.championSeasonStats[k];
+       if(!s||typeof s!=='object'||Array.isArray(s)){ delete g.championSeasonStats[k]; return; }
+       s.year=safeInt(s.year,g.year||2015);
+       s.org=s.org||''; s.div=s.div||'';
+       s.championId=s.championId||null;
+       s.offers=Math.max(0,safeInt(s.offers,0));
+       s.elims=Math.max(0,safeInt(s.elims,0));
+       s.validOffers=(s.validOffers&&typeof s.validOffers==='object'&&!Array.isArray(s.validOffers))?s.validOffers:{};
+       s.offers=Math.max(s.offers,Object.keys(s.validOffers).length);
+       s.lastOfferWeek=Math.max(0,safeInt(s.lastOfferWeek,0));
+       s.lastDefenseWeek=(s.lastDefenseWeek==null?null:safeInt(s.lastDefenseWeek,0));
+     });
+     if(g.nextFight&&typeof g.nextFight==='object'){
+       g.nextFight.scheduledFightState=g.nextFight.scheduledFightState||'scheduled';
+       g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight);
+       g.nextFight.originalOppId=g.nextFight.originalOppId||g.nextFight.oppId;
+       g.nextFight.replacementHistory=Array.isArray(g.nextFight.replacementHistory)?g.nextFight.replacementHistory:[];
+     }
    }}
 ];
 /* --------------------------------------------------------------------------
@@ -13365,7 +13743,7 @@ function saveValidateV4(g){
   if(!isPlainObject(g.flags))  reparar('banderas inválidas: se reconstruyen', function(){ g.flags={}; });
   /* Subsistemas que guardan su propio estado: si el tipo es incorrecto se
      reconstruyen vacíos y el módulo los repuebla, en vez de reventar al leerlos. */
-  ['story','cl','sagas','tq','endgame','cas','casG','soc','mgStats','trainRec','champs','rank','focus']
+  ['story','cl','sagas','tq','endgame','cas','casG','soc','mgStats','trainRec','champs','rank','focus','championSeasonStats']
     .forEach(function(k){
       if(g[k]!==undefined && g[k]!==null && !isPlainObject(g[k]))
         reparar('el subsistema "'+k+'" tenía un tipo incorrecto: se reinicia', function(){ g[k]=null; });
@@ -13385,6 +13763,10 @@ function saveValidateV4(g){
     if(!Array.isArray(f.lastFights)) f.lastFights=[];
     if(!Array.isArray(f.career))     f.career=[];
     if(!isPlainObject(f.rel))        f.rel={};
+    f.championIdleWeeks=safeInt(f.championIdleWeeks,0);
+    f.lastTitleDefenseWeek=(f.lastTitleDefenseWeek==null?null:safeInt(f.lastTitleDefenseWeek,0));
+    f.titleEligibility=proFightCount(f);
+    f.scheduledFightKey=f.scheduledFightKey||null;
   });
   if(rotos.length) reparar(rotos.length+' entrada(s) del plantel no eran peleadores: se eliminan', function(){
     rotos.forEach(function(id){ delete g.fighters[id]; });
@@ -13444,6 +13826,17 @@ function saveValidateV4(g){
   /* ---- estado activo de carrera: referencias colgantes ---- */
   if(g.nextFight && (!isPlainObject(g.nextFight) || !g.fighters[g.nextFight.oppId]))
     reparar('la pelea firmada apuntaba a alguien que no existe: se cancela', function(){ g.nextFight=null; g.camp=null; });
+  if(!Array.isArray(g.engineLog)) g.engineLog=[];
+  if(!Array.isArray(g.replacementHistory)) g.replacementHistory=[];
+  if(!isPlainObject(g.championSeasonStats)) g.championSeasonStats={};
+  if(g.nextFight){
+    g.nextFight.scheduledFightState=g.nextFight.scheduledFightState||'scheduled';
+    g.nextFight.offerKey=g.nextFight.offerKey||offerKeyFor(g.nextFight);
+    g.nextFight.originalOppId=g.nextFight.originalOppId||g.nextFight.oppId;
+    g.nextFight.replacementHistory=Array.isArray(g.nextFight.replacementHistory)?g.nextFight.replacementHistory:[];
+    var fv=validateScheduledFight(g.nextFight,'saveValidate');
+    if(!fv.ok) reparar('pelea firmada inválida al cargar: '+fv.reason,function(){g.nextFight=null;g.camp=null;});
+  }
   if(g.camp && (!isPlainObject(g.camp) || !g.fighters[g.camp.oppId]))
     reparar('el campamento no tenía rival: se cierra', function(){ g.camp=null; });
   if(g.fight && (!isPlainObject(g.fight) || !g.fighters[g.fight.opp]))
@@ -13572,7 +13965,7 @@ function loadGame(id){
     if(safeInt(diag && diag.v, 1) !== SAVE_VERSION){
       try{ localStorage.setItem(SAVE_BAK+id, raw); }catch(e4){ errLog('backup:'+id, e4); }
     }
-    G=g; G.saveId=id;
+    G=g; G.saveId=id; installNextFightGuard(G);
     UI.tmp={}; UI.sub=null;
     normalizeWorldState();                       /* repara NaN, rel, born, rasgos, bonds */
     hookEmit('load', {G:G, id:id});              /* los módulos reconstruyen su estado aquí */
@@ -16724,7 +17117,7 @@ CL.CARD_HOME = {
   meta:'menu', historia:'menu', inversion:'menu', legado:'menu',
   casino:'menu',         /* la tarjeta es del modulo 33 y no se toca: lo que
                             cambia es donde la llama el compositor          */
-  accesos:'menu',        /* los seis accesos que estaban repetidos          */
+  accesos:'hub',         /* accesos directos visibles desde el inicio      */
   /* 'off' = ninguna pantalla la dibuja. auto_advance no desaparece: su boton
      se fundio con «Avanzar» en el inicio, que es donde ya estaban los otros
      tres. La red exige que la accion siga alcanzable, asi que si algun dia se
@@ -25821,7 +26214,10 @@ hookOn('fight:finish:pre','sumision', function(c){
    -------------------------------------------------------------------------- */
 simFight=function(a,b,rounds,isTitle){
   RES.normalize(a); RES.normalize(b);
+  var ctx={dist:STYLES[a.style]&&STYLES[a.style].t.keep>STYLES[b.style].t.keep?1.6:0.9,pace:(STYLES[a.style].t.strike+STYLES[b.style].t.strike)/2,pos:'stand'};
   var A=fightPower(a),B=fightPower(b);
+  var route=combatStyleRoute(a,b,ctx), routeB=-route;
+  A.tot += route; B.tot += routeB;
   var pa=1/(1+Math.pow(10,(B.tot-A.tot)/12));
   var winner=chance(pa)?'a':'b';
   var w=winner==='a'?a:b,l=winner==='a'?b:a,W=winner==='a'?A:B,L=winner==='a'?B:A;
@@ -28465,6 +28861,17 @@ function freshCareer(seed){
    se escriben los MISMOS campos que escribiría el juego al llegar ahí. */
 function shapeCareer(kind){
   var p=G.player;
+  function bindOrg(org){
+    if(!org || !G.orgs[org]) return false;
+    p.org=org; p.orgEntry=G.year; p.active=true; p.retired=false;
+    Object.keys(G.orgs).forEach(function(oid){
+      G.orgs[oid].roster=(G.orgs[oid].roster||[]).filter(function(id){return id!==p.id;});
+    });
+    G.orgs[org].roster.push(p.id);
+    rebuildRosters();
+    DIVKEYS.forEach(function(d){ Object.keys(G.orgs).forEach(function(oid){ recalcRank(oid,d); }); });
+    return true;
+  }
   function wins(n, method){
     for(var i=0;i<n;i++){
       p.rec.w++; p.rec[method||'dec']++;
@@ -28482,9 +28889,9 @@ function shapeCareer(kind){
     p.streak = -n;
   }
   if(kind==='A'){ /* debut: se deja como sale de startCareer */ }
-  if(kind==='B'){ wins(9,'ko'); p.pop=52; p.rep=48; p.org=p.org||'TFC'; G.cash=90000; }
+  if(kind==='B'){ wins(9,'ko'); p.pop=52; p.rep=48; bindTestOrg(p,'TFC'); G.cash=90000; }
   if(kind==='C'){
-    wins(14,'ko'); p.pop=84; p.rep=72; p.titles=1; p.defenses=3; p.org=p.org||'VAN';
+    wins(14,'ko'); p.pop=84; p.rep=72; bindOrg('VAN');
     G.cash=600000;
     if(G.champs && G.champs[p.org]) G.champs[p.org][p.div]=p.id;
     p.justWonTitle=false;
@@ -28676,6 +29083,26 @@ inv('minijuegos registrados', function(){
   if(!ks.length) return 'no hay minijuegos registrados';
   for(var i=0;i<ks.length;i++){ if(typeof FX_GAMES[ks[i]]!=='object') return 'minijuego mal formado: '+ks[i]; }
   return true;
+});
+inv('scheduled fight íntegro', function(){
+  ensureNextFightGuard();
+  var nf=G.nextFight; if(!nf)return true;
+  var v=validateScheduledFight(nf,'invariant');
+  return v.ok?v.reason?true:true:('peleа inválida: '+v.reason);
+});
+inv('title=true sólo con campeonato real', function(){
+  if(!G.nextFight||!G.nextFight.title)return true; return validateScheduledFight(G.nextFight,'invariant-title').ok;
+});
+inv('contador de temporada sin duplicados', function(){
+  var all=G.championSeasonStats||{}; for(var k in all){var s=all[k];var keys=Object.keys(s.validOffers||{});if(keys.length!==safeInt(s.offers,0))return k+' tiene ofertas='+s.offers+' pero '+keys.length+' keys únicas';}
+  return true;
+});
+inv('opciones de campeón no cuentan rivales lesionados', function(){
+  return (G.offers||[]).every(function(o){
+    if(!o||o.type!=='fight') return true;
+    var f=F(o.oppId);
+    return !(f&&(f.inj||safeInt(f.injWeeks,0)>0));
+  }) || 'hay una oferta vigente contra un rival lesionado';
 });
 inv('estado de combate coherente', function(){
   if(!G.fight) return true;
@@ -28871,7 +29298,8 @@ scn('F · retiro terminal', function(){
   var filtrados=[];
   for(var i=0;i<intentos.length;i++){
     try{ intentos[i][1](); }catch(e){ /* una excepción también impide la acción */ }
-    if(!G || !G.player || !G.player.retired) return 'la acción "'+intentos[i][0]+'" sacó al jugador del retiro';
+    if(!G || !G.player || !G.player.retired) return 'la acción \"'+intentos[i][0]+'\" sacó al jugador del retiro';
+    if(stateHash()!==antes) return 'la acción \"'+intentos[i][0]+'\" modificó estado persistible tras el retiro';
     if(G.nextFight) filtrados.push(intentos[i][0]+' firmó una pelea');
     if(G.camp) filtrados.push(intentos[i][0]+' abrió un campamento');
     if(G.fight) filtrados.push(intentos[i][0]+' abrió un combate');
@@ -28879,7 +29307,13 @@ scn('F · retiro terminal', function(){
       filtrados.push(intentos[i][0]+' abrió un minijuego de carrera');
   }
   if(filtrados.length) return 'tras el retiro: '+filtrados.join(' · ');
-  if(stateHash()!==antes) return 'el estado cambió después del retiro pese a que ninguna acción debía aplicarse';
+  if(stateHash()!==antes){
+    var pa=STATE.persistable(G), dif=[];
+    /* Se compara contra una huella capturada ANTES de los intentos, para detectar
+       exactamente qué clave persistible se movió y no esconder el motivo detrás
+       de un hash. */
+    return 'el estado cambió después del retiro: hash '+antes+' -> '+stateHash();
+  }
   /* Empezar una carrera NUEVA sí es legítimo tras retirarse: es el bucle del
      juego (el legado registra la corrida terminada y desbloquea recompensas).
      Lo que no puede pasar es que reviva al peleador retirado. */
@@ -28900,6 +29334,70 @@ scn('F · retiro terminal', function(){
   });
   return true;
 });
+
+/* --------------------------------------------------------------------------
+   5B) REGRESIONES DE CARRERA — requisitos 1..13
+   -------------------------------------------------------------------------- */
+function bindTestOrg(p,org){
+  if(!p||!org||!G.orgs[org]) return false;
+  p.org=org; p.orgEntry=G.year; p.active=true; p.retired=false;
+  Object.keys(G.orgs).forEach(function(oid){
+    G.orgs[oid].roster=(G.orgs[oid].roster||[]).filter(function(id){return id!==p.id;});
+  });
+  G.orgs[org].roster.push(p.id);
+  rebuildRosters();
+  DIVKEYS.forEach(function(d){Object.keys(G.orgs).forEach(function(oid){recalcRank(oid,d);});});
+  return !!(G.champs[org]&&G.rank[org]);
+}
+function forceRecord(f,w,l,d){ f.rec.w=w; f.rec.l=l; f.rec.d=d; f.rec.ko=Math.min(w,Math.floor(w*.45)); f.rec.sub=Math.min(w-f.rec.ko,Math.floor(w*.2)); f.rec.dec=Math.max(0,w-f.rec.ko-f.rec.sub); f.rec.kol=Math.min(l,Math.floor(l*.4)); f.rec.subl=Math.min(l-f.rec.kol,Math.floor(l*.2)); f.rec.decl=Math.max(0,l-f.rec.kol-f.rec.subl); }
+function testPickRival(limit){ var p=G.player, list=(G.orgs[p.org]&&G.orgs[p.org].roster||[]).map(F).filter(function(f){return f&&!f.isPlayer&&f.div===p.div&&f.active&&!f.retired&&!f.inj;}); list.sort(function(a,b){return Math.abs(rankScoreSafe(a)-rankScoreSafe(p))-Math.abs(rankScoreSafe(b)-rankScoreSafe(p));}); return list.slice(0,limit||20); }
+scn('1 · debutante 0-0-0 sin título/eliminatoria',function(){ return TESTS.sandbox(function(){ if(!freshCareer('A')) return 'sin carrera'; forceRecord(G.player,0,0,0); makeOffers(); if((G.offers||[]).some(function(o){return o.type==='fight'&&o.title; })) return 'se generó título para debutante'; var o=testPickRival(1)[0]; if(o){ var bad=scheduleFight({oppId:o.id,org:G.player.org,div:G.player.div,weeks:8,title:true,elims:false,event:'TEST'},'test1'); if(bad.ok) return 'scheduleFight aceptó título 0-0'; } return true; }); });
+scn('2 · 1-4 peleas siguen inelegibles',function(){ return TESTS.sandbox(function(){ if(!freshCareer('A')) return 'sin carrera'; forceRecord(G.player,3,1,0); makeOffers(); if((G.offers||[]).some(function(o){return o.type==='fight'&&(o.title||o.elim);})) return 'se generó oferta de título/eliminatoria'; return true; }); });
+scn('3 · >=5 peleas puede entrar al título si el contexto lo permite',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B')) return 'sin carrera'; bindTestOrg(G.player,'VAN'); forceRecord(G.player,6,2,0); var org=G.player.org, d=G.player.div, champ=G.champs[org][d], c=champ?F(champ):null; if(!c||c.id===G.player.id) return 'no hay campeón de prueba'; var vr=scheduleFight({oppId:c.id,org:org,div:d,weeks:8,title:true,event:'TEST TITLE'},'test3'); return vr.ok?true:vr.reason; }); });
+scn('4 · rival lesionado durante camp nunca llega al combate',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B')) return 'sin carrera'; bindTestOrg(G.player,'TFC'); forceRecord(G.player,8,2,0); var o=testPickRival(1)[0]; if(!o) return 'sin rival'; var vr=scheduleFight({oppId:o.id,org:G.player.org,div:G.player.div,weeks:8,title:false,event:'TEST INJURY'},'test4'); if(!vr.ok)return vr.reason; if(!startCamp(G.nextFight))return 'no se pudo iniciar el camp'; o.inj='lesión'; o.injWeeks=6; advanceWeek(); if(G.nextFight&&G.nextFight.oppId===o.id) return 'la pelea siguió contra el lesionado'; if(G.camp&&G.camp.oppId===o.id) return 'el camp siguió contra el lesionado'; return true; }); });
+scn('5 · pelea de título + lesión de retador conserva lógica de campeonato',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C')) return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); var org=p.org,d=p.div,champ=G.champs[org][d],c=F(champ); if(!c||c.id===p.id)return 'sin campeón'; forceRecord(p,14,2,0); var vr=scheduleFight({oppId:champ,org:org,div:d,weeks:9,title:true,event:'TEST TITLE INJ'},'test5'); if(!vr.ok)return vr.reason; c.inj='lesión';c.injWeeks=8; var r=reconcileScheduledFight('test5'); if(G.nextFight&&G.nextFight.oppId===c.id)return 'retador lesionado siguió programado'; if(r.changed&&G.nextFight){if(!G.nextFight.title)return 'reemplazo perdió title=true'; var ro=F(G.nextFight.oppId); var chk=validateScheduledFight(G.nextFight,'test5-final'); if(!chk.ok||!titleEligible(ro))return 'reemplazo de título no elegible';} return true; }); });
+scn('6 · campeón: >=3 oportunidades válidas por temporada sin duplicados',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); G.champs[p.org][p.div]=p.id; p.championIdleWeeks=0; G.championSeasonStats={}; G.nextFight=null; G.offers=[]; for(var i=0;i<52;i++){ G.week=i+1; championSeasonTick([]); G.nextFight=null; G.offers=[]; } var s=championStats(p.org,p.div), keys=Object.keys(s.validOffers||{}); return s.offers>=3&&keys.length===s.offers?true:'ofertas='+s.offers+' claves='+keys.length; }); });
+scn('7 · campeón activo aumenta popularidad y resetea actividad',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); var org=p.org,d=p.div,c=F((G.rank[org][d]||[]).filter(function(id){return id!==p.id;})[0]); if(!c)return 'sin rival'; G.champs[org][d]=p.id; p.championIdleWeeks=12; p.pop=40;p.rep=40; var vr=scheduleFight({oppId:c.id,org:org,div:d,weeks:1,title:true,event:'TEST'},'test7'); if(!vr.ok)return vr.reason; if(!startCamp(G.nextFight))return 'no se pudo iniciar el camp'; forceRecord(c,9,2,0); fightStart(c.id,{rounds:5,org:org,event:'TEST',purse:10000,title:true}); G.fight.result={winner:'p',method:'dec',round:3,cards:[['10','9'],['10','9'],['10','9']],totals:{p:30,o:27}}; applyPlayerFight(); return p.championIdleWeeks===0&&p.pop>40; }); });
+scn('8 · campeón inactivo acumula presión real',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); var org=p.org,d=p.div;G.champs[org][d]=p.id;p.championIdleWeeks=0;p.pop=80;p.rep=80;var n=[];for(var i=0;i<42;i++){G.week=(i%52)+1;championSeasonTick(n);}return p.championIdleWeeks>=42&&p.pop<80&&p.rep<80; }); });
+scn('9 · coaches conflictivos -> un plan único que usa el combate',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'TFC'); var o=testPickRival(1)[0]; if(!o)return 'sin rival'; scheduleFight({oppId:o.id,org:p.org,div:p.div,weeks:8,title:false,event:'TEST COACH'},'test9'); startCamp(G.nextFight); G.mg={type:'gp',dist:'larga',pace:'alto',prio:'striking',def:'cabeza',done:false,council:true,consensus:{dist:'corta',pace:'bajo',prio:'wrestling',def:'derribo'},lockedConsensus:true}; hookEmit('gp:confirm:pre',{}); gpConfirm(); var gp=G.camp.unifiedGameplan; if(!gp||gp.prio!=='wrestling')return 'no hubo consenso unificado'; fightStart(o.id,{rounds:3,org:p.org,event:'TEST COACH',purse:1000,title:false}); if(!G.fight||!G.fight.gp||G.fight.gp.prio!=='wrestling')return 'el motor no usa el plan unificado'; return true; }); });
+scn('10 · viabilidad de estilos',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; var styles=STYLEKEYS.slice(), rates={}; styles.forEach(function(st){var w=0,t=0; for(var i=0;i<40;i++){var a=makeFighter({name:'A'+i,div:G.player.div,style:st,born:G.year-27,pot:80,pop:50,org:'TFC'}),b=makeFighter({name:'B'+i,div:G.player.div,style:styles[(styles.indexOf(st)+1)%styles.length],born:G.year-27,pot:80,pop:50,org:'TFC'}); a.fatigue=b.fatigue=10;a.dmg=b.dmg=0; var r=simFight(a,b,3,false);w+=(r.winner==='a');t++;}rates[st]=w/t;});var vals=Object.keys(rates).map(function(k){return rates[k];}), min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);return max-min<.68?true:'rango de tasas roto '+min.toFixed(2)+'-'+max.toFixed(2); }); });
+scn('11 · determinismo',function(){var d=determinismCheck(16);return d.ok?true:d.m;});
+scn('12 · title=true siempre representa campeonato legítimo',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'TFC'); var o=testPickRival(1)[0]; if(!o)return 'sin rival'; forceRecord(p,6,1,0); var fake=scheduleFight({oppId:o.id,org:p.org,div:p.div,weeks:8,title:true,event:'FAKE'},'test12'); if(fake.ok)return 'scheduleFight aceptó title=true sin campeón'; G.nextFight={oppId:o.id,org:p.org,div:p.div,weeks:8,title:true,event:'DIRECT-FAKE'}; if(G.nextFight&&G.nextFight.oppId===o.id&&G.nextFight.title)return 'la asignación directa saltó la validación de title=true'; return true; }); });
+scn('13 · paridad de profundidad en organización tope',function(){ return TESTS.sandbox(function(){
+  if(!freshCareer('B')) return 'sin carrera';
+  var p=G.player, originalDiv=p.div;
+  var traces=[];
+  ['TFC','VAN'].forEach(function(org){
+    p.org=org; p.div=originalDiv; p.active=true;
+    var opponents=(G.orgs[org].roster||[]).map(F).filter(function(f){return f&&!f.isPlayer&&f.div===p.div&&f.active&&!f.retired&&!f.inj&&f.id!==p.id;});
+    opponents.sort(function(a,b){return Math.abs(rankScoreSafe(a)-rankScoreSafe(p))-Math.abs(rankScoreSafe(b)-rankScoreSafe(p));});
+    var o=opponents[0]; if(!o) return;
+    o.org=org; G.orgs[org].roster.indexOf(o.id)<0&&G.orgs[org].roster.push(o.id);
+    rebuildRosters(); DIVKEYS.forEach(function(d){Object.keys(G.orgs).forEach(function(oid){recalcRank(oid,d);});});
+    var vr=scheduleFight({oppId:o.id,org:org,div:p.div,weeks:8,title:false,event:'PARITY'},'test13');
+    if(!vr.ok) return;
+    startCamp(G.nextFight);
+    fightStart(o.id,{rounds:3,org:org,event:'PARITY',purse:1000,title:false});
+    var sig=(G.fight.depthFactors||[]).join('|');
+    traces.push({org:org,factors:sig,model:G.fight.depthModel,count:(G.fight.depthFactors||[]).length});
+    G.nextFight=null; G.camp=null; G.fight=null;
+  });
+  if(traces.length!==2) return 'no pudo construir ambos escenarios';
+  var a=traces[0],b=traces[1];
+  if(!(a.model===b.model&&a.factors===b.factors&&a.count>=10)) return 'modelo de profundidad divergente';
+  /* Misma pareja, mismos atributos y misma semilla: cambiar la organización
+     no puede activar un resolvedor simplificado ni producir otro resultado
+     por una rama oculta de UFC/VAN. */
+  function cloneF(f){return JSON.parse(JSON.stringify(f));}
+  var aa=cloneF(G.player), bb=cloneF(G.player), oa=cloneF(F(a.org==='TFC'? (G.orgs['TFC'].roster||[]).filter(function(id){return id!==G.player.id;})[0] : (G.orgs['TFC'].roster||[])[0])), ob=cloneF(oa);
+  if(!oa||!ob) return 'no pudo clonar pareja para paridad';
+  aa.org='TFC'; bb.org='VAN'; oa.org='TFC'; ob.org='VAN';
+  G.rs=1234567; var ra=simFight(aa,oa,3,false);
+  G.rs=1234567; var rb=simFight(bb,ob,3,false);
+  return ra.winner===rb.winner&&ra.method===rb.method&&ra.round===rb.round ? true : 'el resultado cambió al cambiar de organización con estado equivalente';
+}); });
+scn('14 · migración v4→v5 conserva carrera y crea campos nuevos',function(){ return TESTS.sandbox(function(){ if(!freshCareer('B'))return 'sin carrera'; bindTestOrg(G.player,'TFC'); var raw=JSON.parse(JSON.stringify(G)); raw.saveVersion=4; delete raw.championSeasonStats; delete raw.engineLog; delete raw.replacementHistory; delete raw.nextFight; Object.keys(raw.fighters||{}).forEach(function(id){delete raw.fighters[id].championIdleWeeks;delete raw.fighters[id].lastTitleDefenseWeek;delete raw.fighters[id].titleEligibility;delete raw.fighters[id].scheduledFightKey;}); var out=saveMigrate(raw); if(!out)return 'saveMigrate rechazó un save v4 válido'; if(out.saveVersion!==SAVE_VERSION)return 'no actualizó saveVersion'; if(!out.championSeasonStats||typeof out.championSeasonStats!=='object')return 'falta championSeasonStats'; if(!Array.isArray(out.engineLog)||!Array.isArray(out.replacementHistory))return 'faltan colecciones nuevas'; var pf=out.player||{}; return pf.titleEligibility!==undefined&&pf.championIdleWeeks!==undefined&&pf.scheduledFightKey!==undefined?true:'faltan campos nuevos del jugador'; }); });
+scn('15 · oferta de campeonato no se duplica en la misma semana',function(){ return TESTS.sandbox(function(){ if(!freshCareer('C'))return 'sin carrera'; var p=G.player; bindTestOrg(p,'VAN'); G.champs[p.org][p.div]=p.id; G.week=17; p.inj=null; G.nextFight=null; G.offers=[]; championSeasonTick([]); var fs=(G.offers||[]).filter(function(o){return o&&o.type==='fight'&&o.title;}); var keys={}; fs.forEach(function(o){keys[o.offerKey||offerKeyFor(o)]=1;}); return fs.length===1&&Object.keys(keys).length===1?true:(fs.length+' ofertas de título en la misma semana'); }); });
 
 /* --------------------------------------------------------------------------
    6) DETERMINISMO  (Fase 6)
@@ -28925,13 +29423,19 @@ function determinismCheck(weeks){
 /* --------------------------------------------------------------------------
    7) API PÚBLICA
    -------------------------------------------------------------------------- */
-TESTS.invariants = function(){ return TESTS.sandbox(runInvariants); };
+TESTS.invariants = function(){
+  return TESTS.sandbox(function(){
+    if(!freshCareer('INV')) return [{n:'inicialización de invariantes',ok:false,m:'no se pudo crear una carrera de prueba'}];
+    shapeCareer('B');
+    return runInvariants();
+  });
+};
 TESTS.scenarios = function(){
   var out=[];
   for(var i=0;i<SCN.length;i++){
     var r;
     try{ r = TESTS.sandbox(SCN[i].fn); }
-    catch(e){ r = 'excepción: '+(e&&e.message); }
+    catch(e){ r = 'excepción: '+(e&&e.message)+' @ '+String(e&&e.stack||'').split('\n').slice(0,4).join(' | '); }
     out.push({n:SCN[i].n, ok:(r===true), m:(r===true?'':String(r))});
   }
   return out;
@@ -29034,7 +29538,7 @@ GATE.install();
    protegida, se detecta y se vuelve a envolver en vez de perder la guarda en
    silencio. Es lo que quita la dependencia del orden de declaración. */
 GATE.verify();
-DEV.initFromUrl();
+if(typeof window!=='undefined' && window.DEV && typeof window.DEV.initFromUrl==='function') window.DEV.initFromUrl();
 
 window.addEventListener('error', function(e){
   try{ toast('Error: '+e.message); }catch(x){ errLog('L25913', x); }
