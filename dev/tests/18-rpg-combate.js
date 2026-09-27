@@ -51,6 +51,16 @@ function muestrear(c, n){
   for(const k in cnt) cnt[k] /= n;
   return cnt;
 }
+/* especificación de la prominencia (capa de información, fase 9): la primera
+   acción contra lo parejo de su posición y contra la segunda */
+const LEGAL = { stand: 7, clinch: 4, gbot: 5, gtop: 4 };
+function bandaSpec(d, pos){
+  const r = Object.entries(d).sort((a, b) => b[1] - a[1]);
+  const ratio = r[0][1] * LEGAL[pos], marg = r[1] ? r[0][1] / r[1][1] : 9;
+  const band = (ratio >= 2.2 && marg >= 1.5) ? 'marcada' : (ratio >= 1.6 && marg >= 1.2) ? 'clara' : (ratio >= 1.2 && marg >= 1.05) ? 'leve' : 'ninguna';
+  return { top: r[0][0], band };
+}
+function pesosNorm(w){ const t = w.reduce((a, e) => a + e[1], 0); const d = {}; w.forEach(e => { d[e[0]] = (d[e[0]] || 0) + e[1] / t; }); return d; }
 function parecido(c, emp, dist, tol, que){
   for(const k of new Set([...Object.keys(emp), ...Object.keys(dist)])){
     const d = Math.abs((emp[k] || 0) - (dist[k] || 0));
@@ -95,9 +105,12 @@ suite('RPG-5 · la lectura muestra lo que el rival va a hacer de verdad', () => 
     c.G.player.st.fightiq = 95; f.cl.read = 100;
     eq(c.CMB.level().tier, 3, 'con lectura máxima el nivel no es 3');
     html = c.scrFight();
-    const top = c.CMB.ranked(c.CMB.dist())[0];
-    ok(html.indexOf(Math.round(top.p * 100) + ' %') >= 0, 'con lectura completa no muestra el porcentaje real');
-    ok(c.fightOptions().some(o => o.k === 'iq_x'), 'con lectura no aparece anticipar');
+    const obs = c.CMB.read('vivo');
+    ok(html.indexOf(c.esc(c.CMB.sayHead(obs))) >= 0, 'el panel no dice lo que lee la capa de información');
+    ok(!/\d+\s*%/.test(c.CMB.panel()), 'el panel muestra porcentajes internos');
+    /* anticipar existe sólo si la lectura deja percibir una tendencia con respuesta */
+    const hay = !!(obs.top && c.CMB.RESP.stand[obs.top]);
+    eq(c.fightOptions().some(o => o.k === 'iq_x'), hay, 'anticipar no depende de lo que se percibe');
   });
   test('anticipar: el bono existe sólo si el rival hace lo que predijiste', () => {
     for(const acierta of [true, false]){
@@ -167,15 +180,20 @@ suite('RPG-5 · el rival se acuerda, y vos también', () => {
   test('el informe de scouting dice lo mismo que el motor, y lo que ya sabés de él', () => {
     const c = carrera(12).ctx; conContrato(c);
     const o = rival(c);
-    c.G.flags.videoWall = 1;
+    c.G.flags.videoWall = 1; c.G.player.st.fightiq = 60;
+    /* sin arquetipo conocido todavía, el video ve el estilo: los pesos puros */
+    ok(!(c.G.story && c.G.story.npcSeeds && c.G.story.npcSeeds[o.id]), 'la prueba supone un rival sin arquetipo sembrado');
     const B = c.CL.styleAt(o);
-    const w = c.CL.oppWeightsFor(o, { pos: 'stand', gap: 0, B, hurt: false, winning: false, tired: false, pHp: 100, pStam: 100, last: false });
-    const tot = w.reduce((a, e) => a + e[1], 0), top = w.slice().sort((a, b) => b[1] - a[1])[0];
-    const linea = 'Video, de pie, cómodo: ' + c.CMB.n(top[0]) + ' (' + Math.round(top[1] / tot * 100) + ' %).';
-    ok(c.scoutReport(o).indexOf(linea) >= 0, 'el scouting no muestra la tendencia real: ' + c.scoutReport(o).slice(-4).join(' | '));
+    const d = pesosNorm(c.CL.oppWeightsFor(o, { pos: 'stand', gap: 0, B, hurt: false, winning: false, tired: false, pHp: 100, pStam: 100, last: false }));
+    const esp = bandaSpec(d, 'stand');
+    const linea = c.scoutReport(o).find(l => l.indexOf('Video, de pie, cómodo: ') === 0);
+    ok(linea, 'el scouting con sala de video no dice nada de pie');
+    if(esp.band !== 'ninguna') ok(linea.indexOf(c.CMB.n(esp.top)) > 0, 'el video no nombra la tendencia real (' + esp.top + '): ' + linea);
+    else ok(linea.indexOf('está abierto') > 0, 'sin preferencia real, el video inventa una: ' + linea);
+    ok(c.scoutReport(o).every(l => !/\d+\s*%/.test(l)), 'el scouting muestra porcentajes internos');
     c.G.rpg.fm[o.id] = { n: 2, res: 'L', obs: { stand: { td: 5, jab: 1 } }, pp: { combo: 9 }, ex: {}, tq: {}, ult: {} };
     const s = c.scoutReport(o).join(' ');
-    ok(s.indexOf('Ya lo peleaste 2 veces') >= 0 && s.indexOf('el derribo 5 de 6') >= 0 && s.indexOf('la combinación') >= 0,
+    ok(s.indexOf('Ya lo peleaste 2 veces') >= 0 && s.indexOf('casi siempre fue al derribo (lo viste 6 veces)') >= 0 && s.indexOf('la combinación') >= 0,
        'el scouting no usa la memoria: ' + s);
   });
 });

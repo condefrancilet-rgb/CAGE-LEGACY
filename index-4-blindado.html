@@ -28893,30 +28893,44 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
      condiciones, mismo orden, mismas llamadas a chance/pick— y la lectura de
      la pelea (CMB) las compone para mostrar la distribución REAL. */
   var IDR_COUNTER={jab:'counter',combo:'counter',lowkick:'td',td:'counter',clinch:'break',gnp:'sweep',pass:'sweep',sub:'guard'};
-  function oppIdentityRules(){
-    var f=G&&G.fight; if(!f||f.over) return [];
-    var id=f.identity,o=F(f.opp); if(!id||!o) return [];
-    var out=[], key=f._clLastPlayerAction||f._lastPlayerAction;
+  /* La MISMA regla, consultable para una situación cualquiera (la capa de
+     información del Fight IQ y el scouting preguntan «¿y si estuviera sin
+     aire?», «¿y en el primer round?»). x: {pos, round, oStam, arche,
+     adaptation, key, keyN}. Pura: no sortea ni escribe. */
+  function oppRulesFor(x){
+    var out=[];
+    if(!x) return out;
     /* fightAct() is the single writer for playerPatterns. oppAction() must only
        read the accumulated evidence; counting here used to double-count every
        action and made the AI adapt far too early. */
-    var frequent=key&&id.playerPatterns[key]>=3;
+    var frequent=x.key&&x.keyN>=3;
     /* Cada reemplazo tiene que ser una acción que EXISTA en la posición: el
        motor sólo resuelve las del rival que corresponden a f.pos, y cualquier
        otra no hace nada. Medido con 169 peleas del autopiloto: el rival
        «tiraba una combinación» estando arriba en el suelo, o «controlaba»
        dentro del clinch, y regalaba el intercambio. Ver oppCanDo(). */
-    if(frequent&&id.adaptation>55){
-      var counter=IDR_COUNTER[key];
-      if(counter&&oppCanDo(f.pos,counter)) out.push({k:'adapt', why:key, p:clamp(.25+(id.adaptation-55)/140,0,.65), to:[counter]});
+    if(frequent&&x.adaptation>55){
+      var counter=IDR_COUNTER[x.key];
+      if(counter&&oppCanDo(x.pos,counter)) out.push({k:'adapt', why:x.key, p:clamp(.25+(x.adaptation-55)/140,0,.65), to:[counter]});
     }
-    if(id.archetype==='missile'&&f.round===1&&f.pos==='stand') out.push({k:'missile', p:.25, to:['combo','lowkick','td']});
-    if(id.archetype==='wall'&&f.o.stam>35&&f.pos==='stand') out.push({k:'wall', p:.18, to:['combo']});
-    if(id.archetype==='marathon'&&f.round>=3) out.push({k:'marathon', p:.25, to:f.pos==='stand'?['jab']:null});
-    if(id.archetype==='showman'&&f.pos!=='gtop') out.push({k:'showman', p:.12, to:f.pos==='stand'?['jab','counter','move']:(f.pos==='clinch'?['break','grind']:['hold','up'])});
+    if(x.arche==='missile'&&x.round===1&&x.pos==='stand') out.push({k:'missile', p:.25, to:['combo','lowkick','td']});
+    if(x.arche==='wall'&&x.oStam>35&&x.pos==='stand') out.push({k:'wall', p:.18, to:['combo']});
+    if(x.arche==='marathon'&&x.round>=3) out.push({k:'marathon', p:.25, to:x.pos==='stand'?['jab']:null});
+    if(x.arche==='showman'&&x.pos!=='gtop') out.push({k:'showman', p:.12, to:x.pos==='stand'?['jab','counter','move']:(x.pos==='clinch'?['break','grind']:['hold','up'])});
     return out;
   }
+  /* la situación de la pelea en curso, tal como la mira la regla */
+  function oppRuleSit(){
+    var f=G&&G.fight; if(!f||f.over) return null;
+    var id=f.identity,o=F(f.opp); if(!id||!o) return null;
+    var key=f._clLastPlayerAction||f._lastPlayerAction;
+    return {pos:f.pos, round:f.round, oStam:f.o.stam, arche:id.archetype, adaptation:id.adaptation,
+            key:key, keyN:key? id.playerPatterns[key] : 0};
+  }
+  function oppIdentityRules(){ return oppRulesFor(oppRuleSit()); }
   CL.oppRules = oppIdentityRules;
+  CL.oppRulesFor = oppRulesFor;
+  CL.oppRuleSit = oppRuleSit;
   CL.IDR_COUNTER = IDR_COUNTER;
   hookOn('combat:oppPick','identidadRival', function(base){
     oppIdentityRules().forEach(function(r){
@@ -30398,16 +30412,32 @@ CMB.BN = {'stand':'de pie, cómodo', 'stand:c':'de pie y sin aire', 'stand:h':'d
   'stand:e':'de pie, más cerca de lo que quiere', 'stand:l':'de pie, más lejos de lo que quiere',
   'clinch':'en el clinch', 'clinch:c':'en el clinch y sin aire', 'gbot':'arriba tuyo', 'gbot:c':'arriba tuyo y sin aire',
   'gtop':'abajo tuyo', 'gtop:c':'abajo tuyo y sin aire'};
+/* La situación completa de la pelea, tal como la miran la IA del rival
+   (CL.oppWeightsFor) y las reglas de su identidad (CL.oppRulesFor). */
+CMB.sitNow = function(){
+  var f=G&&G.fight; if(!f || f.over) return null;
+  var o=F(f.opp), pl=o? CL.oppPlan() : null; if(!pl) return null;
+  var x={pos:f.pos, B:pl.B, gap:pl.gap, tired:pl.tired, hurt:pl.hurt, winning:pl.winning,
+         pHp:f.p.hp, pStam:f.p.stam, last:f.round>=f.rounds,
+         round:f.round, oStam:f.o.stam, arche:null, adaptation:0, key:null, keyN:0,
+         supMap:(f.iq && f.iq.sup) || null};
+  var rs=CL.oppRuleSit? CL.oppRuleSit() : null;
+  if(rs){ x.arche=rs.arche; x.adaptation=rs.adaptation; x.key=rs.key; x.keyN=rs.keyN; }
+  return x;
+};
+CMB.bucketFor = function(x){
+  if(!x) return null;
+  if(x.pos!=='stand') return x.pos+(x.tired?':c':'');
+  if(x.tired) return 'stand:c';
+  if(x.hurt) return 'stand:h';
+  if(x.pHp<40) return 'stand:v';
+  if(x.gap>0.35) return 'stand:e';
+  if(x.gap<-0.35) return 'stand:l';
+  return 'stand';
+};
 CMB.bucket = function(){
   var f=G&&G.fight; if(!f) return null;
-  var pl=CL.oppPlan(); if(!pl) return f.pos;
-  if(f.pos!=='stand') return f.pos+(pl.tired?':c':'');
-  if(pl.tired) return 'stand:c';
-  if(pl.hurt) return 'stand:h';
-  if(f.p.hp<40) return 'stand:v';
-  if(pl.gap>0.35) return 'stand:e';
-  if(pl.gap<-0.35) return 'stand:l';
-  return 'stand';
+  var x=CMB.sitNow(); return x? CMB.bucketFor(x) : f.pos;
 };
 
 /* --------------------------------------------------------------------------
@@ -30421,25 +30451,186 @@ CMB.memRules = function(){
   var to=OPP_ACTS[f.pos].filter(function(x){ return x!==a; });
   return [{k:'mem', sup:a, p:0.5, to:to}];
 };
-CMB.dist = function(){
-  var w=CL.oppWeights && CL.oppWeights(); if(!w) return null;
-  var d={}, tot=0;
-  w.forEach(function(x){ var v=Math.max(.01,x[1]); d[x[0]]=(d[x[0]]||0)+v; tot+=v; });
+/* distribución para una situación cualquiera: la misma composición que
+   oppAction() (pesos → reglas de identidad → memoria), sin sortear */
+CMB.distFor = function(o, x){
+  if(!o || !x) return null;
+  var w=CL.oppWeightsFor(o, x), d={}, tot=0;
+  w.forEach(function(e){ var v=Math.max(.01,e[1]); d[e[0]]=(d[e[0]]||0)+v; tot+=v; });
   for(var k in d) if(d.hasOwnProperty(k)) d[k]/=tot;
-  (CL.oppRules? CL.oppRules() : []).forEach(function(r){
+  (CL.oppRulesFor? CL.oppRulesFor(x) : []).forEach(function(r){
     if(!r.to) return;
     for(var k2 in d) if(d.hasOwnProperty(k2)) d[k2]*=(1-r.p);
     r.to.forEach(function(a){ d[a]=(d[a]||0)+r.p/r.to.length; });
   });
-  CMB.memRules().forEach(function(r){
-    var pa=clN(d[r.sup],0)*r.p; d[r.sup]=clN(d[r.sup],0)-pa;
-    r.to.forEach(function(a){ d[a]=(d[a]||0)+pa/r.to.length; });
-  });
+  var sup=x.supMap && x.supMap[CMB.bucketFor(x)];
+  if(sup && oppCanDo(x.pos,sup)){
+    var to=OPP_ACTS[x.pos].filter(function(a){ return a!==sup; }), pa=clN(d[sup],0)*0.5;
+    d[sup]=clN(d[sup],0)-pa;
+    to.forEach(function(a){ d[a]=(d[a]||0)+pa/to.length; });
+  }
   return d;
+};
+CMB.dist = function(){
+  var f=G&&G.fight, o=f&&F(f.opp); if(!o) return null;
+  return CMB.distFor(o, CMB.sitNow());
 };
 CMB.ranked = function(d){
   return Object.keys(d||{}).map(function(k){ return {a:k, p:d[k]}; })
     .sort(function(x,y){ return y.p-x.p; });
+};
+
+/* ==========================================================================
+   CAPA DE INFORMACIÓN DEL FIGHT IQ (fase 9)
+   --------------------------------------------------------------------------
+     pesos reales (CL.oppWeightsFor + CL.oppRulesFor + memoria, en CMB.distFor)
+       → modelo de información (CMB.read: prominencia, confianza, contrastes)
+       → lo que el jugador ve (CMB.say*)
+   Contrato: ninguna pantalla lee pesos ni probabilidades. Todas leen el objeto
+   de CMB.read, que no lleva números salvo el nivel de confianza y los conteos
+   de lo que el jugador VIO (cuántas veces). No sortea ni escribe estado.
+
+   PROMINENCIA — no es «0,63 → alta». Depende del contexto: cuántas acciones
+   tiene el rival en esa posición (7 de pie, 4 en el clinch, 5 arriba, 4 abajo)
+   y cuánto le saca la primera a la segunda. Un 30 % de pie (el doble de lo
+   parejo) es una preferencia; un 30 % en el clinch es casi parejo.
+   CONFIANZA — sale de la información disponible para ESA fuente: en vivo, de la
+   lectura (c.read, fightiq, lo visto, memoria, video, rasgos, lecciones); en
+   video, de la compra (analista / sala); en el sparring, de si se trabajó; en
+   la memoria, de cuántas veces se lo vio. Con poca confianza sólo se percibe
+   una preferencia marcada; con mucha, también una leve. Nunca se muestra algo
+   que el motor no produzca: si no se percibe, se dice que no se percibe.
+   ========================================================================== */
+CMB.CONF = ['sin lectura','baja','media','alta'];
+CMB.PERC = [[], ['marcada'], ['marcada','clara'], ['marcada','clara','leve']];
+CMB.BANDN = {marcada:'preferencia marcada', clara:'tendencia clara', leve:'leve inclinación', ninguna:'sin preferencia clara'};
+CMB.FREQ = function(p, n){ var q=p*n; return q<0.5?'muy baja':(q<0.85?'baja':(q<1.25?'moderada':(q<1.9?'alta':'muy alta'))); };
+CMB.prom = function(d, pos){
+  var n=(OPP_ACTS[pos]||[]).length||1, r=CMB.ranked(d);
+  if(!r.length) return {band:'ninguna', top:null, list:[]};
+  var top=r[0], sec=r[1], ratio=top.p*n, marg=sec? top.p/Math.max(sec.p,1e-6) : 9;
+  var band = (ratio>=2.2 && marg>=1.5)? 'marcada' : (ratio>=1.6 && marg>=1.2)? 'clara' : (ratio>=1.2 && marg>=1.05)? 'leve' : 'ninguna';
+  return {band:band, top:top.a, list:r.map(function(e){ return {a:e.a, freq:CMB.FREQ(e.p,n)}; })};
+};
+/* el mismo rival, mirado desde otra fuente: situación hipotética sin pelea */
+CMB.sitFor = function(o, spec){
+  var seed=G && G.story && G.story.npcSeeds && G.story.npcSeeds[o.id];
+  var x=Object.assign({B:CL.styleAt(o), gap:0, hurt:false, winning:false, tired:false, pHp:100, pStam:100, last:false,
+    round:2, oStam:80, arche:seed? seed.archetype : null, adaptation:seed? safeNum(seed.adaptation,0) : 0,
+    key:null, keyN:0, supMap:null}, spec||{});
+  if(x.tired && !(spec && spec.oStam!==undefined)) x.oStam=20;
+  return x;
+};
+/* CONTRASTES — «¿qué cambia si…?». Cada uno se verifica contra la
+   distribución real de las dos situaciones: sólo se dice si la diferencia
+   existe y es perceptible. */
+CMB.FACT = [
+  {k:'aire', ok:function(x){ return true; }, flip:function(x){ return Object.assign({},x,{tired:!x.tired, oStam:x.tired? 60 : 20}); },
+   when:function(x){ return x.tired? 'cuando recupera el aire' : 'cuando se queda sin aire'; }},
+  {k:'dano', ok:function(x){ return true; }, flip:function(x){ return Object.assign({},x,{hurt:!x.hurt}); },
+   when:function(x){ return x.hurt? 'cuando se recupera del daño' : 'cuando está herido'; }},
+  {k:'cerca', ok:function(x){ return x.pos==='stand' && Math.abs(x.gap)<=0.35; }, flip:function(x){ return Object.assign({},x,{gap:0.6}); },
+   when:function(){ return 'cuando lo tenés más cerca de lo que quiere'; }},
+  {k:'lejos', ok:function(x){ return x.pos==='stand' && Math.abs(x.gap)<=0.35; }, flip:function(x){ return Object.assign({},x,{gap:-0.6}); },
+   when:function(){ return 'cuando lo mantenés más lejos de lo que quiere'; }},
+  {k:'comodo', ok:function(x){ return x.pos==='stand' && Math.abs(x.gap)>0.35; }, flip:function(x){ return Object.assign({},x,{gap:0}); },
+   when:function(){ return 'cuando la distancia le queda cómoda'; }},
+  {k:'vosHerido', ok:function(x){ return !(x.pHp<40); }, flip:function(x){ return Object.assign({},x,{pHp:30}); },
+   when:function(){ return 'cuando te ve herido'; }},
+  {k:'vosSinAire', ok:function(x){ return !(x.pStam<40); }, flip:function(x){ return Object.assign({},x,{pStam:30}); },
+   when:function(){ return 'cuando te ve sin aire'; }},
+  {k:'final', ok:function(x){ return !(x.winning && x.last); }, flip:function(x){ return Object.assign({},x,{winning:true, last:true}); },
+   when:function(){ return 'si llega ganando al último round'; }},
+  {k:'round1', ok:function(x){ return x.round!==1; }, flip:function(x){ return Object.assign({},x,{round:1}); },
+   when:function(){ return 'en el primer round'; }},
+  {k:'tarde', ok:function(x){ return x.round<3; }, flip:function(x){ return Object.assign({},x,{round:3}); },
+   when:function(){ return 'desde el tercer round'; }}
+];
+CMB.DELTA = 0.07;      /* diferencia mínima perceptible (fracción de las elecciones) */
+CMB.RATIO = 1.4;       /* y relativa: 40 % más o menos que antes */
+CMB.contrasts = function(o, x, d0, max){
+  var out=[];
+  CMB.FACT.forEach(function(F){
+    if(!F.ok(x)) return;
+    var d1=CMB.distFor(o, F.flip(x)), best=null;
+    Object.keys(Object.assign({}, d0, d1)).forEach(function(a){
+      var p0=clN(d0[a],0), p1=clN(d1[a],0), dl=p1-p0, ra=(p1+0.01)/(p0+0.01);
+      if(Math.abs(dl)<CMB.DELTA || (ra<CMB.RATIO && ra>1/CMB.RATIO)) return;
+      if(!best || Math.abs(dl)>Math.abs(best.dl)) best={a:a, dl:dl};
+    });
+    if(best) out.push({k:F.k, a:best.a, up:best.dl>0, when:F.when(x), m:Math.abs(best.dl)});
+  });
+  out.sort(function(u,v){ return v.m-u.m || (u.k<v.k?-1:1); });
+  return out.slice(0, max).map(function(c){ return {k:c.k, a:c.a, up:c.up, when:c.when}; });
+};
+/* confianza de cada fuente, con lo que efectivamente sabe el jugador */
+CMB.confOf = function(src, opt){
+  var p=G&&G.player, iqS=clN(p&&p.st&&p.st.fightiq,50), exp=iqS>=80? 1 : 0;
+  if(src==='vivo'){ var lv=CMB.level(); return lv? lv.tier : 0; }
+  if(src==='video'){ var v=(G.flags&&G.flags.videoWall)? 3 : ((G.flags&&G.flags.analyst)? 2 : 0); return v? Math.min(3, v+exp) : 0; }
+  if(src==='sparring') return Math.min(3, (opt&&opt.drill? 3 : 2));
+  if(src==='memoria'){ var n=safeInt(opt&&opt.n,0); var c=n>=8? 3 : (n>=4? 2 : (n>=2? 1 : 0)); return c? Math.min(3, c+exp) : 0; }
+  return 0;
+};
+/* EL MODELO: lo que esa fuente le deja entender al jugador */
+CMB.read = function(src, opt){
+  opt=opt||{};
+  var f=G&&G.fight, o=opt.o || (f && F(f.opp)); if(!o) return null;
+  var obs={src:src, conf:0, confN:CMB.CONF[0], b:null, top:null, band:'ninguna', also:[], contrasts:[]};
+  if(src==='memoria'){
+    /* lo que VISTE de él en peleas anteriores: conteos reales, no pesos */
+    var ob=opt.counts||{}, n=0, top=null;
+    for(var a in ob) if(ob.hasOwnProperty(a)){ n+=safeInt(ob[a],0); if(!top || ob[a]>ob[top]) top=a; }
+    obs.b=opt.b; obs.n=n; obs.conf=CMB.confOf('memoria',{n:n}); obs.confN=CMB.CONF[obs.conf];
+    if(!obs.conf || !top) return obs;
+    var sh=ob[top]/n;
+    obs.band = sh>=0.6? 'marcada' : (sh>=0.4? 'clara' : 'leve');
+    if(CMB.PERC[obs.conf].indexOf(obs.band)>=0) obs.top=top;
+    return obs;
+  }
+  var x = src==='vivo'? CMB.sitNow() : CMB.sitFor(o, opt.sit);
+  if(!x) return obs;
+  obs.b=CMB.bucketFor(x);
+  obs.conf=CMB.confOf(src, opt); obs.confN=CMB.CONF[obs.conf];
+  if(!obs.conf) return obs;
+  var d=CMB.distFor(o, x), pr=CMB.prom(d, x.pos);
+  obs.band=pr.band;
+  if(CMB.PERC[obs.conf].indexOf(pr.band)>=0) obs.top=pr.top;
+  if(obs.conf>=3) obs.also=pr.list.filter(function(e){ return e.a!==obs.top && (e.freq==='alta' || e.freq==='muy alta'); }).slice(0,2);
+  var nc = src==='vivo'? (obs.conf>=3? 2 : (obs.conf===2? 1 : 0)) : (src==='video' && obs.conf>=3? 1 : 0);
+  if(nc) obs.contrasts=CMB.contrasts(o, x, d, nc);
+  return obs;
+};
+/* EL LENGUAJE: todas las superficies dicen lo mismo con las mismas palabras */
+CMB.aN = function(a){ return ('a '+CMB.n(a)).replace(/^a el /,'al '); };
+CMB.porN = function(a){ return 'por '+CMB.n(a); };
+CMB.sayHead = function(obs){
+  if(!obs || !obs.conf) return 'Todavía no sabés qué va a hacer. El jab, la contra y moverte te dejan leerlo; pelear a lo loco, no.';
+  if(!obs.top) return obs.conf===1? 'Todavía no se le ve una preferencia.' : 'No muestra una preferencia clara: está abierto.';
+  var a=obs.top;
+  if(obs.conf===1) return 'Parece inclinarse '+CMB.porN(a)+'.';
+  if(obs.conf===2) return 'La tendencia más clara es '+CMB.n(a)+(obs.band==='marcada'? ', y es marcada.' : '.');
+  if(obs.band==='marcada') return 'Está mostrando una preferencia marcada '+CMB.porN(a)+'.';
+  if(obs.band==='clara') return 'Su tendencia clara es '+CMB.n(a)+'.';
+  return 'Apenas se inclina '+CMB.porN(a)+': está abierto.';
+};
+CMB.sayContrast = function(c){
+  var t=c.when+', '+(c.up? 'aumenta' : 'baja')+' su tendencia '+CMB.aN(c.a)+'.';
+  return t.charAt(0).toUpperCase()+t.slice(1);
+};
+CMB.sayAlso = function(obs){
+  if(!obs || !obs.also || !obs.also.length) return '';
+  return 'También lo considera: '+obs.also.map(function(e){ return CMB.n(e.a)+' (frecuencia '+e.freq+')'; }).join(', ')+'.';
+};
+/* lo que el rival ya te leyó a vos: frecuencia de su respuesta, en palabras */
+CMB.sayOften = function(p){ return p<0.35? 'a veces' : (p<0.5? 'seguido' : 'casi siempre'); };
+/* memoria: «cuántas veces lo viste» es un dato físico; la tendencia, no */
+CMB.sayMem = function(obs, sit){
+  if(!obs || !obs.conf) return '';
+  var tail=' (lo viste '+obs.n+' '+(obs.n===1?'vez':'veces')+')';
+  if(!obs.top) return 'Contra vos, '+sit+', no mostró una preferencia clara'+tail+'.';
+  var q = obs.band==='marcada'? 'casi siempre fue '+CMB.aN(obs.top) : (obs.band==='clara'? 'fue sobre todo '+CMB.aN(obs.top) : 'se inclinó apenas '+CMB.porN(obs.top));
+  return 'Contra vos, '+sit+', '+(obs.conf===1? 'parecía que ' : '')+q+tail+'.';
 };
 
 /* --------------------------------------------------------------------------
@@ -30480,19 +30671,20 @@ CMB.dangers = function(){
 /* --------------------------------------------------------------------------
    3. ANTICIPAR — apostar a la lectura
    -------------------------------------------------------------------------- */
+/* se apuesta a lo que la lectura deja PERCIBIR (confianza media o más y una
+   tendencia perceptible); el acierto se juzga contra la elección real */
 CMB.guess = function(){
   var f=G&&G.fight; if(!f || f.over || f.pos===undefined) return null;
-  var lv=CMB.level(); if(!lv || lv.tier<2) return null;
-  var r=CMB.ranked(CMB.dist()); if(!r.length) return null;
-  var top=r[0], resp=CMB.RESP[f.pos] && CMB.RESP[f.pos][top.a];
-  if(!resp || top.p<0.20) return null;
-  return {pred:top.a, p:top.p, resp:resp, tier:lv.tier};
+  var obs=CMB.read('vivo'); if(!obs || obs.conf<2 || !obs.top) return null;
+  var resp=CMB.RESP[f.pos] && CMB.RESP[f.pos][obs.top]; if(!resp) return null;
+  var d=CMB.dist();
+  return {pred:obs.top, p:clN(d&&d[obs.top],0), resp:resp, tier:obs.conf, band:obs.band};
 };
 hookOn('fight:options','lectura', function(ops){
   if(!Array.isArray(ops)) return ops;
   var g=CMB.guess(); if(!g) return ops;
   ops.push({k:'iq_x', t:'🧠 Anticipar '+CMB.n(g.pred), rec:'Tu lectura',
-    d:(g.tier>=3? 'Lo más probable ahora ('+Math.round(g.p*100)+' %). ' : '')+(CMB.WHY[g.resp]||'')+
+    d:'Apostás a tu lectura ('+CMB.BANDN[g.band]+'). '+(CMB.WHY[g.resp]||'')+
       ' Si acertás, el intercambio es tuyo; si no, quedaste jugado.'});
   return ops;
 }, 45);
@@ -30822,9 +31014,11 @@ CMB.ultState = function(id){
 };
 CMB.ultUse = function(id){
   var s=CMB.ultState(id); if(!s.ok){ toast(s.why||'Todavía no.'); return false; }
-  var st=TQ.fs(); st.ultReq=id;
+  var st=TQ.fs(), u0=safeInt(st.u[id],0); st.ultReq=id;
   try{ TQ.use(id); } finally { st.ultReq=null; }
-  return true;
+  /* TQ.use puede negarse (en la esquina, con otro minijuego abierto): sólo
+     se lanzó si gastó el uso de la técnica */
+  return safeInt(st.u[id],0)>u0;
 };
 hookOn('tq:resolved','ultimate', function(e){
   if(!e || !e.t || !e.t.ult) return;
@@ -30838,27 +31032,16 @@ hookOn('tq:resolved','ultimate', function(e){
 /* --------------------------------------------------------------------------
    9. PANTALLAS
    -------------------------------------------------------------------------- */
-CMB.bar = function(p){ return clBar(Math.round(clamp(p,0,1)*100), 100, 'y'); };
 CMB.panel = function(){
   var f=G&&G.fight; if(!f || f.over || UI.sub==='corner' || !f.iq) return '';
   var lv=CMB.level(); if(!lv) return '';
-  var r=CMB.ranked(CMB.dist()), sn=lv.seen, h='';
+  var obs=CMB.read('vivo'), sn=lv.seen, h='';
   h+='<div class="card tight"><div class="hdr"><span class="b sm">🧠 LECTURA · '+esc(CMB.TIER[lv.tier])+'</span>'+
      clTag(CMB.BN[lv.b]||lv.b)+'</div>';
-  if(!r.length){ h+='</div>'; return h; }
-  if(lv.tier===0){
-    h+='<p class="xs dim" style="margin:0">Todavía no sabés qué va a hacer. El jab, la contra y moverte te dejan leerlo; pelear a lo loco, no.</p>';
-  } else if(lv.tier===1){
-    h+='<p class="sm" style="margin:0">Te parece que va a buscar <span class="b">'+esc(CMB.n(r[0].a))+'</span>.</p>';
-  } else if(lv.tier===2){
-    var rd=function(p){ return Math.max(10, Math.round(p*10)*10); };
-    h+='<p class="sm" style="margin:0">Lo más probable: <span class="b">'+esc(CMB.n(r[0].a))+'</span> (~'+rd(r[0].p)+' %)'+
-       (r[1]? ', después '+esc(CMB.n(r[1].a))+' (~'+rd(r[1].p)+' %)' : '')+'.</p>';
-  } else {
-    r.slice(0,3).forEach(function(x){
-      h+='<div class="kv xs"><span>'+esc(CMB.n(x.a))+'</span><span class="mono">'+Math.round(x.p*100)+' %</span></div>'+CMB.bar(x.p);
-    });
-  }
+  if(!obs){ h+='</div>'; return h; }
+  h+='<p class="'+(obs.conf? 'sm' : 'xs dim')+'" style="margin:0">'+esc(CMB.sayHead(obs))+'</p>';
+  var also=CMB.sayAlso(obs); if(also) h+='<p class="xs" style="margin:3px 0 0">'+esc(also)+'</p>';
+  obs.contrasts.forEach(function(c){ h+='<p class="xs gold" style="margin:3px 0 0">↳ '+esc(CMB.sayContrast(c))+'</p>'; });
   if(lv.tier>=1 && (sn.now || sn.before)){
     var o=(f.iq.obs[lv.b]||{}), parts=Object.keys(o).sort(function(x,y){ return o[y]-o[x]; }).slice(0,3)
       .map(function(a){ return CMB.n(a)+' '+o[a]; });
@@ -30868,8 +31051,8 @@ CMB.panel = function(){
   if(lv.why.length) h+='<p class="xs dim2" style="margin:2px 0 0">Te ayuda: '+esc(lv.why.join(', '))+'.</p>';
   CMB.dangers().forEach(function(dg){
     h+='<p class="xs '+(dg.armed?'bad':'gold')+'" style="margin:4px 0 0">⚠️ Ya te vio '+esc(CMB.n(dg.a))+' '+dg.n+' veces: '+
-      (dg.armed? 'te está esperando con ' : 'a la próxima te espera con ')+esc(CMB.n(dg.c))+
-      (lv.tier>=2? ' ('+Math.round(dg.p*100)+' %)' : '')+'.</p>';
+      (lv.tier>=2? CMB.sayOften(dg.p)+' '+(dg.armed? 'te está esperando con ' : 'te va a esperar con ') : (dg.armed? 'te está esperando con ' : 'a la próxima te puede esperar con '))+
+      esc(CMB.n(dg.c))+'.</p>';
   });
   h+='</div>';
   return h;
@@ -30915,6 +31098,8 @@ hookOn('tq:ownInfo','maestria', function(h, x){
 }, 20);
 
 /* lo que se sabe de un rival: informe de scouting y ficha */
+CMB.VIDEO = [['de pie, cómodo',{pos:'stand',gap:0}], ['de pie y sin aire',{pos:'stand',gap:0,tired:true}],
+             ['más cerca de lo que quiere',{pos:'stand',gap:0.6}], ['arriba tuyo',{pos:'gbot',gap:0}]];
 CMB.knowLines = function(o){
   var out=[]; if(!o) return out;
   var m=CMB.R().fm[o.id];
@@ -30922,22 +31107,18 @@ CMB.knowLines = function(o){
     out.push('Ya lo peleaste '+m.n+' '+(m.n===1?'vez':'veces')+' ('+(m.res==='W'?'última: ganaste':(m.res==='L'?'última: perdiste':'última: empate'))+').');
     var best=null;
     for(var b in (m.obs||{})) if(m.obs.hasOwnProperty(b)){
-      var ob=m.obs[b], n=0, top=null;
-      for(var a in ob) if(ob.hasOwnProperty(a)){ n+=ob[a]; if(!top || ob[a]>ob[top]) top=a; }
-      if(n>=4 && (!best || n>best.n)) best={b:b, a:top, k:ob[top], n:n};
+      var ob=m.obs[b], n=0; for(var a in ob) if(ob.hasOwnProperty(a)) n+=safeInt(ob[a],0);
+      if(n>=2 && (!best || n>best.n)) best={b:b, n:n};
     }
-    if(best) out.push('Contra vos, '+CMB.BN[best.b]+': '+CMB.n(best.a)+' '+best.k+' de '+best.n+' veces.');
+    if(best){ var mo=CMB.read('memoria', {o:o, b:best.b, counts:m.obs[best.b]}); var ml=CMB.sayMem(mo, CMB.BN[best.b]||best.b); if(ml) out.push(ml); }
     var pp=Object.keys(m.pp||{}).sort(function(x,y){ return m.pp[y]-m.pp[x]; })[0];
     if(pp && m.pp[pp]>=4) out.push('Él se acuerda de '+CMB.n(pp)+': lo usaste '+m.pp[pp]+' veces.');
   }
   if(G.flags && (G.flags.analyst || G.flags.videoWall)){
-    var B=CL.styleAt(o), sits=[['de pie, cómodo',{pos:'stand',gap:0}],['de pie y sin aire',{pos:'stand',gap:0,tired:true}]];
-    if(G.flags.videoWall){ sits.push(['más cerca de lo que quiere',{pos:'stand',gap:0.6}]); sits.push(['arriba tuyo',{pos:'gbot',gap:0}]); }
-    sits.forEach(function(sx){
-      var x=Object.assign({B:B, hurt:false, winning:false, tired:false, pHp:100, pStam:100, last:false}, sx[1]);
-      var w=CL.oppWeightsFor(o, x), tot=0, top=null;
-      w.forEach(function(e){ tot+=e[1]; if(!top || e[1]>top[1]) top=e; });
-      if(top) out.push('Video, '+sx[0]+': '+CMB.n(top[0])+' ('+Math.round(top[1]/tot*100)+' %).');
+    CMB.VIDEO.slice(0, G.flags.videoWall? 4 : 2).forEach(function(sx){
+      var obs=CMB.read('video', {o:o, sit:sx[1]}); if(!obs || !obs.conf) return;
+      out.push('Video, '+sx[0]+': '+CMB.sayHead(obs).charAt(0).toLowerCase()+CMB.sayHead(obs).slice(1));
+      obs.contrasts.forEach(function(c){ out.push('Video: '+CMB.sayContrast(c)); });
     });
   }
   return out;
@@ -30978,16 +31159,17 @@ CAMPO.SITS = [
   ['más cerca de lo que quiere', 'stand:e', {pos:'stand', gap:0.6}],
   ['arriba tuyo', 'gbot', {pos:'gbot', gap:0}]
 ];
-/* la tendencia más marcada del rival: la situación donde una acción pesa más */
+/* lo que el sparring deja ver: la situación donde su tendencia es más
+   perceptible, leída con la confianza del sparring (capa CMB.read) */
+CAMPO.BANDO = {marcada:3, clara:2, leve:1, ninguna:0};
 CAMPO.tell = function(o){
   if(!o) return null;
-  var B=CL.styleAt(o), best=null;
+  var best=null;
   CAMPO.SITS.forEach(function(sx){
-    var x=Object.assign({B:B, hurt:false, winning:false, tired:false, pHp:100, pStam:100, last:false}, sx[2]);
-    var w=CL.oppWeightsFor(o, x), tot=0, top=null;
-    w.forEach(function(e){ tot+=e[1]; if(!top || e[1]>top[1]) top=e; });
-    var p=top? top[1]/tot : 0;
-    if(top && (!best || p>best.p)) best={n:sx[0], b:sx[1], a:top[0], p:p};
+    var obs=CMB.read('sparring', {o:o, sit:sx[2]});
+    if(!obs || !obs.top) return;
+    var sc=CAMPO.BANDO[obs.band];
+    if(!best || sc>best.sc) best={n:sx[0], b:sx[1], a:obs.top, band:obs.band, obs:obs, sc:sc};
   });
   return best;
 };
@@ -31013,8 +31195,8 @@ hookOn('camp:week:post','campo', function(cx){
   if(cx && cx.actKey==='spar' && !c.beats.spar){
     var t=CAMPO.tell(o); if(!t) return;
     CAMPO.ask('spar', 'camp_spar', 'Tu compañero de sparring hizo de '+fname(o)+' toda la semana. Mirando los videos juntos aparece algo: '+
-      t.n+', elige '+CMB.n(t.a)+' '+Math.round(t.p*100)+' de cada 100 veces.',
-      ['Repetir esa situación hasta que salga sola','Anotarlo y seguir con el plan'], {o:o.id, b:t.b, a:t.a, p:t.p});
+      t.n+', '+CMB.sayHead(t.obs).charAt(0).toLowerCase()+CMB.sayHead(t.obs).slice(1),
+      ['Repetir esa situación hasta que salga sola','Anotarlo y seguir con el plan'], {o:o.id, b:t.b, a:t.a, band:t.band});
     return;
   }
   /* 2. el cuerpo avisa */
@@ -31038,7 +31220,7 @@ hookOn('camp:week:post','campo', function(cx){
 
 CL.handler('camp_spar', function(idx, d){
   var c=G.camp; if(!c) return 'El campamento ya terminó.';
-  c.readPat={o:d.o, b:d.b, a:d.a, p:d.p, drill:idx===0};
+  c.readPat={o:d.o, b:d.b, a:d.a, band:d.band||'clara', drill:idx===0};
   if(idx===0){
     c.sharp=clamp(clN(c.sharp,0)+4,0,100); c.fatigue=clamp(clN(c.fatigue,0)+6,0,100);
     RPG.echo('spar_drill');
@@ -31088,8 +31270,8 @@ hookOn('fight:start','campo', function(){
 }, 65);
 hookOn('scout:report','campo', function(s, x){
   var c=G.camp, o=x&&x.o; if(!Array.isArray(s) || !c || !o || !c.readPat || c.readPat.o!==o.id) return s;
-  return s.concat(['Sparring: '+(CAMPO.SITS.filter(function(z){ return z[1]===c.readPat.b; })[0]||['en esa situación'])[0]+', '+
-    CMB.n(c.readPat.a)+' ('+Math.round(c.readPat.p*100)+' %)'+(c.readPat.drill?' — trabajado':'')+'.']);
+  var rp=c.readPat, sit=(CAMPO.SITS.filter(function(z){ return z[1]===rp.b; })[0]||['en esa situación'])[0];
+  return s.concat(['Sparring: '+sit+', '+CMB.BANDN[rp.band||'clara']+' '+CMB.porN(rp.a)+(rp.drill?' — trabajado':'')+'.']);
 }, 25);
 
 /* --------------------------------------------------------------------------

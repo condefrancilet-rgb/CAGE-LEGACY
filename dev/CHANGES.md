@@ -10,6 +10,54 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-06 · Fase 9: capa de información del Fight IQ, inventario del árbol, Ultimates auditadas
+**Tipo** capa de información + refactor neutral + 1 fix · **Cambio observable:** sí en la interfaz
+de la lectura; **nulo en la decisión del rival** (ver evidencia). Archivo de partida: `b099e0d`
+(sha256 `dd576a9d…b4ed5`), confirmado por el usuario como fuente de verdad.
+
+**Qué estaba mal.** La lectura mostraba los pesos internos del rival casi en crudo: 8 exposiciones
+en 5 superficies (porcentaje exacto y redondeado en el panel, ancho de barra = probabilidad, la
+probabilidad de la regla de adaptación, el texto de «Anticipar», el scouting con sala de video, la
+pregunta de sparring y su línea de scouting).
+
+**Qué se hizo.**
+- `pesos reales → modelo → jugador`: `CMB.distFor(o, x)` compone lo mismo que decide
+  (`CL.oppWeightsFor` + `CL.oppRulesFor` + memoria) para cualquier situación; `CMB.read(fuente)`
+  devuelve un objeto **sin números** (salvo nivel de confianza y conteos de lo que el jugador vio);
+  `CMB.sayHead/sayContrast/sayAlso/sayMem/sayOften` son el único lenguaje. Las 8 exposiciones
+  pasan por ahí.
+- **Prominencia contextual**, no «0,63 → alta»: depende de cuántas acciones tiene el rival en esa
+  posición (7/4/5/4) y de cuánto le saca la primera a la segunda (marcada / clara / leve / ninguna).
+- **Confianza por fuente**: en vivo, la lectura que ya existía; analista = media, sala de video =
+  alta; sparring anotado = media, trabajado = alta; memoria según cuántas veces lo viste; fight IQ
+  ≥ 80 suma un nivel al interpretar lo visto. Con confianza baja sólo se percibe lo marcado; con
+  alta, también lo leve. Si no se percibe, se dice que no se percibe.
+- **Contrastes verificables** («cuando se queda sin aire, aumenta su tendencia a moverse…»): cada
+  uno compara la distribución real de dos situaciones (aire, daño, distancia, vos herido/sin aire,
+  final ganando, primer round, tercer round) y sólo se dice si la diferencia es ≥ 7 puntos y ≥ 40 %
+  relativo. En 3.609 lecturas de peleas reales aparecieron: sin aire → moverse (el +0,55 del
+  motor), vos herido → combinación (+0,35), primer round → patada baja (arquetipo Misil), llegando
+  ganando al último round → moverse/controlar.
+- Refactor neutral: la regla de identidad del rival se consulta para una situación cualquiera
+  (`CL.oppRulesFor`, `CL.oppRuleSit`); `CL.oppRules()` en vivo devuelve lo mismo (probado).
+- **Fix**: `CMB.ultUse` devolvía `true` aunque `TQ.use` se negara (en la esquina).
+- `dev/tq-inventario.js` genera `dev/TQ-INVENTARIO.md` del árbol cargado (36 técnicas, cada campo,
+  funciones y consumidores verificados en el fuente) y una prueba exige que esté al día.
+  `dev/ULTIMATES-AUDITORIA.md`: las 4 Ultimates contra el inventario.
+
+**Evidencia.** `node dev/rpg-neutralidad.js --ref b099e0d`: las 5 trazas **idénticas** al golden y
+el estado final **idéntico** a `b099e0d` en las 5 semillas; no se regeneró nada. Legalidad: 0 de
+181.440 sorteos y 0 de 2.715 elecciones reales; y una prueba nueva lo verifica **con todas las
+piezas de la lectura desenganchadas**. `dev/tests/21-fightiq-capa.js`: 20 pruebas; 3 pruebas viejas
+(18, 19) pasaron del contrato de porcentajes al nuevo, con cálculo independiente de los pesos.
+Mutantes 17/17. Suite 282/282, navegador 77/77, 3/3 carreras completas.
+
+**Hallazgos sin corregir** (fuera de alcance o de diseño): la «toma de espalda» (`g_back`,
+`g_rev`) escribe una marca que nadie lee; La Última Puerta no mejora la sumisión a PERFECTA con
+habilidad alta (techo 0,80); `TQ.fightPanel` está definido dos veces (previo); el HUD de distancia
+de CL muestra en % la distancia preferida del rival según su estilo (no es parte de las 5
+superficies).
+
 ## RPG-05 · Fase 8: lo prometido pasa, y una carrera entera lo prueba
 **Tipo** conexión de promesas + instrumento + ajuste · **Cambio observable:** sí.
 

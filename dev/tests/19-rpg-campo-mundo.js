@@ -41,17 +41,25 @@ function resolver(c, h, idx){
 suite('RPG-6 · el campamento pregunta, con costos reales', () => {
   test('una semana de sparring muestra la tendencia REAL del rival, y trabajarla llega a la pelea', () => {
     const c = carrera(1).ctx; conContrato(c); const o = enCamp(c);
-    /* la tendencia se calcula acá, con los pesos del motor, sin pasar por CAMPO */
+    /* la tendencia se calcula acá, con los pesos del motor, sin pasar por la
+       capa de información: la situación donde es más perceptible con la
+       confianza del sparring (media: sólo marcada o clara) */
+    ok(!(c.G.story && c.G.story.npcSeeds && c.G.story.npcSeeds[o.id]), 'la prueba supone un rival sin arquetipo sembrado');
+    const LEG = { stand: 7, gbot: 5 }, RANGO = { marcada: 3, clara: 2 };
     const B = c.CL.styleAt(o); let t = null;
-    for(const [b, x] of [['stand', { pos: 'stand', gap: 0 }], ['stand:c', { pos: 'stand', gap: 0, tired: true }],
-                         ['stand:e', { pos: 'stand', gap: 0.6 }], ['gbot', { pos: 'gbot', gap: 0 }]]){
+    for(const [lab, b, x] of [['de pie, cómodo', 'stand', { pos: 'stand', gap: 0 }], ['de pie y sin aire', 'stand:c', { pos: 'stand', gap: 0, tired: true }],
+                              ['más cerca de lo que quiere', 'stand:e', { pos: 'stand', gap: 0.6 }], ['arriba tuyo', 'gbot', { pos: 'gbot', gap: 0 }]]){
       const w = c.CL.oppWeightsFor(o, Object.assign({ B, hurt: false, winning: false, tired: false, pHp: 100, pStam: 100, last: false }, x));
-      const tot = w.reduce((a, e) => a + e[1], 0), top = w.slice().sort((a, e) => e[1] - a[1])[0];
-      if(!t || top[1] / tot > t.p) t = { b, a: top[0], p: top[1] / tot };
+      const tot = w.reduce((a, e) => a + e[1], 0), r = w.slice().sort((a, e) => e[1] - a[1]);
+      const ratio = r[0][1] / tot * LEG[x.pos], marg = r[0][1] / r[1][1];
+      const band = (ratio >= 2.2 && marg >= 1.5) ? 'marcada' : (ratio >= 1.6 && marg >= 1.2) ? 'clara' : null;
+      if(band && (!t || RANGO[band] > RANGO[t.band])) t = { lab, b, a: r[0][0], band };
     }
+    ok(t, 'este rival no tiene ninguna tendencia perceptible en el sparring (la prueba necesita una)');
     c.campWeek('spar', .9, 0);
     const e = pendiente(c, 'camp_spar'); ok(e, 'la semana de sparring no dejó el momento');
-    ok(e.txt.indexOf(c.CMB.n(t.a) + ' ' + Math.round(t.p * 100) + ' de cada 100') >= 0, 'lo que muestra no es la tendencia del motor: ' + e.txt);
+    ok(e.txt.indexOf(t.lab + ', ') > 0 && e.txt.indexOf(c.CMB.n(t.a)) > 0, 'lo que muestra no es la tendencia del motor (' + t.lab + ' / ' + t.a + '): ' + e.txt);
+    ok(!/\d/.test(e.txt.replace(c.fname(o), '')), 'el sparring muestra números internos: ' + e.txt);
     const s0 = c.G.camp.sharp, f0 = c.G.camp.fatigue;
     resolver(c, 'camp_spar', 0);
     eq(c.G.camp.sharp, Math.min(100, s0 + 4), 'trabajarlo no afila'); eq(c.G.camp.fatigue, Math.min(100, f0 + 6), 'trabajarlo no cansa');
