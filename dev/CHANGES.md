@@ -10,6 +10,41 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-01 · Fase 3: lo que existía y no se podía alcanzar
+**Tipo** accesibilidad + fix · **Cambio observable:** grande en interfaz, **nulo en la
+carrera del autopiloto** (ver evidencia).
+
+**Qué se conectó (todo existía; se le dio entrada, se completó o se hizo cumplir):**
+
+| pieza | antes | ahora |
+|---|---|---|
+| `podcastStart` | 0 llamadores; y el minijuego `pod` **no tenía pantalla** (caía en la base y dibujaba "undefined") | `scrPod` con la misma infraestructura que la prensa; entradas desde VIDA y desde la ficha de un rival (`podcastStart('rival', id)`); emite `media:done` (prensa y podcast) |
+| `allyForm`, `travelWith`, `watchFight` | 0 llamadores | botones en la ficha social, según la etapa de la relación |
+| relación | 0-100 y etiquetas sueltas | progresión derivada `relStage`: Conocido → Compañero → Amigo/Rival → Aliado/Némesis, + "historia compartida"; muestra qué hace falta para el paso siguiente |
+| chef (9.500 + 650/sem) | sólo cobraba | −2 desgaste y −0,35 lb por semana de camp |
+| camp de élite (28.000) | bandera inerte (y guardaba sólo `G.week`) | 6 semanas: +12 % de aprendizaje, +3 fatiga; en camp +3 afilado y +4 desgaste |
+| camp de equipo (42.000) | bandera inerte | con ≥2 entrenadores, el gameplan confirmado suma +2 y lo explica |
+| modificadores "Un solo gimnasio", "Sin cambiar de peso", "Carrera corta" | multiplicaban el puntaje y **no se aplicaban** | `metaLock()` en las 6 vías voluntarias; retiro obligatorio a los 32 por `retire()` |
+| eliminatorias | regla y contador sin productor | el mánager las produce (`MGR.push`); ganarla deja `titleShot` y la pelea por el título aparece |
+| `wantTitleRematch`, `calloutTitle` | se escribían y nadie leía | producen la revancha por el título / la defensa contra el retador nombrado |
+| `trilogyOpp`, `polemicalOpp` | se leían y nadie escribía | productores al terminar una pelea (1-1 / dividida o empate) |
+| mánager | negociador | `MGR.read/card`: recomienda, advierte, detecta oportunidades; el jugador sigue, presiona, pide revancha o ignora; todo queda en su memoria |
+| navegación | Inicio · Entrenar · Ranking · Gente · Menú | **Carrera · Combate · Equipo · Vida · Mundo · Menú** (pantallas nuevas `vida` y `mundo` son índices; no hay lógica en ellas) |
+
+**Bug de pureza encontrado y corregido (B-001, otra vez).** `CL.offerAnalysis` usaba
+`pick()`: mirar la pantalla de ofertas movía el RNG del mundo. Medido en el commit
+anterior: la pantalla `offers` cambiaba `G.rs`; ahora ninguna. Y `CL.styleAt`/`styleName`
+creaban `f.cl` al leerlo: dibujar el inicio creaba estado. Las dos pasan a sólo lectura.
+
+**Evidencia de neutralidad** (`node dev/rpg-neutralidad.js --ref <commit anterior>`): las
+5 trazas del golden son **idénticas**; el estado final sólo difiere en las banderas que
+ahora sí se producen (`polemicalOpp`, `trilogyOpp`). Por eso se regeneraron las huellas
+(`--solo-trazas`: una línea por traza) y no las trazas.
+
+**Pruebas:** `dev/tests/16-rpg-accesos.js`, 14 pruebas. Verificadas con mutantes: quitar la
+ruta del podcast, el candado de gimnasio, la elegibilidad de la eliminatoria o el efecto
+del chef, y revertir `pickStable`, pone roja la prueba correspondiente (5/5).
+
 ## RPG-00 · La base subida por el usuario, reparada
 **Commits** `7058abb` (el archivo tal cual) · `[base-fix]` (este).
 **Tipo** fix · **Severidad** CRÍTICA (B-1) · **Cambio observable:** las partidas con una

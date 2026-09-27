@@ -39,7 +39,9 @@ function acciones(html){
   return out;
 }
 /* Adonde lleva una pantalla: destinos de go('X') y de la barra inferior. */
-const BARRA = ['hub','train','rank','people','menu'];
+/* La barra de los cinco pilares (modulo 38 del juego). 'rank' salio de la
+   barra y vive dentro de MUNDO: queda a dos toques, que es lo que se exige. */
+const BARRA = ['hub','train','people','vida','mundo','menu'];
 function destinos(html){
   const out = new Set();
   const re = /go\(\s*'([a-zA-Z0-9_]+)'/g;

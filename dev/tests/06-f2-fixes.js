@@ -156,7 +156,9 @@ suite('F2 · D-003 no se puede re-jugar una pelea sin cobrarla', () => {
     const c = h.ctx;
     const nav = () => c.document.getElementById('nav').style.display;
 
-    for(const s of ['hub', 'train', 'rank', 'people', 'menu']){
+    /* la barra de los cinco pilares (modulo 38) + rank, que sigue siendo
+       una pantalla con barra aunque ya no este en ella */
+    for(const s of ['hub', 'train', 'people', 'vida', 'mundo', 'menu', 'rank']){
       c.go(s);
       eq(nav(), 'grid', 'la barra deberia verse en ' + s);
     }
