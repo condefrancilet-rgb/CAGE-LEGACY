@@ -8,7 +8,7 @@
 - Técnicas: **36** (28 activas, 8 pasivas). Por nivel: 1: 12 · 2: 12 · 3: 8 · 4: 4.
 - Ramas: str = STRIKING (9) · wrs = WRESTLING (9) · grp = GRAPPLING (9) · iq = FIGHT IQ (9).
 - Nivel 4 (legendarias): `s_perf`, `w_sup`, `g_def`, `i_last`.
-- Ultimates (`CMB.ULT`): `s_perf` → TALÓN DEL VERDUGO, `w_sup` → SUPLEX DE LA TIERRA, `g_def` → LA ÚLTIMA PUERTA, `i_last` → ÚLTIMO ALIENTO.
+- Ultimates (`CMB.ULT`): `s_perf` → TALÓN DEL VERDUGO, `w_sup` → SUPLEX DE LA TIERRA, `g_def` → LA ÚLTIMA PUERTA (techo de sumisión propio 0.88), `i_last` → ÚLTIMO ALIENTO.
 - Resolución de una activa: `TQ.state` (condiciones) → `TQ.use` (gasta el uso, abre el minijuego del motor FX, filtro `tq:node`) → `TQ.resolve` (nota por `TQ.grade`: PERFECTA ≥ 0,86, BUENA ≥ 0,50, FALLA; `TQ.chance` con `TQ.resist` puede bajarla un escalón; evento `tq:resolved`) → `TQ.apply` (efecto). Funciones presentes: state ✓, use ✓, resolve ✓, chance ✓, resist ✓, apply ✓, hit ✓, divF ✓, markDodge ✓.
 - Pasivas: `TQ.passives()` (caché `TQ.PAS`) ✓, consumidas por `gp:mod/tecnicas` ✓ (ataque), `combat:eff/TQ` ✓ (defensa, anti-derribo, suelo), la envoltura de `drain` ✓ (aire), `exchange:post/tqPasivas` ✓ (guardia, lectura, reja, esquiva, sangrado).
 - ¿La IA del rival usa técnicas del árbol? **No.** `TQ.use` sólo se llama desde: botón del panel de técnicas (jugador); CMB.ultUse (botón de Ultimate del jugador).
@@ -16,9 +16,9 @@
 
 ## Hallazgos del inventario
 
-- `fx.flag:'back'` (toma de espalda) escribe `st.back=1` y **ninguna función lo lee** (0 lecturas): la «espalda tomada» de `g_back` y `g_rev` no tiene efecto propio más allá de su control y desgaste.
-- `st.bleed` (cortes) tiene 8 lecturas: se consume en `exchange:post/tqPasivas` y se muestra en el panel. Correcto.
-- `TQ.fightPanel` está definido 2 veces; la definición que rige es la última (paginada). Es una redefinición previa a esta etapa.
+- `fx.flag:'back'` (toma de espalda) marca `st.back` con su round; `TQ.back()` la da por vigente mientras sigas arriba en ese round y se lee en 5 lugares: `combat:eff/TQ` (+6 al trabajo de suelo, también para resistir su barrida y su levantada), la sumisión del árbol en `TQ.apply` (×1.15) y `exchange:post/tqPasivas` (+1 de control por intercambio; si la posición cambió, se pierde). Corregido en la fase 10.
+- `st.bleed` (cortes) tiene 7 lecturas: se consume en `exchange:post/tqPasivas` y se muestra en el panel. Correcto.
+- `TQ.fightPanel` tiene una sola definición (la paginada); la redefinición se retiró en la fase 10.
 
 ## Técnica por técnica
 
@@ -276,9 +276,9 @@
 - Efecto (BUENA ×0,78 / PERFECTA ×1,22): control +7, golpes significativos +1, le saca aire 9, marca «back».
 - Si FALLA: posición → gbot — «Al girar le regalás la cadera y termina arriba.».
 - Distancia: no condiciona · Aire: no condiciona · Daño: no condiciona.
-- Estado que modifica: f.p.ctrl, f.p.sig, f.o.stam, f.tq.back (sin lector), f.pos (al fallar).
+- Estado que modifica: f.p.ctrl, f.p.sig, f.o.stam, f.tq.back (espalda tomada, `TQ.back()`), f.pos (al fallar).
 - Funciones: `TQ.state` → `TQ.use` → `TQ.resolve` → `TQ.apply`. En combate: panel de técnicas, si está desbloqueada y la posición coincide.
-- Ultimate: no · IA del rival: no · Efectos secundarios: marca «back», al fallar cambia la posición · **código muerto**: la marca «back» no se lee.
+- Ultimate: no · IA del rival: no · Efectos secundarios: marca «back», al fallar cambia la posición.
 
 #### `g_adv` — ESCAPE DE SUMISIÓN AVANZADO
 
@@ -294,9 +294,9 @@
 - Efecto (BUENA ×0,78 / PERFECTA ×1,22): posición → gtop, control +8, golpes significativos +2, marca «back».
 - Si FALLA: te cuesta aire 12, control del rival +4 — «El giro no sale y ahora estás debajo del peso completo.».
 - Distancia: no condiciona · Aire: exige aire · Daño: no condiciona.
-- Estado que modifica: f.pos, f.p.ctrl, f.p.sig, f.tq.back (sin lector), f.p.stam (al fallar), f.o.ctrl (al fallar).
+- Estado que modifica: f.pos, f.p.ctrl, f.p.sig, f.tq.back (espalda tomada, `TQ.back()`), f.p.stam (al fallar), f.o.ctrl (al fallar).
 - Funciones: `TQ.state` → `TQ.use` → `TQ.resolve` → `TQ.apply`. En combate: panel de técnicas, si está desbloqueada y la posición coincide.
-- Ultimate: no · IA del rival: no · Efectos secundarios: cambia la posición, marca «back» · **código muerto**: la marca «back» no se lee.
+- Ultimate: no · IA del rival: no · Efectos secundarios: cambia la posición, marca «back».
 
 #### `g_chain` — SUBMISSION CHAIN
 

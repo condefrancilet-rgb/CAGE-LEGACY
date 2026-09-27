@@ -1999,6 +1999,39 @@ function aggrShift(f, keys){
   for(var i=0;i<keys.length;i++){ if(AGGR_DEF.indexOf(keys[i])>=0){ defensivo = true; break; } }
   return (defensivo ? -1 : 1) * t * 2.2;
 }
+/* ==========================================================================
+   LA DEFENSA PRINCIPAL DEL PLAN LLEGA A LA PELEA (fase 10)
+   --------------------------------------------------------------------------
+   gpConfirm guardaba la «Defensa principal» (cabeza · derribo · reja) en el
+   plan y lo único que la leía era el puntaje del plan: en la pelea no cambiaba
+   nada. Ahora cuenta en el intercambio en que el rival hace justo aquello de lo
+   que te preparaste para defenderte, y sólo en el valor que el motor ya usa
+   para esa defensa:
+     cabeza  -> tu defensa de pie (pDef) cuando él golpea de pie
+     derribo -> tu defensa de derribo (pTdd) cuando va al derribo, de pie o
+                desde el clinch
+     reja    -> tu defensa de derribo (pTdd) cuando te quiere llevar al clinch
+   No es un bonus general: el resto de los intercambios queda igual, y elegir
+   una defensa es no elegir las otras dos. La suscripción vive con el resto de
+   los hooks de combate (el bus todavía no existe acá), igual que aggrShift.
+   ========================================================================== */
+var GP_DEF_B = 3;
+var GP_DEF_KEY = {cabeza:'defense', derribo:'tdd', reja:'tdd'};
+var GP_DEF_X = null;          /* {pos, oa, pa} del intercambio en curso */
+var GP_DEF_HINT = 'La defensa cuenta en la pelea sólo cuando él hace eso: golpear de pie (cabeza), ir al derribo (derribo) o llevarte al clinch contra la reja (reja).';
+function gpDefCovers(def, pos, oa, pa){
+  if(def==='cabeza')  return pos==='stand' && (oa==='jab' || oa==='combo' || (oa==='counter' && pa==='combo'));
+  if(def==='derribo') return (pos==='stand' && oa==='td') || (pos==='clinch' && oa==='ctd');
+  if(def==='reja')    return pos==='stand' && oa==='clinch';
+  return false;
+}
+function gpDefShift(f, keys, side){
+  var fi=G && G.fight, x=GP_DEF_X;
+  if(!x || !fi || side!=='p' || !f || !f.isPlayer) return 0;
+  var def=fi.gp && fi.gp.def, k=GP_DEF_KEY[def];
+  if(!k || keys.indexOf(k)<0) return 0;
+  return gpDefCovers(def, x.pos, x.oa, x.pa) ? GP_DEF_B : 0;
+}
 function hitDamage(atk, dfn, base, powerStat){
   var d = base * (1 + (atk-dfn)/70) * (0.75 + powerStat/200);
   return clamp(d, 0.5, 40);
@@ -5405,6 +5438,7 @@ function scrMG(){
       h+=gpBlock('pace','Ritmo',[['bajo','Bajo'],['medio','Medio'],['alto','Alto']]);
       h+=gpBlock('prio','Prioridad',[['striking','Striking'],['counter','Contragolpe'],['wrestling','Wrestling'],['clinch','Clinch'],['grappling','Grappling']]);
       h+=gpBlock('def','Defensa principal',[['cabeza','Proteger la cabeza'],['derribo','Anti-derribo'],['reja','No ir a la reja']]);
+      h+='<p class="xs dim2" style="margin:-4px 0 8px">'+esc(GP_DEF_HINT)+'</p>';
       h+='<button class="btn pri" onclick="gpConfirm()" '+((mg.dist&&mg.pace&&mg.prio&&mg.def)?'':'disabled')+'>Cerrar el plan con tu esquina</button>';
     } else {
       h+='<div class="card"><h3>Plan cerrado</h3><p class="sm">Ajuste del plan: <span class="b '+(mg.score>=6?'jade':(mg.score<=1?'bad':'gold'))+'">'+mg.score+'/10</span></p>'+
@@ -6187,6 +6221,7 @@ hookOn('screen:fight','careerFightGuardUI',function(h){
   var box='<div class="card gold"><div class="hdr"><span class="b">🧠 Plan unificado de la esquina</span><span class="tag gr">Motor: '+esc(gp.prio)+'</span></div>'+
     '<div class="kv"><span>Distancia</span><span class="mono">'+esc(gp.dist)+'</span></div>'+
     '<div class="kv"><span>Ritmo</span><span class="mono">'+esc(gp.pace)+'</span></div>'+
+    (gp.def?'<div class="kv"><span>Defensa</span><span class="mono">'+esc(gp.def)+'</span></div>':'')+
     (reasons?'<div class="xs dim" style="margin-top:6px">Por qué este plan:</div><ul class="xs dim">'+reasons+'</ul>':'')+'</div>';
   return box+h;
 },5);
@@ -7641,6 +7676,7 @@ function scrMGArcade(){
       var cols=[['dist','DISTANCIA',[['larga','LARGA'],['media','MEDIA'],['corta','CORTA']]],['pace','RITMO',[['bajo','BAJO'],['medio','MEDIO'],['alto','ALTO']]],['prio','PLAN',[['striking','PIE'],['counter','CONTRA'],['wrestling','WRESTLING'],['grappling','SUELO'],['clinch','CLINCH']]],['def','DEFENSA',[['cabeza','CABEZA'],['derribo','DERRIBO'],['reja','REJA']]]];
       h+='<div class="arcade-board">'+miniHud('GAMEPLAN','TABLERO TÁCTICO',''+(mg.council?'🤝 CONSENSO':''));
       cols.forEach(function(g){h+='<div class="micro" style="margin-top:9px">'+g[1]+'</div><div class="arcade-grid two">';g[2].forEach(function(o){var n=gpRecNames(g[0],o[0]);h+='<button class="mini-tile '+(mg[g[0]]===o[0]?'move-green':'move-blue')+'" onclick="gpSet(\''+g[0]+'\',\''+o[0]+'\')"><span class="move-name">'+o[1]+'</span><small>'+(n.length?'✓ '+esc(n.slice(0,2).join(' + ')):'')+'</small></button>';});h+='</div>';});
+      h+='<div class="arcade-note">'+esc(GP_DEF_HINT)+'</div>';
       if(!mg.council) h+='<button class="btn go" onclick="gpCouncil()">🤝 HACER REUNIÓN DE ESQUINA</button>';
       h+='<button class="btn pri" onclick="gpConfirm()" '+((mg.dist&&mg.pace&&mg.prio&&mg.def)?'':'disabled')+'>CONFIRMAR</button></div>';
     } else h+='<div class="card"><div class="big gold">'+mg.score+'/10</div><p class="sm">Plan cerrado. '+esc((mg.notes&&mg.notes[0])||'Listo.')+'</p><button class="btn pri" onclick="mgClose(true)">TERMINAR</button></div>';
@@ -18565,7 +18601,7 @@ CL.handler('ufc_welcome', function(idx){
   var u=CL.ufc(), p=G.player;
   if(idx===0){ u.politics=clamp(u.politics+14,0,100);
     return 'Les gusta el peleador que siempre dice que sí. Vas a tener ofertas seguido — buenas y malas.'; }
-  if(idx===1){ u.politics=clamp(u.politics+8,0,100); p.pop=clamp(p.pop+4,1,100); u.heat=clamp(u.heat+12,0,100);
+  if(idx===1){ u.politics=clamp(u.politics+8,0,100); p.pop=clamp(p.pop+4,1,100); G.flags.heat=safeNum(G.flags.heat,0)+2;   /* un solo ruido: HEAT */
     return 'Te anotan como alguien que puede vender. La prensa te va a buscar más.'; }
   u.politics=clamp(u.politics-6,0,100); p.rep=clamp(p.rep+4,1,100);
   return '"Todos dicen eso." Anotan igual. El respeto se gana, no se declara.';
@@ -18587,7 +18623,6 @@ CL.ufcWeek = function(){
   /* la política se enfría sola y cae con la inactividad */
   var drift = (u.politics-50)*0.012;                 /* nadie es intocable      */
   u.politics = clamp(u.politics - drift - (p.weeksIdle>26? 0.55 : (p.weeksIdle>14? 0.25 : -0.08)), 0, 100);
-  u.heat = clamp(u.heat - 0.8, 0, 100);
   if(p.weeksIdle===40 && CL.once('ufcIdle')){
     pushNews('En Vanguard empiezan a preguntar cuándo vuelve a pelear '+fname(p)+'.');
     p.pop=clamp(p.pop-2,1,100);
@@ -19194,6 +19229,14 @@ CL.year = function(){
   hookOn('combat:eff','agresividad', function(v, ctx){
     return v + aggrShift(ctx && ctx.f, (ctx && ctx.keys) || []);
   }, 40);
+  /* fase 10: la defensa principal del plan. Ver gpDefShift, arriba. */
+  hookOn('exchange:pre','planDefensa', function(cx){
+    var f=G && G.fight; GP_DEF_X = f ? {pos:f.pos, oa:cx.oa, pa:cx.pa} : null;
+  }, 5);
+  hookOn('exchange:post','planDefensa', function(){ GP_DEF_X = null; }, 5);
+  hookOn('combat:eff','planDefensa', function(v, ctx){
+    return v + gpDefShift(ctx && ctx.f, (ctx && ctx.keys) || [], ctx && ctx.side);
+  }, 45);
   hookOn('combat:eff','CL', function(v, ctx){
     if(!G || !G.fight) return v;
     var m = safeRun('CL/eff', function(){ return CL.effMod(ctx.side); }, function(){ return 0; }, true) || 0;
@@ -19515,7 +19558,10 @@ CL.fightHUD = function(){
   var A=CL.styleAt(p), B=CL.styleAt(o);
   var adv=CL.advice();
   var pos = Math.round(c.dist/2*100);
-  var wantP = Math.round(A.dist/2*100), wantO = Math.round(B.dist/2*100);
+  /* lo que cada uno quiere, en palabras: la misma escala de zonas que el
+     encabezado (antes eran porcentajes de una variable interna) */
+  var wantP = CL.zone(A.dist), wantO = CL.zone(B.dist);
+  var back = (typeof TQ!=='undefined' && TQ.back && TQ.back());
   var fitCls = adv && adv.fit>0.2? 'gr' : (adv && adv.fit<-0.2? 'red' : '');
   var h='<div class="card tight">'+
     '<div class="hdr"><span class="b sm">DISTANCIA · '+CL.zoneLabel(c.dist)+'</span>'+
@@ -19523,7 +19569,8 @@ CL.fightHUD = function(){
     '<div class="bar" style="height:10px;position:relative">'+
       '<i style="width:'+pos+'%;background:linear-gradient(90deg,#5b9bd5,#3fbf87)"></i></div>'+
     '<div class="xs dim2" style="display:flex;justify-content:space-between">'+
-      '<span>pegado</span><span>vos querés '+wantP+'% · él '+wantO+'%</span><span>afuera</span></div>'+
+      '<span>pegado</span><span>vos querés '+wantP+' · él '+(wantO===wantP?'también':wantO)+'</span><span>afuera</span></div>'+
+    (back? '<p class="xs" style="margin:5px 0 0;color:#7fe0b4">🎒 Espalda tomada: tu trabajo de suelo rinde más y le cuesta salir. Se pierde si cambia la posición o termina el round.</p>':'')+
     '<div style="margin-top:6px"><div class="xs dim2">Ritmo '+Math.round(c.pace)+'</div>'+clBar(c.pace,100,'y')+'</div>'+
     '<div style="margin-top:4px"><div class="xs dim2">Lectura del rival '+Math.round(c.read)+'</div>'+clBar(c.read,100,'g')+'</div>'+
     (adv? '<p class="xs" style="margin:7px 0 0">'+esc(adv.text)+'</p>':'')+
@@ -21876,6 +21923,17 @@ TQ.markDodge = function(){
   var f=G&&G.fight, st=TQ.fs(); if(!f||!st) return;
   st.dodgeAt = f.round*1000+f.ex;
 };
+/* ESPALDA TOMADA (g_back, g_rev). La marca que esas dos técnicas escribían no
+   la leía nadie (inventario de la fase 9). Ahora es una posición: dura mientras
+   sigas arriba en el mismo round, y la leen las mismas vías del motor que ya
+   existían —'combat:eff' para el trabajo de suelo, la sumisión del árbol en
+   TQ.apply y el control del intercambio en 'exchange:post'—. Nada nuevo que
+   administrar: si te barren, te levantan o termina el round, se pierde. */
+TQ.BACK = {eff:6, sub:1.15, ctrl:1};
+TQ.back = function(){
+  var f=G&&G.fight, st=f&&f.tq;
+  return !!(f && !f.over && st && st.back && f.pos==='gtop' && safeInt(st.backR,-1)===f.round);
+};
 
 /* --------------------------------------------------------------------------
    7. ESTADO DE UNA TÉCNICA AHORA MISMO
@@ -22085,7 +22143,7 @@ TQ.apply = function(t, grade, q){
     if(fx.healP)  f.p.hp = clamp(f.p.hp + fx.healP*mult, 0, 100);
     if(fx.bleed && st) st.bleed = safeNum(st.bleed,0) + fx.bleed*mult;
     if(fx.pos)    f.pos = fx.pos;
-    if(fx.flag==='back' && st) st.back=1;
+    if(fx.flag==='back' && st){ st.back=1; st.backR=f.round; }
     if(fx.flag==='dodge') TQ.markDodge();
     if(c){
       if(fx.dist) c.dist = clamp(c.dist + fx.dist, 0, 2);
@@ -22096,7 +22154,10 @@ TQ.apply = function(t, grade, q){
     if(fx.sub){
       var sp = fx.sub*mult*(0.75+TQ.skill(t)*0.5);
       if(f.o.stam<40) sp*=1.18;
-      if(chance(clamp(sp,0,0.80))){ flog('¡'+fname(o)+' golpea la lona! No hay salida.'); finishFight('sub','p'); return; }
+      if(TQ.back()) sp*=TQ.BACK.sub;            /* la cadena sale desde la espalda */
+      /* techo 0,80 del árbol; una forma evolucionada puede traer el suyo
+         (La Última Puerta: sin él, a PERFECTA empataba con su L4) */
+      if(chance(clamp(sp,0,clamp(safeNum(fx.subCap,0.80),0.80,0.90)))){ flog('¡'+fname(o)+' golpea la lona! No hay salida.'); finishFight('sub','p'); return; }
       flog(fname(o)+' aguanta la cadena al límite, pero se le va el aire.');
       f.p.ctrl+=2;
     }
@@ -22112,6 +22173,7 @@ TQ.apply = function(t, grade, q){
     try{ grade==='perfect'? fxSndPerfect() : fxSndGood(); }catch(e){ errLog('L19273', e); }
   }
 
+  if(st && st.back && !TQ.back()) st.back=0;  /* cambió la posición: se pierde */
   /* la técnica ocupa un intercambio: mismas reglas de reloj que fightAct */
   f.ex++; f.clock -= ri(30,52);
   if(f.o.hp<=0){ finishFight('ko','p'); return; }
@@ -22516,12 +22578,17 @@ TQ.passives = function(){
     var f=ctx.f, keys=ctx.keys;
     if(!f || !f.isPlayer || ctx.side!=='p') return v;
     return v + (safeRun('tq/eff', function(){
-      var P=TQ.passives(); if(!P.any) return 0;
-      var b=0, has=function(k){ return keys.indexOf(k)>=0; };
+      var has=function(k){ return keys.indexOf(k)>=0; };
+      /* espalda tomada: todo el trabajo de suelo desde arriba rinde más y a
+         él le cuesta más salir (su barrida y su levantada se comparan contra
+         este mismo valor). Fuera del tope de las pasivas: es la posición. */
+      var bk = (TQ.back() && (has('grappling')||has('ground')||has('submission')))? TQ.BACK.eff : 0;
+      var P=TQ.passives(); if(!P.any) return bk;
+      var b=0;
       if(has('defense')||has('footwork')||has('composure')) b+=P.def;
       if(has('tdd')) b+=P.tdd;
       if(has('grappling')||has('ground')||has('submission')) b+=P.gnd;
-      return clamp(b,0,9);
+      return clamp(b,0,9) + bk;
     }, function(){ return 0; }, true) || 0);
   }, 20);
 
@@ -22563,6 +22630,15 @@ TQ.passives = function(){
       if(st && (pa==='counter'||pa==='move'||pa==='guard')){
         var dodged = (lost<=0.5) || (f.o.hp < ohp0-0.5);
         if(dodged) TQ.markDodge();
+      }
+      /* espalda tomada: los ganchos puestos suman control en cada intercambio
+         que sigue arriba; si la posición cambió, se pierde */
+      if(st && st.back){
+        if(TQ.back()) f.p.ctrl += TQ.BACK.ctrl;
+        else {
+          if(safeInt(st.backR,-1)===f.round) flog(fname(F(f.opp))+' se saca los ganchos de encima.');
+          st.back=0;
+        }
       }
       /* corte abierto: sangra mientras dura el round */
       if(st && safeNum(st.bleed,0)>0.05 && f.o.hp>0){
@@ -22760,30 +22836,32 @@ CL.hubCard('tecnicas', function(){
    16. INTERFAZ — DENTRO DE LA PELEA
    Se inserta encima de la lista de acciones, no la reemplaza.
    -------------------------------------------------------------------------- */
+/* Una sola definición. Había dos: ésta mostraba 4 técnicas y una segunda,
+   en el módulo de simulación (E «TÉCNICAS: acceso completo»), la reemplazaba
+   al cargar con la versión paginada de 8 por página. Rige la paginada, así
+   que ésa es la que queda, acá, y la redefinición se retiró (fase 10). */
 TQ.fightPanel = function(){
-  var f=G&&G.fight; if(!f||f.over) return '';
-  if(UI.sub==='corner') return '';
-  var list=TQ.available();
-  if(!list.length) return '';
-  var st=TQ.fs();
-  var rdy=0; list.forEach(function(e){ if(e.s.ok) rdy++; });
-  var h='<div class="card'+(rdy?' gold':'')+'"><div class="hdr">'+
-    '<span class="b">⚡ Técnicas especiales</span>'+
-    '<span class="tag'+(rdy?' on':'')+'">'+(rdy? rdy+' lista'+(rdy===1?'':'s') : 'ninguna disponible')+'</span></div>';
+  var f=G&&G.fight; if(!f||f.over||UI.sub==='corner') return '';
+  var list=TQ.available(); if(!list.length) return '';
+  var st=TQ.fs(), rdy=list.filter(function(e){ return e.s.ok; }).length;
+  TQ._fightPage=clamp(safeInt(TQ._fightPage,0),0,Math.max(0,Math.ceil(list.length/8)-1));
+  var pages=Math.max(1,Math.ceil(list.length/8)), start=TQ._fightPage*8, show=list.slice(start,start+8),
+      h='<div class="card'+(rdy?' gold':'')+'"><div class="hdr"><span class="b">⚡ Técnicas especiales</span><span class="tag'+(rdy?' on':'')+'">'+rdy+' listas · '+list.length+' accesibles</span></div>';
+  if(pages>1){
+    h+='<div class="grid g3" style="margin-bottom:8px">'+[Math.max(0,TQ._fightPage-1),TQ._fightPage,Math.min(pages-1,TQ._fightPage+1)]
+      .filter(function(v,i,a){ return a.indexOf(v)===i; })
+      .map(function(pg){ return '<button class="btn '+(pg===TQ._fightPage?'sel':'')+'" style="text-align:center;margin:0;min-height:38px;padding:7px" onclick="TQ._fightPage='+pg+';render()">Página '+(pg+1)+'</button>'; }).join('')+'</div>';
+  }
   h+='<div class="tq-bar">';
-  list.slice(0,4).forEach(function(e){
+  show.forEach(function(e){
     var t=e.t, s=e.s, left=TQ.usesLeft(t);
-    if(s.ok){
-      h+='<button class="tq-act rdy" onclick="TQ.use(\''+t.id+'\')"><b>'+esc(t.n)+'</b>'+
-         '<small>LISTA · usos '+left+'/'+(t.uses||1)+' · '+esc(TQ.MGNAME[t.mg])+' '+TQ.MGDIFF(t.diff)+'</small></button>';
-    } else if(s.spent){
-      h+='<div class="tq-act spent"><b>'+esc(t.n)+'</b><small>AGOTADA · 0/'+(t.uses||1)+'</small></div>';
-    } else {
-      h+='<div class="tq-act off"><b>🔒 '+esc(t.n)+'</b><small>'+esc(s.why||'no disponible')+'</small></div>';
-    }
+    if(s.ok) h+='<button class="tq-act rdy" onclick="TQ.use(\''+t.id+'\')"><b>'+esc(t.n)+'</b><small>LISTA · usos '+left+'/'+(t.uses||1)+' · '+esc(TQ.MGNAME[t.mg])+' '+TQ.MGDIFF(t.diff)+'</small></button>';
+    else if(s.spent) h+='<div class="tq-act spent"><b>'+esc(t.n)+'</b><small>AGOTADA · 0/'+(t.uses||1)+'</small></div>';
+    else h+='<div class="tq-act off"><b>🔒 '+esc(t.n)+'</b><small>'+esc(s.why||'no disponible')+'</small></div>';
   });
   h+='</div>';
-  if(st && safeNum(st.bleed,0)>0.3) h+='<p class="xs bad" style="margin:6px 0 0">🩸 El rival sangra: pierde algo de vida en cada intercambio.</p>';
+  if(pages>1) h+='<p class="xs dim2" style="margin:7px 0 0;text-align:center">Página '+(TQ._fightPage+1)+'/'+pages+' · desplazate por páginas para ver todo el árbol.</p>';
+  if(st&&safeNum(st.bleed,0)>0.3) h+='<p class="xs bad" style="margin:6px 0 0">🩸 El rival sangra: pierde algo de vida en cada intercambio.</p>';
   h+='</div>';
   return h;
 };
@@ -27850,16 +27928,8 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
   /* ------------------------------------------------------------------------
      E) TÉCNICAS: acceso completo, con pestañas y paginado interno.
      ------------------------------------------------------------------------ */
-  TQ.fightPanel=function(){
-    var f=G&&G.fight;if(!f||f.over||UI.sub==='corner')return '';
-    var list=TQ.available();if(!list.length)return '';
-    var st=TQ.fs(),rdy=list.filter(function(e){return e.s.ok;}).length;
-    TQ._fightPage=clamp(safeInt(TQ._fightPage,0),0,Math.max(0,Math.ceil(list.length/8)-1));
-    var pages=Math.max(1,Math.ceil(list.length/8)),start=TQ._fightPage*8,show=list.slice(start,start+8),h='<div class="card'+(rdy?' gold':'')+'"><div class="hdr"><span class="b">⚡ Técnicas especiales</span><span class="tag'+(rdy?' on':'')+'">'+rdy+' listas · '+list.length+' accesibles</span></div>';
-    if(pages>1){h+='<div class="grid g3" style="margin-bottom:8px">'+[Math.max(0,TQ._fightPage-1),TQ._fightPage,Math.min(pages-1,TQ._fightPage+1)].filter(function(v,i,a){return a.indexOf(v)===i;}).map(function(pg){return '<button class="btn '+(pg===TQ._fightPage?'sel':'')+'" style="text-align:center;margin:0;min-height:38px;padding:7px" onclick="TQ._fightPage='+pg+';render()">Página '+(pg+1)+'</button>';}).join('')+'</div>';}
-    h+='<div class="tq-bar">';show.forEach(function(e){var t=e.t,s=e.s,left=TQ.usesLeft(t);if(s.ok)h+='<button class="tq-act rdy" onclick="TQ.use(\''+t.id+'\')"><b>'+esc(t.n)+'</b><small>LISTA · usos '+left+'/'+(t.uses||1)+' · '+esc(TQ.MGNAME[t.mg])+' '+TQ.MGDIFF(t.diff)+'</small></button>';else if(s.spent)h+='<div class="tq-act spent"><b>'+esc(t.n)+'</b><small>AGOTADA · 0/'+(t.uses||1)+'</small></div>';else h+='<div class="tq-act off"><b>🔒 '+esc(t.n)+'</b><small>'+esc(s.why||'no disponible')+'</small></div>';});
-    h+='</div>';if(pages>1)h+='<p class="xs dim2" style="margin:7px 0 0;text-align:center">Página '+(TQ._fightPage+1)+'/'+pages+' · desplazate por páginas para ver todo el árbol.</p>';if(st&&safeNum(st.bleed,0)>0.3)h+='<p class="xs bad" style="margin:6px 0 0">🩸 El rival sangra: pierde algo de vida en cada intercambio.</p>';h+='</div>';return h;
-  };
+  /* E) La versión paginada del panel de técnicas vive ahora en TQ.fightPanel
+     (una sola definición, fase 10). */
 
   /* ------------------------------------------------------------------------
      F) RETIRO TERMINAL: una única puerta de estado y legado persistente.
@@ -30273,7 +30343,7 @@ RPG.journalHTML = function(){
   });
   RPG.recentEchoes(10).forEach(function(m){ mom.push({y:m.y, t:'🗣️ '+m.t}); });
   /* lo que se ganó dentro de la jaula: técnicas que se volvieron tuyas */
-  ((G.story && G.story.memories)||[]).forEach(function(m){ if(m && (m.type==='ultimate'||m.type==='mastery'||m.type==='era_end'||m.type==='era_start')) mom.push({y:m.y, t:({ultimate:'✴ ',mastery:'🎯 ',era_end:'👑 ',era_start:'👑 '})[m.type]+m.t}); });
+  ((G.story && G.story.memories)||[]).forEach(function(m){ if(m && (m.type==='ultimate'||m.type==='mastery'||m.type==='era_end'||m.type==='era_start'||m.type==='rivalidad')) mom.push({y:m.y, t:({ultimate:'✴ ',mastery:'🎯 ',era_end:'👑 ',era_start:'👑 ',rivalidad:'⚔️ '})[m.type]+m.t}); });
   mom.sort(function(a,b){ return b.y-a.y; });
   h+=CL.seccion('dMomentos','Momentos','<div class="card"><div class="log">'+(mom.length? mom.slice(0,14).map(function(x){ return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>'; }).join('') : '<div class="dim">Todavía nada.</div>')+'</div></div>');
   /* LEGADO */
@@ -30283,18 +30353,10 @@ RPG.journalHTML = function(){
     '<div class="grid g2" style="margin-top:8px"><button class="btn" onclick="go(\'clcareer\')">Etapas y estilo</button><button class="btn" onclick="go(\'hall\')">Salón de la fama</button></div></div>');
   return h;
 };
-/* etapa del ciclo de una rivalidad, derivada de lo que pasó */
+/* etapa del ciclo de una rivalidad, derivada de lo que pasó (RPG.rivalFacts,
+   más abajo, con la etapa «en los medios» y la resolución de la fase 10) */
 RPG.rivalStage = function(f){
-  var p=G.player, b=bondOf(f), r=relV(f);
-  var n=(p.career||[]).filter(function(x){ return x.oppId===f.id; }).length;
-  if(f.retired) return 'cerrada por retiro';
-  if(n>=3) return 'trilogía';
-  if(n===2) return 'revancha disputada';
-  if(n===1 && r.rivalry>=40) return 'pide revancha';
-  if(n===1) return 'ya se pelearon';
-  if(G.nextFight && G.nextFight.oppId===f.id) return 'pelea firmada';
-  if(b.clash>=2 || r.rivalry>=60) return 'tensión pública';
-  return 'cruce';
+  var st=RPG.rivalFacts(f); return st? st.n : 'cruce';
 };
 CL.screen('diario', function(){
   if(!G || !G.player) return null;
@@ -30738,6 +30800,13 @@ hookOn('exchange:post','lectura', function(cx){
 /* --------------------------------------------------------------------------
    4. INICIO DE PELEA: lo que ya se sabe (memoria, video)
    -------------------------------------------------------------------------- */
+/* lo que él dejó de repetir porque se lo castigaste dos veces o más en esa
+   situación. Una sola definición: la usan la pelea (f.iq.sup) y el campamento */
+CMB.supOf = function(m){
+  var sup={}; if(!m) return sup;
+  for(var b in (m.ex||{})) if(m.ex.hasOwnProperty(b) && m.ex[b] && safeInt(m.ex[b].n,0)>=2) sup[b]=m.ex[b].a;
+  return sup;
+};
 hookOn('fight:start','lectura', function(){
   var f=G&&G.fight; if(!f) return;
   var m=CMB.R().fm[f.opp] || null;
@@ -30747,7 +30816,7 @@ hookOn('fight:start','lectura', function(){
   for(var b in (m.obs||{})) if(m.obs.hasOwnProperty(b)) f.iq.prior[b]=Object.assign({}, m.obs[b]);
   /* él también se acuerda: lo que le castigaste con la lectura ya no lo repite
      igual, y viene esperando lo que más usaste */
-  for(var b2 in (m.ex||{})) if(m.ex.hasOwnProperty(b2) && safeInt(m.ex[b2].n,0)>=2) f.iq.sup[b2]=m.ex[b2].a;
+  f.iq.sup=CMB.supOf(m);
   var id=f.identity, top=[];
   if(id && m.pp){
     top=Object.keys(m.pp).filter(function(k){ return safeInt(m.pp[k],0)>=4; })
@@ -30952,7 +31021,7 @@ CMB.ULT = {
     fx:{td:1, pos:'gtop', ctrl:10, dmg:[20,28], kd:0.50, finish:0.30, fin:'ko', log:'💣 SUPLEX DE LA TIERRA. La lona suena como un disparo.'},
     bad:{dmg:[6,10], drainP:18, pos:'stand', log:'Lo despegás del suelo y se te escapa en el aire.'}},
   g_def:{n:'💀 LA ÚLTIMA PUERTA', d:'La cadena definitiva sin un solo hueco: cada salida es la entrada de la siguiente.',
-    fx:{sub:0.80, drainO:26, ctrl:8, sig:2, log:'💀 LA ÚLTIMA PUERTA. Cierra una salida, abre otra, y la otra también es tuya.'},
+    fx:{sub:0.80, subCap:0.88, drainO:26, ctrl:8, sig:2, log:'💀 LA ÚLTIMA PUERTA. Cierra una salida, abre otra, y la otra también es tuya.'},
     bad:{pos:'gbot', drainP:14, log:'Encuentra la única rendija que quedaba.'}},
   i_last:{n:'🔥 ÚLTIMO ALIENTO', d:'El Last Chance de alguien que ya lo sobrevivió todo.',
     fx:{dmg:[24,32], kd:0.55, finish:0.50, fin:'ko', sig:3, restP:18, healP:6, log:'🔥 ÚLTIMO ALIENTO. De donde no había nada sale la mano más pesada de la noche.'},
@@ -30964,10 +31033,27 @@ CMB.ULT_V = {
   desgaste:   {n:'Desgaste', d:'aunque no termine, le saca el aire', ids:['presion','veterano','capitan']},
   pura:       {n:'Pura', d:'la técnica, sin más', ids:[]}
 };
-CMB.ultVariant = function(){
+/* De dónde sale el sello (fase 10). Primero, la FILOSOFÍA DE COMBATE que
+   asumiste en público (RPG.philo.fight): es lo que dijiste que ibas a ser, y la
+   técnica evoluciona hacia ahí. Si no asumiste ninguna, la IDENTIDAD oficial,
+   que sale de lo que hiciste. Los sellos son los mismos cuatro: la filosofía
+   elige entre ellos, no crea efectos nuevos. */
+CMB.ULT_FP = {finalizar:'espectaculo', espectaculo:'espectaculo', castigo:'precision', minimizar:'precision',
+              control:'desgaste', adelante:'desgaste'};
+CMB.ultVariantSrc = function(){
+  var r=RPG.R(), ph=r && r.philo && r.philo.fight;
+  if(ph && CMB.ULT_FP[ph]) return {v:CMB.ULT_FP[ph], src:'filosofia', k:ph};
   var id=RPG.officialIdentity(), k=id&&id.k;
-  for(var v in CMB.ULT_V) if(CMB.ULT_V.hasOwnProperty(v) && CMB.ULT_V[v].ids.indexOf(k)>=0) return v;
-  return 'pura';
+  for(var v in CMB.ULT_V) if(CMB.ULT_V.hasOwnProperty(v) && CMB.ULT_V[v].ids.indexOf(k)>=0) return {v:v, src:'identidad', k:k};
+  return {v:'pura', src:'identidad', k:k||null};
+};
+CMB.ultVariant = function(){ return CMB.ultVariantSrc().v; };
+/* cómo se explica el sello: de qué decisión tuya salió */
+CMB.ultWhy = function(u){
+  if(!u) return '';
+  if(u.src==='filosofia' && RPG.FP[u.k]) return 'por tu filosofía: «'+RPG.FP[u.k]+'»';
+  var I=(typeof RPG.IDS!=='undefined' && RPG.IDS[u.k]) || null;
+  return I && I.n ? 'por tu identidad: '+I.n : 'por cómo peleaste';
 };
 CMB.ultReady = function(id){
   var m=CMB.R().mast[id]||{};
@@ -30978,12 +31064,12 @@ CMB.awaken = function(){
   var s=CMB.S(), got=[];
   Object.keys(CMB.ULT).forEach(function(id){
     if(s.ult[id] || !CMB.ultReady(id).ok) return;
-    var v=CMB.ultVariant(), U=CMB.ULT[id];
-    s.ult[id]={v:v, y:G.year, w:G.week, used:0, landed:0};
+    var vs=CMB.ultVariantSrc(), v=vs.v, U=CMB.ULT[id];
+    s.ult[id]={v:v, src:vs.src, k:vs.k, y:G.year, w:G.week, used:0, landed:0};
     got.push(id);
     pushNews('Nace una técnica: «'+U.n.replace(/^[^A-ZÁÉÍÓÚÑ]+/,'')+'». '+fname(G.player)+' llevó '+TQ.node(id).n.replace(/^[^A-ZÁÉÍÓÚÑ]+/,'')+' más lejos que nadie.');
     if(CL.remember) CL.remember('ultimate', {id:id, v:v, t:'Ultimate: '+U.n});
-    if(CL.thread) CL.thread('tecnica','Tu '+TQ.node(id).n+' evolucionó: '+U.n+' ('+CMB.ULT_V[v].n+').');
+    if(CL.thread) CL.thread('tecnica','Tu '+TQ.node(id).n+' evolucionó: '+U.n+' ('+CMB.ULT_V[v].n+', '+CMB.ultWhy(s.ult[id])+').');
     toast('✴ ULTIMATE: '+U.n);
     hookEmit('rpg:ultimate', {id:id, v:v});
   });
@@ -31090,7 +31176,7 @@ hookOn('tq:ownInfo','maestria', function(h, x){
     (tier? ' · <span class="gold">'+CMB.MT[tier].n+'</span>' : '')+'</p>';
   if(CMB.ULT[t.id]){
     var u=CMB.R().ult[t.id];
-    if(u) h+='<p class="xs gold" style="margin:2px 0 0">✴ Evolucionó: '+esc(CMB.ULT[t.id].n)+' ('+esc(CMB.ULT_V[u.v].n)+': '+esc(CMB.ULT_V[u.v].d)+').</p>';
+    if(u) h+='<p class="xs gold" style="margin:2px 0 0">✴ Evolucionó: '+esc(CMB.ULT[t.id].n)+' ('+esc(CMB.ULT_V[u.v].n)+': '+esc(CMB.ULT_V[u.v].d)+'; '+esc(CMB.ultWhy(u))+').</p>';
     else { var rd=CMB.ultReady(t.id);
       h+='<p class="xs dim2" style="margin:2px 0 0">✴ Para evolucionar: 8 ejecuciones ('+rd.n+'), 3 ejecutadas a la perfección ('+rd.x+') y meterla en una pelea ganada ('+rd.w+').</p>'; }
   }
@@ -31171,7 +31257,37 @@ CAMPO.tell = function(o){
     var sc=CAMPO.BANDO[obs.band];
     if(!best || sc>best.sc) best={n:sx[0], b:sx[1], a:obs.top, band:obs.band, obs:obs, sc:sc};
   });
+  if(best) best.mem=CAMPO.memOf(o, best);
   return best;
+};
+/* REVANCHA (fase 10): el sparring imita al rival de sus peleas; lo que VOS le
+   viste en la pelea anterior está en la memoria (CMB.R().fm). Se comparan en la
+   misma situación: si coincide, se confirma; si no, cambió algo. Y si en esa
+   situación le castigaste esa misma acción dos veces o más, él se acuerda
+   (CMB.supOf, lo mismo que usa la pelea) y puede no repetirla. */
+CAMPO.memOf = function(o, t){
+  var m=o && CMB.R().fm[o.id]; if(!m || !t) return null;
+  var counts=(m.obs||{})[t.b], seen=counts? CMB.read('memoria', {o:o, b:t.b, counts:counts}) : null;
+  var sup=CMB.supOf(m)[t.b]||null;
+  return {n:safeInt(m.n,0), seen:(seen && seen.conf)? seen : null, sup:sup};
+};
+CAMPO.memLine = function(t){
+  var M=t && t.mem; if(!M) return '';
+  var out=[];
+  if(M.seen && M.seen.top){
+    if(M.seen.top===t.a) out.push('Es lo mismo que le viste en la pelea anterior.');
+    else out.push('En la pelea anterior, en esa situación, fue sobre todo '+CMB.aN(M.seen.top)+': algo cambió.');
+  }
+  if(M.sup && M.sup===t.a) out.push('Ojo: esa misma se la castigaste la otra vez y él se acuerda. Puede que no la repita.');
+  return out.join(' ');
+};
+/* lo que ese hábito pide del plan: la «Defensa principal» que lo cubre en la
+   pelea (gpDefCovers) */
+CAMPO.DEF_OF = {jab:'cabeza', combo:'cabeza', counter:'cabeza', td:'derribo', ctd:'derribo', clinch:'reja'};
+CAMPO.DEFN = {cabeza:'Proteger la cabeza', derribo:'Anti-derribo', reja:'No ir a la reja'};
+CAMPO.defFor = function(t, gp){
+  var d=t && CAMPO.DEF_OF[t.a];
+  return (d && gp && gp.def!==d && (!t.mem || t.mem.sup!==t.a))? d : null;
 };
 /* ¿qué haría este entrenador con un campamento cargado? Lo dice su filosofía */
 CAMPO.PUSHERS = ['volume','grind','finish'];
@@ -31194,9 +31310,12 @@ hookOn('camp:week:post','campo', function(cx){
   /* 1. el sparring mostró algo */
   if(cx && cx.actKey==='spar' && !c.beats.spar){
     var t=CAMPO.tell(o); if(!t) return;
+    var gp0=c.unifiedGameplan||c.gameplan, nd=CAMPO.defFor(t, gp0), ml=CAMPO.memLine(t);
+    var sopts=['Repetir esa situación hasta que salga sola','Anotarlo y seguir con el plan'];
+    if(nd) sopts.push('Repetirla y cambiar la defensa del plan a «'+CAMPO.DEFN[nd]+'»');
     CAMPO.ask('spar', 'camp_spar', 'Tu compañero de sparring hizo de '+fname(o)+' toda la semana. Mirando los videos juntos aparece algo: '+
-      t.n+', '+CMB.sayHead(t.obs).charAt(0).toLowerCase()+CMB.sayHead(t.obs).slice(1),
-      ['Repetir esa situación hasta que salga sola','Anotarlo y seguir con el plan'], {o:o.id, b:t.b, a:t.a, band:t.band});
+      t.n+', '+CMB.sayHead(t.obs).charAt(0).toLowerCase()+CMB.sayHead(t.obs).slice(1)+(ml? ' '+ml : ''),
+      sopts, {o:o.id, b:t.b, a:t.a, band:t.band, def:nd||null, rem:!!t.mem});
     return;
   }
   /* 2. el cuerpo avisa */
@@ -31220,10 +31339,17 @@ hookOn('camp:week:post','campo', function(cx){
 
 CL.handler('camp_spar', function(idx, d){
   var c=G.camp; if(!c) return 'El campamento ya terminó.';
-  c.readPat={o:d.o, b:d.b, a:d.a, band:d.band||'clara', drill:idx===0};
-  if(idx===0){
+  c.readPat={o:d.o, b:d.b, a:d.a, band:d.band||'clara', drill:idx===0||idx===2};
+  if(idx===0 || idx===2){
     c.sharp=clamp(clN(c.sharp,0)+4,0,100); c.fatigue=clamp(clN(c.fatigue,0)+6,0,100);
     RPG.echo('spar_drill');
+    var gp=c.unifiedGameplan||c.gameplan;
+    if(idx===2 && d.def && CAMPO.DEFN[d.def] && gp){
+      /* el plan es uno: se cambia donde vive (el unificado manda si existe) */
+      if(c.unifiedGameplan) c.unifiedGameplan=Object.assign({}, c.unifiedGameplan, {def:d.def});
+      if(c.gameplan) c.gameplan=Object.assign({}, c.gameplan, {def:d.def});
+      return 'Veinte veces la misma situación, y el plan cambia con ella: la defensa principal pasa a «'+CAMPO.DEFN[d.def]+'».';
+    }
     return 'Veinte veces la misma situación. La última ya no la pensás: la ves venir.';
   }
   return 'Queda anotado en la libreta. Lo vas a reconocer, aunque no lo tengas en el cuerpo.';
@@ -31426,16 +31552,197 @@ CAMPO.rivalNext = function(f){
   if(fs.length===1) return l? 'Te debe una revancha el mundo: una pelea más y hay historia.' : 'Él quiere la revancha. Si se da, es una rivalidad.';
   if(fs.length===2 && w===1 && l===1) return 'Uno a uno: la trilogía es la única salida.';
   if(fs.length>=3) return 'Ya no es una rivalidad: es una parte de la carrera de los dos.';
+  if(f.retired) return 'Se retiró. La cuenta quedó como quedó.';
+  var st=RPG.rivalFacts(f);
+  if(st && st.k==='resuelta') return 'Dos veces arriba tuyo. Para la organización, esto está resuelto: no hay tercera.';
   return w>l? 'Dos veces arriba tuyo... por ahora.' : 'Dos veces te ganó. Una tercera sería otra historia.';
 };
+/* antes de la primera pelea, lo que dice la etapa (fase 10) */
+CAMPO.RIVAL_PRE = {tension:'Todavía no se cruzaron en la jaula, pero la tensión ya es pública.',
+                   medios:'La prensa ya la vende. Falta que alguien la firme.',
+                   campana:'La pelea está firmada: lo que se dijeron se paga en la jaula.'};
 hookOn('screen:fighter','rivalidad', function(h){
   var o=F(UI.sub); if(!o || o.isPlayer) return h;
-  var nx=CAMPO.rivalNext(o); if(!nx) return h;
+  var nx=CAMPO.rivalNext(o), st=RPG.rivalFacts(o);
+  if(!nx && st && st.rival) nx=CAMPO.RIVAL_PRE[st.k]||null;
+  if(!nx) return h;
   var p=G.player, w=0, l=0;
   (p.career||[]).forEach(function(x){ if(x.oppId===o.id){ if(x.res==='W') w++; else if(x.res==='L') l++; } });
   return h+'<div class="card"><div class="hdr"><span class="b">⚔️ Rivalidad</span><span class="tag">'+esc(RPG.rivalStage(o))+' · '+w+'-'+l+'</span></div>'+
-    '<p class="sm dim" style="margin:0">'+esc(nx)+'</p></div>';
+    '<p class="sm dim" style="margin:0">'+esc(nx)+'</p>'+RPG.rivalHistHTML(o)+'</div>';
 }, 65);
+
+/* ==========================================================================
+   EL RUIDO DE LOS MEDIOS LLEGA AL EMPAREJAMIENTO (fase 10)
+   --------------------------------------------------------------------------
+   G.flags.heat lo escribían seis lugares (responder una provocación, el video
+   viral, el podcast, el contenido de la semana de pelea, la pieza especial y
+   la respuesta pública a un rival) y no lo leía nadie. La bienvenida de
+   Vanguard tenía otro «heat» propio (CL.ufc().heat) que tampoco leía nadie:
+   ahora escribe en el mismo. Un solo valor, con dos consumidores y un gasto:
+     · las ofertas de RIVALIDAD y REVANCHA pagan más mientras haya ruido
+       (+4 % por punto, hasta +30 %), y lo dicen;
+     · con ruido alto y sin una oferta así, la organización arma la pelea con
+       el rival con más rivalidad de tu división (sin azar: el de más rivalidad);
+     · firmar una de esas peleas gasta el ruido (queda el 40 %), y el ruido se
+       enfría solo cada semana.
+   ========================================================================== */
+var HEAT = {B:0.04, CAP:0.30, MAKE:4, LEFT:0.4, COOL:0.97};
+HEAT.v = function(){ return Math.max(0, safeNum(G && G.flags && G.flags.heat, 0)); };
+HEAT.boost = function(h){ return Math.min(HEAT.CAP, Math.max(0,h)*HEAT.B); };
+HEAT.target = function(){
+  var p=G.player, org=p && G.orgs[p.org]; if(!org) return null;
+  var best=null;
+  (org.roster||[]).forEach(function(id){
+    var f=F(id); if(!f || f.isPlayer || f.div!==p.div || f.inj || f.retired || !f.active) return;
+    var rv=clN((f.rel||{}).rivalry,0); if(rv<35) return;
+    var fought=(p.career||[]).some(function(x){ return x.oppId===f.id; });
+    if(fought && !(typeof canOfferRematch==='function' && canOfferRematch(p,f))) return;
+    if(!best || rv>best.rv) best={f:f, rv:rv};
+  });
+  return best && best.f;
+};
+hookOn('offers:made','heat', function(){
+  if(!G || !G.player || G.player.retired || !Array.isArray(G.offers)) return;
+  var h=HEAT.v(); if(h<2) return;
+  var p=G.player, org=G.orgs[p.org];
+  var hot=G.offers.filter(function(o){ return o && o.type==='fight' && (o.clTag==='rivalidad' || o.clTag==='revancha'); });
+  if(!hot.length && h>=HEAT.MAKE && org && !G.nextFight){
+    var t=HEAT.target();
+    if(t){
+      var o={type:'fight', oppId:t.id, org:p.org, weeks:9, title:false,
+        purse:Math.round(org.pay[1]*0.55*(1+clN(p.pop)/160)),
+        event:org.ab+' — la pelea que pide la prensa',
+        txt:'LA PRENSA LA PIDE: '+fname(t)+' ('+recStr(t)+'). El cruce en los medios ya la vendió.', clTag:'rivalidad', heatMade:true};
+      G.offers.unshift(o); hot=[o];
+    }
+  }
+  hot.forEach(function(o){
+    if(o.heatB) return;
+    var b=HEAT.boost(h); if(b<=0) return;
+    o.purse=Math.round(clN(o.purse,0)*(1+b)); o.heatB=Math.round(b*100);
+    o.reason=(o.reason? o.reason+' ' : '')+'Hay ruido en los medios: la pelea se vende sola (+'+o.heatB+' %).';
+  });
+}, 35);
+hookOn('fight:accepted','heat', function(ctx){
+  var o=ctx && ctx.offer; if(!o || !o.heatB) return;
+  G.flags.heat=Math.round(HEAT.v()*HEAT.LEFT*10)/10;
+  var f=F(o.oppId); if(f){ var b=bondOf(f); if(!b.media) b.media=RPG.stamp(); RPG.rivalTick(f); }
+}, 30);
+hookOn('week','heat', function(){
+  if(!G || !G.flags) return;
+  var h=HEAT.v(); if(!h) return;
+  G.flags.heat = h<0.1? 0 : Math.round(h*HEAT.COOL*100)/100;
+}, 43);
+
+/* ==========================================================================
+   EL CICLO DE UNA RIVALIDAD, PERSISTENTE (fase 10)
+   --------------------------------------------------------------------------
+   CRUCE → TENSIÓN → EN LOS MEDIOS → PELEA FIRMADA → YA SE PELEARON →
+   REVANCHA → RESUELTA. Cada etapa sale de hechos que el juego ya guarda
+   (choques y rivalidad declarada, la respuesta pública a una provocación, el
+   ruido de los medios, la pelea firmada, el historial entre los dos) y la
+   RESOLUCIÓN es la misma regla del emparejamiento (canOfferRematch): cuando
+   la organización ya no ofrece otra, está resuelta. Lo que se guarda es el
+   AVANCE: la primera vez que se llega a una etapa queda en la relación
+   (bond.rc y bondNote); los hitos (tensión, medios, revancha, resolución),
+   también en la memoria del mundo (CL.remember) y en el diario. «En los
+   medios» no se pierde (bond.media); «pelea firmada» vuelve atrás si la pelea
+   se cae, porque es lo que pasó.
+   ========================================================================== */
+RPG.RIVAL_CYCLE = ['cruce','tension','medios','campana','pelea','revancha','resuelta'];
+RPG.RIVAL_HITO = {tension:1, medios:1, revancha:1, resuelta:1};
+RPG.RIVAL_N = {cruce:'cruce', tension:'tensión pública', medios:'en los medios', campana:'pelea firmada',
+               pelea:'ya se pelearon', revancha:'revancha disputada', resuelta:'resuelta'};
+RPG.rivalPublic = function(f){
+  var m=(G.story && G.story.memories)||[];
+  for(var i=0;i<m.length;i++) if(m[i] && m[i].type==='rivalry_escalated' && m[i].oppId===f.id && m[i].choice==='public') return true;
+  return false;
+};
+/* LECTOR PURO: no crea vínculos ni relaciones al preguntar */
+RPG.rivalFacts = function(f){
+  if(!f || !G || !G.player) return null;
+  var p=G.player, b=f.bond||{}, r=f.rel||{};
+  var fs=(p.career||[]).filter(function(x){ return x.oppId===f.id; }), n=fs.length;
+  var w=fs.filter(function(x){ return x.res==='W'; }).length, l=fs.filter(function(x){ return x.res==='L'; }).length;
+  var rv=clN(r.rivalry,0), k, name;
+  var pub = safeInt(b.clash,0)>=2 || rv>=60 || !!b.rival;
+  var med = pub && (!!b.media || RPG.rivalPublic(f) || HEAT.v()>=3);
+  if(f.retired && n>=1){ k='resuelta'; name='cerrada por retiro'; }
+  else if(n>=3){ k='resuelta'; name='trilogía'; }
+  else if(n>=2 && typeof canOfferRematch==='function' && !canOfferRematch(p,f)){ k='resuelta'; name='resuelta: '+w+'-'+l; }
+  else if(n>=2){ k='revancha'; name=RPG.RIVAL_N.revancha; }
+  else if(n===1){ k='pelea'; name= rv>=40? 'pide revancha' : RPG.RIVAL_N.pelea; }
+  else if(G.nextFight && G.nextFight.oppId===f.id){ k='campana'; name=RPG.RIVAL_N.campana; }
+  else if(f.retired){ k='cruce'; name='cerrada por retiro'; }
+  else {
+    k = med? 'medios' : (pub? 'tension' : 'cruce');
+    name=RPG.RIVAL_N[k];
+  }
+  /* ¿es una rivalidad? Una pelea suelta no lo es: hace falta tensión (choques,
+     rivalidad alta o declarada), ruido con él o haberse cruzado dos veces */
+  var real = safeInt(b.clash,0)>=2 || rv>=40 || !!b.rival || !!b.media || n>=2;
+  return {k:k, i:RPG.RIVAL_CYCLE.indexOf(k), n:name, w:w, l:l, fights:n, rival:real, pub:pub, med:med};
+};
+/* ESCRITOR: registra el avance (sólo hacia adelante, una vez por etapa). Si
+   al mirar ya se saltó una etapa que es un hecho en este momento (la tensión
+   pública o el ruido con él, con la pelea ya firmada), se anota también, en
+   orden: la historia no pierde lo que pasó. «Pelea firmada» ya pasada no se
+   reconstruye: sólo se anota si se vio. */
+RPG.rivalTick = function(f){
+  var st=RPG.rivalFacts(f); if(!st || st.i<=0 || !st.rival) return null;
+  var b=bondOf(f); if(!b) return null;
+  var rc=(b.rc && typeof b.rc==='object')? b.rc : (b.rc={i:0, hist:[]});
+  if(!Array.isArray(rc.hist)) rc.hist=[];
+  var steps=[]; if(st.pub) steps.push('tension'); if(st.med) steps.push('medios'); steps.push(st.k);
+  var last=null;
+  steps.forEach(function(k){
+    var i=RPG.RIVAL_CYCLE.indexOf(k); if(i<=safeInt(rc.i,0)) return;
+    var n = k===st.k? st.n : RPG.RIVAL_N[k];
+    if(k==='medios' && !b.media) b.media=RPG.stamp();
+    rc.i=i;
+    rc.hist.push({k:k, n:n, y:G.year, w:G.week});
+    if(rc.hist.length>RPG.RIVAL_CYCLE.length) rc.hist.shift();
+    bondNote(f, 'Rivalidad: '+n);
+    /* a la memoria del mundo (tope 100, la comparten otros sistemas) van sólo
+       los hitos: la firma y la pelea ya quedan como resultado de pelea */
+    var sc=st.w+'-'+st.l;
+    if(CL.remember && RPG.RIVAL_HITO[k]) CL.remember('rivalidad', {oppId:f.id, k:k, t:'Rivalidad con '+fname(f)+': '+n+(k===st.k && st.fights && n.indexOf(sc)<0? ' ('+sc+')' : '')+'.'});
+    last=k;
+  });
+  return last;
+};
+/* candidatos: sólo quien ya tiene historia con vos (no se crean vínculos) */
+RPG.rivalCands = function(){
+  var p=G.player, out=[], seen={};
+  function add(f){ if(f && !f.isPlayer && !seen[f.id]){ seen[f.id]=1; out.push(f); } }
+  (p.career||[]).forEach(function(x){ add(F(x.oppId)); });
+  if(G.nextFight) add(F(G.nextFight.oppId));
+  for(var id in G.fighters){
+    if(!G.fighters.hasOwnProperty(id)) continue;
+    var f=G.fighters[id], b=f && f.bond, r=f && f.rel;
+    if(f && ((b && (safeInt(b.clash,0)>0 || b.rival)) || (r && clN(r.rivalry,0)>=40))) add(f);
+  }
+  return out;
+};
+RPG.rivalSweep = function(){
+  if(!G || !G.player || !G.fighters) return 0;
+  var n=0; RPG.rivalCands().forEach(function(f){ if(RPG.rivalTick(f)) n++; });
+  return n;
+};
+hookOn('week','rivalCiclo', function(){ safeRun('rpg/rivalCiclo', RPG.rivalSweep, null, true); }, 73);
+hookOn('fight:accepted','rivalCiclo', function(ctx){
+  var f=ctx && ctx.offer && F(ctx.offer.oppId); if(f) safeRun('rpg/rivalCiclo', function(){ RPG.rivalTick(f); }, null, true);
+}, 40);
+hookOn('fight:applied','rivalCiclo', function(){
+  var f=G && G.fight && F(G.fight.opp); if(f) safeRun('rpg/rivalCiclo', function(){ RPG.rivalTick(f); }, null, true);
+}, 90);
+/* la historia de la rivalidad, tal como avanzó */
+RPG.rivalHistHTML = function(f){
+  var rc=f && f.bond && f.bond.rc; if(!rc || !Array.isArray(rc.hist) || !rc.hist.length) return '';
+  return '<div class="log" style="margin-top:6px">'+rc.hist.map(function(x){
+    return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.n)+'</div>'; }).join('')+'</div>';
+};
 
 /* ==========================================================================
    PROMESAS QUE EL JUEGO HACÍA Y NO CUMPLÍA (auditoría RPG, 2.3)

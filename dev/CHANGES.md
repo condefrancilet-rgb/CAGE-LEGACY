@@ -10,6 +10,75 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-07 · Fase 10: lo que se escribía y nadie leía, ahora llega a algún lado
+**Tipo** conexión de datos sin consumidor + 1 corrección de diseño + consolidación · **Cambio
+observable:** sí, en la pelea (sólo si usás la toma de espalda, La Última Puerta o armás plan), en
+el campamento de una revancha, en las ofertas cuando hay ruido y en la ficha/diario de una
+rivalidad. **Nulo en la decisión del rival** y en las 5 carreras del golden (traza y final
+idénticos; sólo cambia la huella del estado). Archivo de partida: `7d694d0`.
+
+**Qué estaba mal** (hallazgos de la fase 9 y del inventario):
+- la **toma de espalda** (`g_back`, `g_rev`) escribía `st.back=1` y nadie lo leía;
+- **La Última Puerta** a PERFECTA con habilidad alta empataba con su L4 (las dos en el techo 0,80);
+- `TQ.fightPanel` estaba **definido dos veces**;
+- el HUD de distancia mostraba en **%** la distancia preferida de cada uno;
+- el **sello** de la Ultimate ignoraba la filosofía de combate asumida;
+- la **«Defensa principal»** del plan sólo sumaba al puntaje del plan: en la pelea no hacía nada
+  (A/B: las cuatro defensas daban resultados idénticos, 400 peleas cada una);
+- la **memoria del rival** no llegaba al campamento de la revancha;
+- `G.flags.heat` (seis escritores) y `CL.ufc().heat` no tenían ninguna decisión que los leyera;
+- el **ciclo de rivalidad** se derivaba en cada consulta: sin «en los medios», sin resolución y sin
+  historia.
+
+**Qué se hizo** (siempre por las vías que el motor ya tenía):
+
+| pieza | ahora | vía existente |
+|---|---|---|
+| toma de espalda | `TQ.back()`: vigente mientras sigas arriba ese round; suelo +6, sumisión del árbol ×1,15, +1 de control por intercambio; se pierde (y se dice) si cambia la posición o el round; el HUD la muestra | `combat:eff/TQ`, `TQ.apply`, `exchange:post/tqPasivas` |
+| La Última Puerta | techo propio de sumisión 0,88 (`fx.subCap`, acotado a 0,90); ninguna otra técnica cambia | `TQ.apply` |
+| `TQ.fightPanel` | una sola definición (la paginada); 49 paneles idénticos a la fase 9 | — |
+| HUD de distancia | «vos querés media · él larga» | `CL.zone` |
+| sello de la Ultimate | primero la filosofía de combate asumida (finalizar/espectáculo → Espectáculo; castigar/minimizar → Precisión; controlar/adelante → Desgaste), si no, la identidad; se guarda el origen y el árbol lo explica | `CMB.ultVariant`, `CMB.ULT_V` (los mismos 4 sellos) |
+| Defensa principal | +3 a esa defensa sólo en el intercambio en que él hace eso: cabeza ↔ él golpea de pie; derribo ↔ va al derribo (de pie o desde el clinch); reja ↔ te quiere llevar al clinch. Se ve en la tarjeta del plan y se explica al armarlo | `combat:eff` + `exchange:pre/post` |
+| memoria → campamento | el sparring de la revancha compara lo que muestra con lo que le viste («lo mismo» / «algo cambió» / «se la castigaste y se acuerda»); si el hábito pide otra defensa, ofrece ajustar el plan, y ese plan llega a la pelea | `CAMPO.tell`, `camp_spar`, `CMB.supOf` (la misma regla que usa la pelea) |
+| heat | las peleas de rivalidad/revancha pagan +4 % por punto (tope +30 %) y lo dicen; con 4+ y sin una, se arma la del rival con más rivalidad (sin azar); firmarla gasta el ruido (queda 40 %); se enfría 3 %/semana; Vanguard escribe en el mismo | `offers:made`, `fight:accepted`, `week` |
+| ciclo de rivalidad | cruce → tensión → en los medios → pelea firmada → ya se pelearon → revancha → resuelta; la resolución es `canOfferRematch`; el avance queda en `bond.rc` y la relación, los hitos en la memoria del mundo y el diario; la ficha del rival lo muestra desde antes de la primera pelea | `RPG.rivalFacts` (lector puro) + `RPG.rivalTick` |
+
+**Evidencia.**
+- Golden: con los siete cambios apagados las 5 trazas son idénticas (huella, final y traza); con
+  cada uno prendido por separado sólo el **heat** (enfriamiento) y el **ciclo** (registro) mueven
+  la huella; traza y final, idénticos siempre. Trazas regeneradas con `--solo-trazas`: el diff es
+  sólo `fingerprint`.
+- A/B de la defensa (400 peleas por variante, mismos rivales y dados, política básica): sin
+  defensa 71,3 % de victorias, 24,99 de daño recibido, 1,45 derribos de él, 1,00 entradas al
+  clinch. Cabeza: daño 22,98 (−8 %); derribo: derribos 1,34 (−8 %); reja: clinch 0,96 (−4 %).
+  Victorias +1 a +3 pp (ruido ±2,3 pp). En la versión anterior las cuatro daban exactamente lo
+  mismo. Es un empuje pequeño a favor del jugador, en su propio terreno, y queda declarado.
+- Memoria del mundo (tope 100): en las 5 carreras del golden quedan 1–6 hitos de rivalidad; los
+  resultados de pelea y los recuerdos de ayuda que sobreviven al final no cambian.
+- Legalidad del rival: 0 de 181.440 sorteos y 0 de 2.715 elecciones reales.
+- `dev/tests/22-fase10.js` (21 pruebas; efectos medidos contra `eff`/el dado, no contra la función
+  que los aplica; «sin azar» comprobado sobre `G.rs`); mutantes de la fase **39/39**. Cinco
+  sobrevivieron durante el desarrollo y obligaron a endurecer pruebas: la defensa fuera del
+  intercambio, la defensa aplicada al rival, el heat con azar (la prueba miraba `Math.random`, no
+  `G.rs`), el diario sin rivalidades y «una pelea suelta es rivalidad» (tras dejar sólo los hitos
+  en la memoria del mundo, la prueba tenía que mirar la relación). El conjunto de la fase 9 sigue
+  en 17/17 sobre este archivo.
+- Suite **304/304**, navegador **77/77**, **3/3** carreras completas (invariantes cada semana).
+  `dev/rpg-carrera-completa.js` cuenta lo nuevo por la vía del jugador y su política asume la
+  filosofía cuando las peleas la muestran: por carrera, 111–171 intercambios cubiertos por la
+  defensa del plan, 0–2 con la espalda tomada, 19–26 avances de rivalidad, ruido máximo 2,3–2,9
+  (1 pelea cobrada con ruido y firmada), y un sello Precisión que salió de «Minimizar el daño».
+  El sparring de revancha no aparece ahí porque la política no entrena sparring: lo cubren las
+  pruebas.
+- Costo: el barrido semanal del ciclo mira 16 candidatos de 381 peleadores en 0,28 ms (una semana
+  completa, ~200 ms) y no mueve el dado.
+
+**Hallazgos sin corregir.** El HUD de distancia se sigue mostrando en el suelo (previo). El
+autopiloto del golden no arma plan, no usa técnicas ni hace sparring: esas vías se prueban con
+`22-fase10.js` y con las carreras completas, no con el golden. `CL.ufc().heat` queda en partidas
+viejas, sin uso.
+
 ## RPG-06 · Fase 9: capa de información del Fight IQ, inventario del árbol, Ultimates auditadas
 **Tipo** capa de información + refactor neutral + 1 fix · **Cambio observable:** sí en la interfaz
 de la lectura; **nulo en la decisión del rival** (ver evidencia). Archivo de partida: `b099e0d`

@@ -36,6 +36,10 @@ function generar(c, src){
   const otrosUse = cuenta(/TQ\.use\(/g) - cuenta(/onclick="TQ\.use\(/g) - cuenta(/try\{ TQ\.use\(id\); \}/g) - cuenta(/TQ\.use = function/g);
   /* lecturas de lo que las técnicas escriben (código muerto) */
   const lecturasBack = cuenta(/st\.back\b/g) - cuenta(/st\.back=1/g);
+  /* fase 10: la espalda tomada es una posición que leen las vías del motor */
+  const BK = (c.TQ && c.TQ.BACK) || null;
+  const backUsos = cuenta(/TQ\.back\(\)/g);
+  const backVivo = /TQ\.back = function/.test(src) && backUsos > 0 && !!BK;
   const lecturasBleed = cuenta(/st\.bleed\b/g) - cuenta(/st\.bleed = safeNum\(st\.bleed,0\) \+ fx\.bleed\*mult/g);
   const ults = (c.CMB && c.CMB.ULT) ? c.CMB.ULT : {};
   const panel = cuenta(/TQ\.fightPanel\s*=\s*function/g);
@@ -52,7 +56,8 @@ function generar(c, src){
   L.push('- Técnicas: **' + T.length + '** (' + T.filter(t => t.t === 'a').length + ' activas, ' + T.filter(t => t.t === 'p').length + ' pasivas). Por nivel: ' + porNivel + '.');
   L.push('- Ramas: ' + Object.keys(BR).map(k => k + ' = ' + BR[k].n + ' (' + T.filter(t => t.br === k).length + ')').join(' · ') + '.');
   L.push('- Nivel 4 (legendarias): ' + T.filter(t => t.lv === 4).map(t => '`' + t.id + '`').join(', ') + '.');
-  L.push('- Ultimates (`CMB.ULT`): ' + Object.keys(ults).map(k => '`' + k + '` → ' + ults[k].n.replace(/^[^A-ZÁÉÍÓÚÑ]+/, '')).join(', ') + '.');
+  L.push('- Ultimates (`CMB.ULT`): ' + Object.keys(ults).map(k => '`' + k + '` → ' + ults[k].n.replace(/^[^A-ZÁÉÍÓÚÑ]+/, '') +
+         (ults[k].fx && ults[k].fx.subCap ? ' (techo de sumisión propio ' + ults[k].fx.subCap + ')' : '')).join(', ') + '.');
   L.push('- Resolución de una activa: `TQ.state` (condiciones) → `TQ.use` (gasta el uso, abre el minijuego del motor FX, filtro `tq:node`) → `TQ.resolve` (nota por `TQ.grade`: PERFECTA ≥ 0,86, BUENA ≥ 0,50, FALLA; `TQ.chance` con `TQ.resist` puede bajarla un escalón; evento `tq:resolved`) → `TQ.apply` (efecto). Funciones presentes: ' +
          ['state','use','resolve','chance','resist','apply','hit','divF','markDodge'].map(k => k + (V[k] ? ' ✓' : ' ✗ FALTA')).join(', ') + '.');
   L.push('- Pasivas: `TQ.passives()` (caché `TQ.PAS`) ' + (V.passives ? '✓' : '✗ FALTA') + ', consumidas por `gp:mod/tecnicas` ' + (V.gpmod ? '✓' : '✗') +
@@ -63,9 +68,13 @@ function generar(c, src){
   L.push('');
   L.push('## Hallazgos del inventario');
   L.push('');
-  L.push('- `fx.flag:\'back\'` (toma de espalda) escribe `st.back=1` y **ninguna función lo lee** (' + lecturasBack + ' lecturas): la «espalda tomada» de `g_back` y `g_rev` no tiene efecto propio más allá de su control y desgaste.');
+  if(backVivo) L.push('- `fx.flag:\'back\'` (toma de espalda) marca `st.back` con su round; `TQ.back()` la da por vigente mientras sigas arriba en ese round y se lee en ' + backUsos +
+         ' lugares: `combat:eff/TQ` (+' + BK.eff + ' al trabajo de suelo, también para resistir su barrida y su levantada), la sumisión del árbol en `TQ.apply` (×' + BK.sub +
+         ') y `exchange:post/tqPasivas` (+' + BK.ctrl + ' de control por intercambio; si la posición cambió, se pierde). Corregido en la fase 10.');
+  else L.push('- `fx.flag:\'back\'` (toma de espalda) escribe `st.back=1` y **ninguna función lo lee** (' + lecturasBack + ' lecturas): la «espalda tomada» de `g_back` y `g_rev` no tiene efecto propio más allá de su control y desgaste.');
   L.push('- `st.bleed` (cortes) tiene ' + lecturasBleed + ' lecturas: se consume en `exchange:post/tqPasivas` y se muestra en el panel. Correcto.');
-  L.push('- `TQ.fightPanel` está definido ' + panel + ' veces; la definición que rige es la última (paginada). Es una redefinición previa a esta etapa.');
+  if(panel === 1) L.push('- `TQ.fightPanel` tiene una sola definición (la paginada); la redefinición se retiró en la fase 10.');
+  else L.push('- `TQ.fightPanel` está definido ' + panel + ' veces; la definición que rige es la última (paginada). Es una redefinición previa a esta etapa.');
   L.push('');
   L.push('## Técnica por técnica');
   const fxTxt = (fx) => {
@@ -105,7 +114,7 @@ function generar(c, src){
     if(fx.healP) e.add('f.p.hp');
     if(fx.dist || fx.read) e.add('f.cl (distancia/lectura)');
     if(fx.bleed) e.add('f.tq.bleed');
-    if(fx.flag === 'back') e.add('f.tq.back (sin lector)');
+    if(fx.flag === 'back') e.add(backVivo ? 'f.tq.back (espalda tomada, `TQ.back()`)' : 'f.tq.back (sin lector)');
     if(fx.flag === 'dodge') e.add('f.tq.dodgeAt');
     if(fx.ctrlO) e.add('f.o.ctrl');
     return [...e];
@@ -148,7 +157,7 @@ function generar(c, src){
       L.push('- Ultimate: ' + (ults[t.id] ? '**sí** → ' + ults[t.id].n.replace(/^[^A-ZÁÉÍÓÚÑ]+/, '') + ' (ver `dev/ULTIMATES-AUDITORIA.md`)' : 'no') +
              ' · IA del rival: no · Efectos secundarios: ' + ([t.fx && t.fx.pos ? 'cambia la posición' : null, t.fx && t.fx.flag ? 'marca «' + t.fx.flag + '»' : null,
                t.fx && t.fx.bleed ? 'deja un corte' : null, t.bad && t.bad.pos ? 'al fallar cambia la posición' : null].filter(Boolean).join(', ') || 'ninguno') +
-             (t.fx && t.fx.flag === 'back' ? ' · **código muerto**: la marca «back» no se lee' : '') + '.');
+             (t.fx && t.fx.flag === 'back' && !backVivo ? ' · **código muerto**: la marca «back» no se lee' : '') + '.');
     }
   }
   return L.join('\n') + '\n';

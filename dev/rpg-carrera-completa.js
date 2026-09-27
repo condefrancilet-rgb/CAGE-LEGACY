@@ -54,6 +54,8 @@ function semanaDeJugador(c, rnd){
   }
   /* lección de la última derrota */
   if(c.G.rpg.lastLoss && rnd() < 0.8) c.CMB.takeLesson();
+  /* asumir en público la filosofía de combate que muestran sus peleas (de vez en cuando) */
+  if(!c.G.rpg.philo.fight && rnd() < 0.04 && c.RPG.canAdopt('fight').ok) c.RPG.adopt('fight');
   /* puntos de técnica: la más barata disponible */
   for(let k = 0; k < 3; k++){
     const t = c.TQ.T.filter(x => c.TQ.canUnlock(x.id).ok).sort((a, b) => a.cost - b.cost || a.lv - b.lv)[0];
@@ -71,6 +73,15 @@ for(let i = 0; i < N; i++){
   H.startCareer(h, { metaSeed, style: ['mma','boxer','wrest','bjj','muay'][i % 5], div: 'LW', age: 21 });
   let s = seed >>> 0; const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
   let semanas = 0, fallo = null;
+  /* fase 10: ¿se llega a lo nuevo por la vía del jugador? (sólo cuenta) */
+  const k10 = { espalda: 0, defensa: 0, heatOf: 0, heatFirmadas: 0, sparMem: 0, sparPlan: 0, heatMax: 0 };
+  c.hookOn('week', 'dev10', () => { k10.heatMax = Math.max(k10.heatMax, c.HEAT.v()); }, 99);
+  c.hookOn('exchange:post', 'dev10', () => { if(c.TQ.back()) k10.espalda++; }, 1);
+  c.hookOn('exchange:pre', 'dev10', (cx) => { const f = c.G.fight, X = c.GP_DEF_X; if(f && X && f.gp && f.gp.def && c.gpDefCovers(f.gp.def, X.pos, X.oa, X.pa)) k10.defensa++; }, 6);
+  c.hookOn('offers:made', 'dev10', () => { (c.G.offers || []).forEach(o => { if(o && o.heatB) k10.heatOf++; }); }, 98);
+  c.hookOn('fight:accepted', 'dev10', (x) => { if(x && x.offer && x.offer.heatB) k10.heatFirmadas++; }, 99);
+  const _ask = c.CL.ask;
+  c.CL.ask = function(h, txt, labels, data){ if(h === 'camp_spar'){ if(data && data.rem) k10.sparMem++; if(labels && labels.length > 2) k10.sparPlan++; } return _ask.apply(this, arguments); };
   const tc = Date.now();
   while(!c.G.player.retired && c.ageOf(c.G.player) < 37 && semanas < 1000){
     try {
@@ -109,6 +120,14 @@ for(let i = 0; i < N; i++){
   console.log('   ' + Object.values(r.fm || {}).length + ' rivales en memoria · victorias leyendo ' + ((r.cnt && r.cnt.iqW) || 0) + ' · lecciones aprendidas ' + (r.lessons || []).length +
               ' · Ultimates ' + Object.keys(r.ult || {}).join(',') + ' · eras terminadas ' + (r.eraEnds || 0) + ' · técnicas ' + c.TQ.ownedAll());
   console.log('   maestría ' + (mast || '—') + (fin.bytes ? ' · G.rpg ' + (fin.bytes / 1024).toFixed(1) + ' KB' : ''));
+  /* las etapas, de la historia guardada en cada relación (la memoria del mundo
+     tiene tope de 100 y al retiro sólo conserva lo último) */
+  const etapas = {};
+  Object.values(c.G.fighters).forEach(f => ((f && f.bond && f.bond.rc && f.bond.rc.hist) || []).forEach(x => { etapas[x.k] = (etapas[x.k] || 0) + 1; }));
+  const sellos = Object.keys(r.ult || {}).map(k => k + ':' + r.ult[k].v + '/' + (r.ult[k].src || '—')).join(' ');
+  console.log('   fase 10 · intercambios con la espalda tomada ' + k10.espalda + ' · intercambios cubiertos por la defensa del plan ' + k10.defensa +
+              ' · ruido máximo ' + k10.heatMax.toFixed(1) + ' · ofertas cobradas con ruido ' + k10.heatOf + ' (firmadas ' + k10.heatFirmadas + ') · sparring con memoria ' + k10.sparMem +
+              ' · sparring que ofreció ajustar el plan ' + k10.sparPlan + ' · etapas de rivalidad ' + (JSON.stringify(etapas)) + ' · sellos ' + (sellos || '—'));
 }
 console.log('\n' + (N - rotas) + '/' + N + ' carreras completas sin fallos · invariantes cada semana (' + Object.keys(INV.SISTEMAS).length + ' sistemas) · ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 process.exit(rotas ? 1 : 0);
