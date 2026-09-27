@@ -3558,6 +3558,9 @@ function scheduleFight(spec,source){
   G.nextFight=spec;
   G.player.scheduledFightKey=spec.offerKey||null;
   careerLog('SCHEDULE','Pelea programada contra '+fname(F(spec.oppId))+' · '+(spec.title?'TÍTULO':'normal'),{source:source,oppId:spec.oppId,offerKey:spec.offerKey});
+  /* toda pelea firmada, venga de una oferta, de un evento o del mánager,
+     pasa por aquí: es el sitio para reaccionar a "firmaste esta pelea" */
+  hookEmit('fight:scheduled', {spec:spec, source:source});
   return {ok:true, fight:spec};
 }
 function cancelScheduledFight(reason,cat){
@@ -3857,7 +3860,9 @@ function applyWinLossResult(){
   if(G.camp && G.camp.missWeight) purse *= (G.flags.nutri? .9 : .8);
   var pay = won? purse : purse*0.6;
   var bonus = 0;
-  if(res.method!=='dec' && chance(.45)) bonus = Math.round(purse*0.5);
+  /* el chance(.45) va PRIMERO: con o sin el rasgo, la tirada se consume igual
+     y el resto de la partida no se desplaza (RPG: Finalizador) */
+  if(res.method!=='dec' && (chance(.45) || (typeof RPG!=='undefined' && RPG.hasTrait('finalizador') && won))) bonus = Math.round(purse*0.5);
   if(f.title && won) bonus += Math.round(purse*0.3);
   var m = mgrById(G.mgId);
   var cut = m? m.cut : 0;
@@ -12359,6 +12364,9 @@ function socSpend(key,label,opt){
   }
   if(key) b.log[key]=label||1;
   if(opt.post) c.post[opt.post]=1;                         /* un post se responde una vez */
+  /* la DECISIÓN de buscar a alguien ya ocurrió, acepte o no el otro: es lo
+     que escuchan la memoria de decisiones y el temperamento emergente */
+  hookEmit('social:spend', {key:key, label:label, actor:opt.actor||null, cat:opt.cat||null, weight:weight});
   if(weight!==SOC_W.MENOR){
     if(opt.actor) c.actor[opt.actor]=SOC_CD.actor + (weight===SOC_W.MAYOR?1:0);
     if(opt.cat){
@@ -12768,6 +12776,7 @@ function chatPick(i){
     var o=m.opts[i]; if(!o) return;
     var b=bondOf(f), r=relV(f), p=G.player;
     var tone=o.tone, out='';
+    hookEmit('social:chat', {tone:tone, act:o.act||null, id:f.id, k:m.k});
     /* la consecuencia depende del TONO, de QUIÉN es y del CONTEXTO */
     var fitsThem = (tone===f.pers||tone===f.pers2);
     var fitsYou  = (tone===p.pers||tone===p.pers2);
@@ -26764,7 +26773,9 @@ MGR.read = function(){
   if(typeof CL.debtTotal==='function' && CL.debtTotal()>0) out.warns.push('"Debés '+money(CL.debtTotal())+'. La próxima bolsa ya tiene dueño."');
   var el=MGR.elimTarget();
   if(el.ok) out.chances.push({k:'elim', t:'Eliminatoria contra '+fname(el.opp)+' ('+rankLabel(el.opp)+')', d:'Quien gana queda primero en la fila por el título.'});
-  var lastL=(p.career||[]).slice(-3).filter(function(x){ return x.res==='L'; }).pop();
+  /* Especialista en revanchas (RPG): el mánager mira mucho más atrás */
+  var ventana=(typeof RPG!=='undefined' && RPG.hasTrait('revancha'))? 12 : 3;
+  var lastL=(p.career||[]).slice(-ventana).filter(function(x){ return x.res==='L'; }).pop();
   if(lastL && !G.nextFight){
     var lo=F(lastL.oppId);
     if(lo && !fightSpecProblem({oppId:lo.id, org:p.org})) out.chances.push({k:'rev', t:'Revancha con '+fname(lo), d:'Te ganó por '+lastL.m+' en '+lastL.y+'.', id:lo.id});
@@ -29109,6 +29120,7 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
     var author=post.authorId? F(post.authorId) : null;
     var extra=storyReactApply(post, opt, author);
     remember('social_reaction',{author:post.author,text:String(post.text).slice(0,100),action:opt.t,kind:post.kind||null});
+    hookEmit('social:react', {tone:opt.tone, authorId:post.authorId||null, type:post.type||null});
     feedPush('@Tu','player', (opt.out||opt.t)+(extra?' ('+extra+')':''), 1);
     G.socOut={t:'📱 '+opt.t+' — '+(opt.out||'')};
     saveGame(true);render();
@@ -29316,6 +29328,920 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
     }});
   }
 })();
+
+/* ==========================================================================
+   MÓDULO RPG — QUIÉN SOS SALE DE LO QUE HACÉS  ("RPG")
+   --------------------------------------------------------------------------
+   POR QUÉ EXISTE
+   El juego ya sabía muchísimo del jugador y no lo decía en ningún sitio
+   donde importara: cada decisión quedaba en un log (G.story.memories), cada
+   pelea en p.career, cada persona en su bond/rel, cada técnica en G.tq. Lo que
+   faltaba era la capa que CONVIERTE eso en personaje: temperamento que emerge,
+   una identidad que la prensa reconoce, rasgos ganados con hechos, una
+   filosofía que se asume en público y un diario que cuenta la carrera.
+
+   QUÉ NO ES
+   · No es un segundo sistema de personalidad: p.pers/p.pers2 siguen siendo la
+     personalidad declarada que leen 30 sitios. La emergente se DERIVA de los
+     ecos y, cuando se separa de la declarada, el juego te lo pregunta.
+   · No es un almacén nuevo de "lo que pasó": los ecos se anotan en
+     G.story.memories con CL.remember. G.rpg guarda sólo AGREGADOS (porque la
+     memoria narrativa tiene tope de 100 entradas) y lo que es propio de esta
+     capa (rasgos, filosofías asumidas, estadísticas de pelea).
+   · No da "+5 %": los rasgos abren OPCIONES (una acción en la pelea, una
+     interacción social, una oferta), y las filosofías cambian a quién le hace
+     caso tu mánager y cómo te trata tu esquina.
+   · No usa RNG ni escribe al dibujar. Todo lo derivado es función pura del
+     estado; lo que se guarda, se escribe en los hooks de lo que pasó.
+   ========================================================================== */
+CL.mod('rpg','Ecos de decisión, temperamento emergente, identidad, rasgos, filosofías, diario y legado');
+var RPG = {};
+RPG.V = 1;
+RPG.DEF = function(){
+  return {
+    v:RPG.V,
+    tally:{},      /* eje -> evidencia acumulada (puede ser negativa)          */
+    cp:{},         /* filosofía de carrera -> evidencia                        */
+    fp:{},         /* filosofía de combate -> evidencia (reparto por pelea)    */
+    fpN:0,         /* peleas que aportaron a fp                                */
+    n:0,           /* ecos registrados en la carrera                           */
+    seen:{},       /* eco -> veces                                             */
+    last:{},       /* eco -> sello (año*52+semana)                             */
+    traits:{},     /* rasgo -> {y,w,why}                                       */
+    philo:{fight:null, career:null, at:null},
+    ident:{k:null, at:null, hist:[]},
+    /* contadores de hechos de carrera. NO se puede llamar «st»: saveReplacer
+       compacta TODA clave st/pot/lr como si fueran atributos de peleador y
+       al cargar volvía como un array de 26 cincuentas. */
+    cnt:{fights:0,wins:0,losses:0,draws:0,fin:0,decW:0,comeback:0,war:0,revW:0,gpW:0,
+        weighStreak:0,weighMiss:0,press:0,iqW:0},
+    tempAsk:null   /* último sello en que se preguntó por el temperamento       */
+  };
+};
+/* LECTOR: nunca crea estado (las pantallas lo usan, B-001). */
+RPG.R = function(){ return (G && G.rpg && typeof G.rpg==='object') ? G.rpg : RPG.DEF(); };
+/* ESCRITOR: completa lo que falte (partidas viejas, versiones previas). */
+RPG.S = function(){
+  if(!G) return RPG.DEF();
+  if(!G.rpg || typeof G.rpg!=='object') G.rpg = RPG.DEF();
+  var s=G.rpg, d=RPG.DEF();
+  for(var k in d){ if(d.hasOwnProperty(k) && !(k in s)) s[k]=d[k]; }
+  if(!s.cnt || typeof s.cnt!=='object' || Array.isArray(s.cnt)) s.cnt=d.cnt;
+  for(var k2 in d.cnt){ if(d.cnt.hasOwnProperty(k2) && typeof s.cnt[k2]!=='number') s.cnt[k2]=0; }
+  if(!s.philo || typeof s.philo!=='object') s.philo=d.philo;
+  if(!s.ident || typeof s.ident!=='object' || !Array.isArray(s.ident.hist)) s.ident=d.ident;
+  return s;
+};
+RPG.stamp = function(){ return G? safeInt(G.year,0)*52+safeInt(G.week,0) : 0; };
+RPG.hasTrait = function(k){ var r=RPG.R(); return !!(r.traits && r.traits[k]); };
+/* lecturas que las PANTALLAS usan: las originales (CL.gymRep, CL.legacyExtra)
+   crean su valor por defecto al leer, y dibujar no puede escribir (B-001) */
+RPG.gymRepR = function(id){ var t=G && G.cl && G.cl.gymRep; return (t && typeof t[id]==='number')? t[id] : 45; };
+RPG.disciples = function(){
+  var p=G.player, out=[];
+  Object.keys(G.fighters).forEach(function(id){
+    var f=G.fighters[id];
+    if(!f || f.isPlayer || f.gym!==p.gym || f.retired) return;
+    var b=f.bond||{}, r=f.rel||{};
+    if(b.disciple || (clAge(f) < clAge(p)-5 && clN(r.respect,50)>62)) out.push(f);
+  });
+  return out;
+};
+
+/* --------------------------------------------------------------------------
+   1. EJES DEL TEMPERAMENTO (bipolares) Y FILOSOFÍAS
+   -------------------------------------------------------------------------- */
+RPG.AX = {
+  riesgo:       {pos:'Temerario',    neg:'Calculador'},
+  disciplina:   {pos:'Disciplinado', neg:'Irregular'},
+  lealtad:      {pos:'Leal',         neg:'Independiente'},
+  ego:          {pos:'Protagonista', neg:'Humilde'},
+  confrontacion:{pos:'Confrontativo',neg:'Conciliador'},
+  estrategia:   {pos:'Estratega',    neg:'Instintivo'},
+  espectaculo:  {pos:'Showman',      neg:'Reservado'},
+  ambicion:     {pos:'Ambicioso',    neg:'Paciente'}
+};
+RPG.AXK = ['riesgo','disciplina','lealtad','ego','confrontacion','estrategia','espectaculo','ambicion'];
+RPG.CP = {dinero:'Dinero', gloria:'Gloria', competencia:'Competición', libertad:'Libertad',
+          lealtad:'Lealtad', legado:'Legado', fama:'Fama'};
+RPG.FP = {control:'Controlar', castigo:'Castigar errores', adelante:'Nunca retroceder',
+          finalizar:'Buscar la finalización', minimizar:'Minimizar el daño', espectaculo:'Dar espectáculo'};
+RPG.FP_D = {
+  control:'La pelea ocurre donde yo decido y al ritmo que yo marco.',
+  castigo:'Que él proponga. Cada error suyo es mío.',
+  adelante:'Un paso atrás es un round perdido. Siempre hacia adelante.',
+  finalizar:'Las tarjetas mienten. El árbitro parando la pelea, no.',
+  minimizar:'Se gana también con lo que no te pegan. La carrera es larga.',
+  espectaculo:'La gente paga por algo. Se lo voy a dar.'
+};
+RPG.CP_D = {
+  dinero:'Esto es un trabajo y dura poco. Cobrar bien es respetarse.',
+  gloria:'El cinturón. Lo demás es ruido.',
+  competencia:'Contra los mejores, siempre. Si no, ¿para qué?',
+  libertad:'Nadie decide por mí: ni la organización, ni el gimnasio, ni el contrato.',
+  lealtad:'Con los míos hasta el final: mi gimnasio, mi esquina, mi gente.',
+  legado:'Que cuando me vaya quede algo más que un récord.',
+  fama:'Si no te conocen, no existís. Hay que estar en boca de todos.'
+};
+
+/* --------------------------------------------------------------------------
+   2. ECOS DE DECISIÓN — un catálogo, un escritor
+   ax: evidencia de temperamento · cp: evidencia de filosofía de carrera
+   mem: si se anota en la memoria narrativa (las frecuentes, no)
+   -------------------------------------------------------------------------- */
+RPG.ECHO = {
+  short_notice:   {t:'Aceptaste pelear con poco tiempo de aviso', ax:{riesgo:2,ambicion:1}, cp:{competencia:1,dinero:1}, mem:1},
+  title_chase:    {t:'Fuiste por el cinturón', ax:{ambicion:2}, cp:{gloria:2}, mem:1},
+  elim_signed:    {t:'Firmaste una eliminatoria', ax:{ambicion:1.5,riesgo:.5}, cp:{gloria:1,competencia:1}, mem:1},
+  rematch_signed: {t:'Fuiste a buscar la revancha', ax:{ego:1,ambicion:1}, cp:{competencia:1,legado:1}, mem:1},
+  money_fight:    {t:'Firmaste la pelea que vende', ax:{espectaculo:1}, cp:{dinero:2,fama:1}, mem:1},
+  safe_fight:     {t:'Elegiste la pelea accesible', ax:{riesgo:-1.5,estrategia:.5}, cp:{dinero:.5}, mem:1},
+  risky_fight:    {t:'Firmaste una pelea de mucho riesgo', ax:{riesgo:1.5}, cp:{competencia:1}, mem:0},
+  declined_title: {t:'Rechazaste una pelea por el título', ax:{riesgo:-2,ambicion:-1.5,estrategia:.5}, cp:{libertad:1}, mem:1},
+  declined_fight: {t:'Rechazaste una pelea', ax:{riesgo:-.5}, cp:{libertad:.5}, mem:0},
+  made_weight:    {t:'Diste el peso', ax:{disciplina:.6}, mem:0},
+  missed_weight:  {t:'No diste el peso', ax:{disciplina:-2.5}, mem:1},
+  media_aggro:    {t:'Calentaste la previa ante los micrófonos', ax:{confrontacion:1.2,ego:.8,espectaculo:.5}, cp:{fama:.6}, mem:0},
+  media_pro:      {t:'Respondiste como un profesional', ax:{disciplina:.6,confrontacion:-.6,estrategia:.3}, mem:0},
+  media_humble:   {t:'Hablaste con humildad', ax:{ego:-1,confrontacion:-.4}, mem:0},
+  media_funny:    {t:'Te llevaste la sala con humor', ax:{espectaculo:1.2}, cp:{fama:.5}, mem:0},
+  media_quiet:    {t:'No regalaste titulares', ax:{espectaculo:-1,estrategia:.3}, mem:0},
+  sought_training:{t:'Buscaste entrenar con otros', ax:{lealtad:.3,ego:-.2}, mem:0},
+  asked_advice:   {t:'Pediste consejo', ax:{ego:-.6,estrategia:.3}, mem:0},
+  ally_proposed:  {t:'Propusiste una alianza', ax:{lealtad:1}, cp:{lealtad:.5}, mem:1},
+  traveled:       {t:'Viajaste con un amigo', ax:{lealtad:.6}, mem:0},
+  watched_fight:  {t:'Fuiste a estudiar una pelea en persona', ax:{estrategia:.8}, mem:0},
+  defended_mate:  {t:'Saliste a bancar a un compañero', ax:{lealtad:2,confrontacion:.3}, cp:{lealtad:1}, mem:1},
+  took_side:      {t:'Tomaste partido en un conflicto ajeno', ax:{lealtad:1,confrontacion:.8}, mem:1},
+  stayed_neutral: {t:'Te mantuviste al margen de un conflicto', ax:{estrategia:.6,confrontacion:-.8}, mem:0},
+  helped_mate:    {t:'Te vaciaste ayudando a un compañero', ax:{lealtad:1.5,ambicion:-.5}, cp:{lealtad:1}, mem:1},
+  refused_help:   {t:'Priorizaste tu preparación antes que ayudar', ax:{lealtad:-1,ambicion:1}, cp:{libertad:.5}, mem:1},
+  backed_coach:   {t:'Bancaste a tu entrenador', ax:{lealtad:1.5}, cp:{lealtad:1}, mem:1},
+  left_coach:     {t:'Dejaste a tu entrenador', ax:{lealtad:-1.5}, cp:{libertad:1}, mem:1},
+  slammed_door:   {t:'Te fuiste dando un portazo', ax:{ego:1.5,confrontacion:1,lealtad:-1}, cp:{libertad:1}, mem:1},
+  left_gym:       {t:'Cambiaste de gimnasio', ax:{lealtad:-1.2}, cp:{libertad:1}, mem:1},
+  stayed_gym:     {t:'Rechazaste irte de tu gimnasio', ax:{lealtad:1.5}, cp:{lealtad:1}, mem:1},
+  callout:        {t:'Te cruzaste en público con un rival', ax:{confrontacion:1.5,ego:1}, cp:{fama:.5}, mem:1},
+  respect_reply:  {t:'Contestaste con respeto a una provocación', ax:{confrontacion:-1,disciplina:.4}, mem:0},
+  ignored_callout:{t:'Ignoraste una provocación', ax:{confrontacion:-.6,estrategia:.4}, mem:0},
+  fought_friend:  {t:'Aceptaste pelear contra un amigo', ax:{ambicion:1.5,lealtad:-1}, cp:{competencia:1}, mem:1},
+  refused_friend: {t:'Te negaste a pelear contra un amigo', ax:{lealtad:2}, cp:{lealtad:1}, mem:1},
+  loss_rematch:   {t:'Pediste la revancha apenas perdiste', ax:{ego:1,ambicion:1}, cp:{competencia:1}, mem:1},
+  loss_study:     {t:'Después de perder, estudiaste lo que faltó', ax:{estrategia:1.5}, mem:1},
+  loss_reinvent:  {t:'Después de perder, cambiaste tu manera de pelear', ax:{estrategia:1}, mem:1},
+  loss_move:      {t:'Después de perder, cambiaste de gimnasio', ax:{lealtad:-1}, cp:{libertad:.5}, mem:1},
+  loss_rest:      {t:'Después de perder, te diste tiempo', ax:{disciplina:.5,ambicion:-.5}, mem:0},
+  camp_invite:    {t:'Aceptaste un camp en otro gimnasio', ax:{ambicion:.8,lealtad:-.3}, mem:1},
+  camp_decline:   {t:'Rechazaste un camp para no perder tu rutina', ax:{lealtad:.8,disciplina:.4}, mem:0},
+  consult_coach:  {t:'Lo consultaste con tu entrenador antes de decidir', ax:{lealtad:.6,estrategia:.4}, mem:0},
+  hype_embraced:  {t:'Te subiste a la ola mediática', ax:{ego:1,espectaculo:1}, cp:{fama:1}, mem:0},
+  hype_refused:   {t:'Bajaste el ruido cuando te pusieron en la tapa', ax:{disciplina:.8,espectaculo:-.6}, mem:0},
+  take_any:       {t:'Aceptaste lo que sea con tal de pelear', ax:{riesgo:1.5}, cp:{dinero:1}, mem:1},
+  patient_wait:   {t:'Esperaste la pelea correcta', ax:{ambicion:-1,estrategia:.8}, mem:0},
+  followed_mgr:   {t:'Le hiciste caso a tu mánager', ax:{lealtad:.5,estrategia:.3}, mem:0},
+  ignored_mgr:    {t:'Ignoraste a tu mánager', ax:{lealtad:-.5}, cp:{libertad:.6}, mem:0},
+  pushed_mgr:     {t:'Presionaste a tu mánager por algo más grande', ax:{ambicion:1.5,ego:.5}, cp:{gloria:1}, mem:0},
+  legacy_talk:    {t:'Hablaste de legado', ax:{ego:.3}, cp:{legado:1.5}, mem:0},
+  legacy_gym:     {t:'Invertiste en tu gimnasio', ax:{lealtad:1}, cp:{legado:2}, mem:1},
+  focus_war:      {t:'Semana de guerra', ax:{riesgo:.25,disciplina:.1}, mem:0},
+  focus_smart:    {t:'Semana de estudio', ax:{estrategia:.25}, mem:0},
+  focus_recover:  {t:'Semana de descarga', ax:{disciplina:.2,riesgo:-.15}, mem:0},
+  spend_allin:    {t:'Todo adentro', ax:{ambicion:.15}, cp:{gloria:.1}, mem:0},
+  spend_lean:     {t:'Plan austero', ax:{disciplina:.1}, cp:{dinero:.1}, mem:0},
+  temper_owned:   {t:'Asumiste el temperamento que mostraste', ax:{}, mem:1},
+  temper_denied:  {t:'Negaste el temperamento que te marcan', ax:{ego:.5}, mem:1},
+  philo_fight:    {t:'Asumiste una filosofía de combate en público', ax:{estrategia:.5}, mem:1},
+  philo_career:   {t:'Asumiste una filosofía de carrera en público', ax:{}, mem:1}
+};
+RPG.echo = function(k, d){
+  var E=RPG.ECHO[k]; if(!E || !G || !G.player || G.player.retired) return false;
+  d=d||{};
+  var s=RPG.S(), w=(typeof d.w==='number')? d.w : 1;
+  for(var a in (E.ax||{})) if(E.ax.hasOwnProperty(a)) s.tally[a]=clN(s.tally[a],0)+E.ax[a]*w;
+  for(var c in (E.cp||{})) if(E.cp.hasOwnProperty(c)) s.cp[c]=clN(s.cp[c],0)+E.cp[c]*w;
+  s.seen[k]=safeInt(s.seen[k],0)+1; s.last[k]=RPG.stamp(); s.n=safeInt(s.n,0)+1;
+  if(E.mem && CL.remember) CL.remember('echo', {k:k, t:d.t||E.t, who:d.who||null});
+  hookEmit('rpg:echo', {k:k, d:d});
+  return true;
+};
+/* ¿cuándo fue la última vez? — lo que NPC, prensa y mánager consultan */
+RPG.lastEcho = function(k){ var r=RPG.R(); return r.last && r.last[k]!==undefined ? r.last[k] : null; };
+RPG.echoCount = function(k){ var r=RPG.R(); return safeInt(r.seen && r.seen[k],0); };
+RPG.recentEchoes = function(n){
+  var mem=(G && G.story && Array.isArray(G.story.memories))? G.story.memories : [];
+  return mem.filter(function(m){ return m && m.type==='echo'; }).slice(0, n||12);
+};
+
+/* --------------------------------------------------------------------------
+   3. DE DÓNDE SALEN LOS ECOS — sólo de decisiones que ya existían
+   -------------------------------------------------------------------------- */
+hookOn('fight:scheduled','rpg', function(c){
+  var o=c.spec||{}, src=String(c.source||''), p=G.player;
+  if(o.shortNotice || safeInt(o.weeks,9)<=3) RPG.echo('short_notice', {who:o.oppId});
+  if(o.title) RPG.echo('title_chase', {who:o.oppId});
+  else if(o.elim) RPG.echo('elim_signed', {who:o.oppId});
+  var beat=(p.career||[]).some(function(x){ return x.oppId===o.oppId && x.res==='L'; });
+  if(!o.title && (o.clTag==='revancha' || beat)) RPG.echo('rematch_signed', {who:o.oppId});
+  if(o.clTag==='show' || o.clTag==='personalidad') RPG.echo('money_fight', {who:o.oppId});
+  if(o.clTag==='accesible') RPG.echo('safe_fight', {who:o.oppId});
+  if(o.clTag==='urgencia') RPG.echo('take_any', {who:o.oppId});
+  var a=null; try{ a=CL.offerAnalysis(o); }catch(e){ a=null; }
+  if(a && a.risk>=4.5) RPG.echo('risky_fight', {who:o.oppId});
+}, 50);
+hookOn('media:done','rpg', function(c){
+  (c.tones||[]).forEach(function(t){
+    if(t==='aggro'||t==='arrogant') RPG.echo('media_aggro');
+    else if(t==='pro') RPG.echo('media_pro');
+    else if(t==='humble') RPG.echo('media_humble');
+    else if(t==='funny'||t==='charisma') RPG.echo('media_funny');
+    else if(t==='quiet') RPG.echo('media_quiet');
+  });
+}, 50);
+hookOn('social:react','rpg', function(c){
+  var t=c.tone;
+  if(t==='aggro'||t==='arrogant') RPG.echo('media_aggro', {w:.6});
+  else if(t==='pro') RPG.echo('media_pro', {w:.6});
+  else if(t==='humble') RPG.echo('media_humble', {w:.6});
+  else if(t==='funny') RPG.echo('media_funny', {w:.6});
+  else if(t==='quiet') RPG.echo('media_quiet', {w:.6});
+}, 50);
+hookOn('social:chat','rpg', function(c){
+  if(c.act==='defend') RPG.echo('defended_mate', {who:c.id});
+  else if(c.tone==='aggro'||c.tone==='arrogant') RPG.echo('media_aggro', {w:.4});
+  else if(c.tone==='humble') RPG.echo('media_humble', {w:.4});
+}, 50);
+hookOn('social:spend','rpg', function(c){
+  var L=c.label;
+  if(L==='train') RPG.echo('sought_training', {who:c.actor});
+  else if(L==='advice') RPG.echo('asked_advice', {who:c.actor});
+  else if(L==='ally') RPG.echo('ally_proposed', {who:c.actor});
+  else if(L==='travel') RPG.echo('traveled', {who:c.actor});
+  else if(L==='watch') RPG.echo('watched_fight', {who:c.actor});
+}, 50);
+hookOn('mgr:decision','rpg', function(c){
+  if(c.k==='follow') RPG.echo('followed_mgr');
+  else if(c.k==='ignore') RPG.echo('ignored_mgr');
+  else if(c.k==='push') RPG.echo('pushed_mgr');
+}, 50);
+/* decisiones de eventos: tabla (evento, opción) -> eco. Los handlers
+   serializables de CL (h:) y los eventos del banco (e:). Lo no listado no
+   deja eco: mejor callar que inventar una lectura de la decisión. */
+RPG.EV_ECHO = {
+  'h:cl_callout':      ['callout','respect_reply','ignored_callout'],
+  'h:cl_friendfight':  ['fought_friend','refused_friend','consult_coach'],
+  'h:cl_sides':        ['took_side','took_side','stayed_neutral'],
+  'h:cl_ally':         ['took_side','stayed_neutral','respect_reply'],
+  'h:coach_beef':      ['backed_coach','took_side','stayed_neutral'],
+  'h:coach_quit':      ['backed_coach','left_coach','slammed_door'],
+  'h:cl_invite':       ['camp_invite','camp_decline','consult_coach'],
+  'h:cl_press_hot':    ['hype_embraced','media_pro','hype_refused'],
+  'h:cl_press_cold':   ['callout','media_pro','media_quiet'],
+  'h:cl_press_age':    ['hype_embraced','media_humble','media_quiet'],
+  'h:cl_press_legacy': ['hype_embraced','media_pro','legacy_talk'],
+  'h:cl_press_newchamp':['title_chase','legacy_talk','media_quiet'],
+  'h:cl_press_comeback':['loss_rematch','loss_rest','callout'],
+  'h:cl_idle':         ['take_any','patient_wait','hype_embraced'],
+  'h:ufc_welcome':     ['short_notice','media_funny','title_chase'],
+  'h:ufc_warn':        ['safe_fight','risky_fight','loss_rest'],
+  'e:story_rival_escalation':['callout','respect_reply','ignored_callout'],
+  'e:story_rival_reply':     ['callout','respect_reply'],
+  'e:story_training_partner':['helped_mate','sought_training','refused_help'],
+  'e:story_champion_pressure':['legacy_talk','callout','media_quiet'],
+  'e:story_loss_rebuild':    ['loss_rematch','loss_rest','loss_move'],
+  'e:story_veteran_legacy':  ['title_chase','legacy_gym','legacy_talk'],
+  'e:x12_academy':           ['left_gym','stayed_gym','consult_coach']
+};
+hookOn('event:pre','rpg', function(c){
+  var e=c.e; c.rpgKey=null;
+  if(!e) return;
+  if(e.h==='loss_cross'){
+    var kk=(e.data&&e.data.keys||[])[c.idx];
+    c.rpgKey = {rev:'loss_rematch', anti:'loss_study', evo:'loss_reinvent', gym:'loss_move', vet:'loss_reinvent', rest:'loss_rest'}[kk] || null;
+    return;
+  }
+  var tab=RPG.EV_ECHO[e.h? 'h:'+e.h : 'e:'+e.id];
+  if(tab) c.rpgKey=tab[c.idx]||null;
+}, 5);
+hookOn('event:resolved','rpg', function(c){ if(c.rpgKey) RPG.echo(c.rpgKey); }, 50);
+/* la semana: foco, plan de gasto, mudanzas y cambios de esquina */
+hookOn('week','rpg', function(){
+  if(!G || !G.player || G.player.retired) return;
+  var p=G.player, s=RPG.S();
+  var fk=(CL.focus&&CL.focus())||'none', sk=(CL.spend&&CL.spend())||'normal';
+  if(fk==='war') RPG.echo('focus_war'); else if(fk==='smart') RPG.echo('focus_smart'); else if(fk==='recover') RPG.echo('focus_recover');
+  if(sk==='allin') RPG.echo('spend_allin'); else if(sk==='lean') RPG.echo('spend_lean');
+  if(s.gym===undefined){ s.gym=p.gym; s.gymAt=RPG.stamp(); }
+  else if(s.gym!==p.gym){ RPG.echo('left_gym'); s.gym=p.gym; s.gymAt=RPG.stamp(); s.gymMoves=safeInt(s.gymMoves,0)+1; }
+  if(s.coach===undefined) s.coach=p.coach;
+  else if(s.coach!==p.coach){ RPG.echo('left_coach'); s.coach=p.coach; }
+  RPG.weekCheck();
+}, 70);
+
+/* --------------------------------------------------------------------------
+   4. EL TEMPERAMENTO QUE EMERGE
+   Normalizado por la cantidad de ecos: veinte decisiones de un lado pesan
+   más que una sola, pero nadie queda marcado para siempre por la primera.
+   -------------------------------------------------------------------------- */
+RPG.axes = function(){
+  var r=RPG.R(), out={}, n=Math.max(1, safeInt(r.n,0));
+  RPG.AXK.forEach(function(k){
+    var v=clN(r.tally && r.tally[k],0);
+    out[k]=clamp(v/(Math.sqrt(n)+2)*38, -100, 100);
+  });
+  return out;
+};
+RPG.temper = function(){
+  var ax=RPG.axes(), list=[];
+  RPG.AXK.forEach(function(k){ var v=ax[k]; if(Math.abs(v)>=22) list.push({k:k, v:v, n:v>0? RPG.AX[k].pos : RPG.AX[k].neg}); });
+  list.sort(function(a,b){ return Math.abs(b.v)-Math.abs(a.v); });
+  return list.slice(0,3);
+};
+/* qué rasgo de PERS describe mejor lo que mostraste */
+RPG.persFromAxes = function(){
+  var a=RPG.axes();
+  var sc={
+    arrogant: a.ego*0.8 + a.confrontacion*0.3,
+    aggro:    a.confrontacion*0.9 + a.riesgo*0.2,
+    charisma: a.espectaculo*0.7 + a.disciplina*0.2 - a.confrontacion*0.1,
+    funny:    a.espectaculo*0.8 - a.disciplina*0.1,
+    pro:      a.disciplina*0.7 + a.estrategia*0.3,
+    humble:   -a.ego*0.7 + a.lealtad*0.3,
+    quiet:    -a.espectaculo*0.7 + a.estrategia*0.2,
+    chaos:    a.riesgo*0.6 - a.disciplina*0.5
+  };
+  var best=null; for(var k in sc){ if(sc.hasOwnProperty(k) && (!best || sc[k]>sc[best])) best=k; }
+  return sc[best]>=26 ? best : null;
+};
+
+/* --------------------------------------------------------------------------
+   5. FILOSOFÍAS — la que mostrás y la que asumís
+   -------------------------------------------------------------------------- */
+RPG.lean = function(tab, keys){
+  var tot=0, best=null;
+  keys.forEach(function(k){ var v=Math.max(0,clN(tab[k],0)); tot+=v; if(!best || v>Math.max(0,clN(tab[best],0))) best=k; });
+  if(!best || tot<=0) return null;
+  return {k:best, share:Math.max(0,clN(tab[best],0))/tot, tot:tot};
+};
+RPG.fightLean = function(){ var r=RPG.R(), l=RPG.lean(r.fp||{}, Object.keys(RPG.FP)); if(l) l.n=safeInt(r.fpN,0); return l; };
+RPG.careerLean = function(){ return RPG.lean(RPG.R().cp||{}, Object.keys(RPG.CP)); };
+RPG.canAdopt = function(kind){
+  var r=RPG.R(), l = kind==='fight'? RPG.fightLean() : RPG.careerLean();
+  if(!l) return {ok:false, why:'Todavía no mostraste nada claro.'};
+  if(kind==='fight' && safeInt(r.fpN,0)<3) return {ok:false, why:'Hacen falta al menos 3 peleas para saber cómo peleás.'};
+  if(kind==='career' && l.tot<6) return {ok:false, why:'Tus decisiones de carrera todavía no dibujan una dirección.'};
+  if(l.share<0.30) return {ok:false, why:'Nada domina todavía: tu forma está repartida.'};
+  var cur=r.philo && r.philo[kind];
+  if(cur===l.k) return {ok:false, why:'Ya la asumiste.', same:true};
+  if(cur && r.philo.at && RPG.stamp()-r.philo.at<26) return {ok:false, why:'Cambiar de filosofía tan rápido no lo cree nadie. Esperá unos meses.'};
+  return {ok:true, k:l.k, share:l.share};
+};
+/* Asumirla en público: la esquina y la prensa reaccionan. */
+RPG.adopt = function(kind){
+  safeRun('RPG.adopt', function(){
+    var c=RPG.canAdopt(kind); if(!c.ok){ toast(c.why); return; }
+    var s=RPG.S(), prev=s.philo[kind];
+    s.philo[kind]=c.k; s.philo.at=RPG.stamp();
+    var txt = kind==='fight'? RPG.FP[c.k] : RPG.CP[c.k];
+    RPG.echo(kind==='fight'? 'philo_fight':'philo_career', {t:'Asumiste en público: «'+txt+'»'+(prev?' (antes: '+(kind==='fight'?RPG.FP[prev]:RPG.CP[prev])+')':'')});
+    if(prev) RPG.echo('temper_denied', {w:.5, t:'Cambiaste de filosofía en público'});
+    pushNews(fname(G.player)+': «'+(kind==='fight'? RPG.FP_D[c.k] : RPG.CP_D[c.k])+'»');
+    /* la esquina no es neutral: su filosofía coincide o choca con la tuya */
+    if(kind==='fight'){
+      var co=coachById(G.player.coach), ph=co? CL.philoOf(co) : null;
+      var fit=RPG.FP_COACH[c.k]||[];
+      if(ph){
+        var st=CL.coachState(co), key=st&&st.ph;
+        if(fit.indexOf(key)>=0){ CL.coachPatience(+8,'dijiste en público lo que él enseña'); toast(co.name+': "Por fin lo decís vos."'); }
+        else { CL.coachPatience(-6,'dijiste en público algo que no es lo que él enseña'); toast(co.name+' no dice nada. No le gustó.'); }
+      }
+    }
+    if(CL.thread) CL.thread('identidad', 'Asumiste una filosofía: '+txt+'.');
+    render();
+  }, null, true);
+};
+/* qué filosofías de coach (CL.PHILO) se llevan con cada filosofía de combate */
+RPG.FP_COACH = {control:['control','grind'], castigo:['technique','iq'], adelante:['volume','grind'],
+                finalizar:['finish'], minimizar:['iq','technique'], espectaculo:['finish','volume']};
+
+/* --------------------------------------------------------------------------
+   6. LO QUE LA PELEA DICE DE VOS — estadísticas y reparto de acciones
+   -------------------------------------------------------------------------- */
+RPG.ACT_FP = {
+  combo:{adelante:1}, knees:{adelante:1}, lowkick:{adelante:.4, control:.2}, cutring:{adelante:1},
+  body:{adelante:1}, elbow:{adelante:.7, finalizar:.3}, clinch:{adelante:.5, control:.5},
+  counter:{castigo:1}, read:{castigo:1}, lateral:{castigo:.5, minimizar:.5},
+  td:{control:1}, grind:{control:1}, hold:{control:1, minimizar:.3}, pass:{control:1}, post:{control:1},
+  posture:{control:1}, chain:{control:1}, ctd:{control:.7, adelante:.3}, sweep:{control:.5, finalizar:.2},
+  sub:{finalizar:1}, bsub:{finalizar:1}, gnp:{finalizar:.5, adelante:.5}, invite:{finalizar:1}, scramble:{finalizar:.3, control:.3},
+  move:{minimizar:1}, guard:{minimizar:1}, getup:{minimizar:.6}, 'break':{minimizar:.8}, jab:{minimizar:.4, castigo:.3}, up:{minimizar:.5},
+  surge:{adelante:1}, rpg_surge:{adelante:1}, iq_x:{castigo:1}
+};
+RPG.SPECTACLE_TQ = ['s_spin','s_perf','s_flying','s_head','w_sup','i_last'];
+hookOn('mini:start','rpg', function(){
+  var f=G&&G.fight; if(f && !f.over) f.rpgFin=safeInt(f.rpgFin,0)+1;
+}, 60);
+hookOn('fight:pre','rpg', function(c){
+  var f=G&&G.fight; if(!f || !f.result){ c.rpg=null; return; }
+  var p=G.player, o=F(f.opp), res=f.result, won=res.winner==='p', draw=res.winner==='d';
+  /* ¿fue perdiendo en las tarjetas al cierre de algún round? */
+  var sp=0, so=0, behind=false;
+  (f.cards||[]).forEach(function(cd){ sp+=clN(cd&&cd.p,0); so+=clN(cd&&cd.o,0); if(sp<so) behind=true; });
+  if(!behind && (f.p.rd||0) < (f.o.rd||0)-25) behind=true;
+  var war = (safeInt(res.round,1)>=safeInt(f.rounds,3) && f.p.hp<55 && f.o.hp<55) || (f.p.kd>0 && f.o.kd>0);
+  var prior=(p.career||[]).filter(function(x){ return x.oppId===f.opp; });
+  var revenge = won && prior.some(function(x){ return x.res==='L'; });
+  var gp=G.camp&&G.camp.gameplan, gpGood=!!(gp && safeInt(gp.score,0)>=6);
+  /* reparto de acciones del jugador en esta pelea */
+  var pat=(f.identity&&f.identity.playerPatterns)||{}, dist={}, tot=0;
+  Object.keys(pat).forEach(function(k){
+    var m=RPG.ACT_FP[k]; if(!m) return;
+    var n=safeInt(pat[k],0);
+    for(var q in m) if(m.hasOwnProperty(q)){ dist[q]=clN(dist[q],0)+m[q]*n; tot+=m[q]*n; }
+  });
+  var st=f.tq&&f.tq.u||{}, show=0;
+  RPG.SPECTACLE_TQ.forEach(function(id){ show+=safeInt(st[id],0); });
+  if(show){ dist.espectaculo=clN(dist.espectaculo,0)+show*2; tot+=show*2; }
+  var fin=safeInt(f.rpgFin,0);
+  if(fin){ dist.finalizar=clN(dist.finalizar,0)+fin*2; tot+=fin*2; }
+  c.rpg={won:won, draw:draw, method:res.method, behind:behind, war:war, revenge:revenge, gpGood:gpGood,
+         miss:!!(G.camp&&G.camp.missWeight), camp:!!G.camp, dist:dist, tot:tot, oppId:f.opp,
+         pressure: tot>0 ? clN(dist.adelante,0)/tot : 0};
+}, 80);
+hookOn('fight:applied','rpg', function(c){
+  var d=c.rpg; if(!d || !G || !G.player) return;
+  var s=RPG.S(), t=s.cnt;
+  t.fights++;
+  if(d.draw) t.draws++; else if(d.won) t.wins++; else t.losses++;
+  if(d.won && d.method!=='dec') t.fin++;
+  if(d.won && d.method==='dec') t.decW++;
+  if(d.won && d.behind) t.comeback++;
+  if(d.war) t.war++;
+  if(d.revenge) t.revW++;
+  if(d.won && d.gpGood) t.gpW++;
+  if(d.camp){ if(d.miss){ t.weighStreak=0; t.weighMiss++; RPG.echo('missed_weight'); } else { t.weighStreak++; RPG.echo('made_weight'); } }
+  if(d.pressure>=0.45 && d.tot>=6) t.press++;
+  /* filosofía de combate: cada pelea aporta su reparto, normalizado */
+  if(d.tot>=4){
+    for(var k in d.dist) if(d.dist.hasOwnProperty(k)) s.fp[k]=clN(s.fp[k],0)+d.dist[k]/d.tot;
+    s.fpN=safeInt(s.fpN,0)+1;
+  }
+  s.lastFight={oppId:d.oppId, won:d.won, draw:d.draw, behind:d.behind, war:d.war, revenge:d.revenge, at:RPG.stamp()};
+  RPG.checkTraits('fight');
+  if(d.war && RPG.hasTrait('guerra')){
+    if(CL.audAdd){ CL.audAdd('hard',+3); }
+    changePopularity(1.5, 'otra guerra');
+    pushNews('Otra guerra de '+fname(G.player)+'. Los que saben de esto ya no se pierden una.');
+  }
+}, 80);
+
+/* --------------------------------------------------------------------------
+   7. RASGOS — se ganan con hechos, quedan para siempre, cambian opciones
+   -------------------------------------------------------------------------- */
+RPG.TRAITS = {
+  remontada:{n:'Especialista en remontadas', i:'🔥',
+    d:'Ganaste peleas que ibas perdiendo.',
+    fx:'En el último round, yendo abajo, aparece «Cambio de marcha»: una acción que sólo tiene quien ya lo hizo.',
+    c:function(t){ return t.comeback>=2; }},
+  guerra:{n:'Veterano de guerras', i:'🩸',
+    d:'Tres peleas que terminaron con los dos rotos.',
+    fx:'Cada guerra suma público entendido y popularidad; la prensa te busca para esas noches.',
+    c:function(t){ return t.war>=3; }},
+  revancha:{n:'Especialista en revanchas', i:'🔁',
+    d:'Le ganaste dos veces a gente que antes te había ganado.',
+    fx:'Tu mánager te ofrece revanchas de más atrás en tu historial.',
+    c:function(t){ return t.revW>=2; }},
+  lider:{n:'Líder de gimnasio', i:'🏠',
+    d:'Años en la misma casa, respeto de todos y compañeros que entrenan por vos.',
+    fx:'Podés dar clases a los más jóvenes de tu gimnasio: así se hacen los discípulos.',
+    c:function(t,s){ var p=G.player; return RPG.gymRepR(p.gym)>=75 && socPartners().length>=2 && (RPG.stamp()-safeInt(s.gymAt,RPG.stamp()))>=156; }},
+  profesional:{n:'Profesional impecable', i:'⚖️',
+    d:'Seis campamentos seguidos dando el peso.',
+    fx:'Las organizaciones te confían los reemplazos de último momento, y los pagan mejor.',
+    c:function(t){ return t.weighStreak>=6; }},
+  provocador:{n:'Provocador', i:'🎙️',
+    d:'Seis veces elegiste el cruce ante los micrófonos.',
+    fx:'Los rivales te buscan en público y la pelea que vende aparece más seguido.',
+    c:function(t,s){ return safeInt(s.seen.media_aggro,0)+safeInt(s.seen.callout,0)>=6; }},
+  estratega:{n:'Estratega', i:'🧩',
+    d:'Cuatro victorias con un plan de pelea sólido.',
+    fx:'Entre rounds podés cambiar el plan de la esquina una vez por pelea.',
+    c:function(t){ return t.gpW>=4; }},
+  alta_presion:{n:'Luchador de alta presión', i:'✂️',
+    d:'Cuatro peleas caminando hacia adelante casi todo el tiempo.',
+    fx:'«Cortar el ring» está siempre disponible para vos, peleés con el estilo que peleés.',
+    c:function(t){ return t.press>=4; }},
+  finalizador:{n:'Finalizador', i:'💥',
+    d:'Cinco finalizaciones y la mayoría de tus victorias antes del límite.',
+    fx:'Cada finalización te asegura el bono por actuación.',
+    c:function(t){ return t.fin>=5 && t.wins>0 && t.fin/t.wins>=0.6; }},
+  cerebro_frio:{n:'Cerebro frío', i:'🧊',
+    d:'Tres victorias explotando lo que leíste en el rival.',
+    fx:'Detectás los patrones del rival antes: te alcanza con verlos una vez menos.',
+    c:function(t){ return t.iqW>=3; }}
+};
+RPG.checkTraits = function(why){
+  if(!G || !G.player) return [];
+  var s=RPG.S(), t=s.cnt, got=[];
+  for(var k in RPG.TRAITS){
+    if(!RPG.TRAITS.hasOwnProperty(k) || s.traits[k]) continue;
+    var T=RPG.TRAITS[k], ok=false;
+    try{ ok=!!T.c(t,s); }catch(e){ ok=false; }
+    if(!ok) continue;
+    s.traits[k]={y:G.year, w:G.week, why:T.d};
+    got.push(k);
+    if(CL.remember) CL.remember('trait', {k:k, t:'Rasgo ganado: '+T.n});
+    pushNews(fname(G.player)+' ya es «'+T.n+'». '+T.d);
+    if(CL.thread) CL.thread('identidad', 'Rasgo: '+T.n+'. '+T.fx);
+    toast(T.i+' Nuevo rasgo: '+T.n);
+    hookEmit('rpg:trait', {k:k});
+  }
+  return got;
+};
+
+/* --------------------------------------------------------------------------
+   8. IDENTIDAD — lo que la prensa ve cuando te nombra
+   No es una clase: se recalcula con lo que hacés y cambia si cambiás.
+   -------------------------------------------------------------------------- */
+RPG.IDS = {
+  tecnico:{n:'El Técnico', d:'Precisión y lectura antes que volumen.'},
+  contra:{n:'El Contragolpeador', d:'Espera tu error y lo cobra entero.'},
+  presion:{n:'El Presionador', d:'Camina hacia adelante hasta que el otro se rompe.'},
+  showman:{n:'El Showman', d:'Cada pelea suya es un evento.'},
+  capitan:{n:'El Capitán', d:'Su gimnasio gira alrededor de él.'},
+  veterano:{n:'El Veterano', d:'Ya vio todo. Gana con lo que sabe.'},
+  estratega:{n:'El Estratega', d:'Cada pelea la gana primero en la pizarra.'},
+  errante:{n:'El Errante', d:'Nunca de un solo lugar. Aprende en todos.'},
+  constructor:{n:'El Constructor', d:'Pelea para que quede algo después de él.'},
+  finalizador:{n:'El Finalizador', d:'Sus peleas no llegan a las tarjetas.'}
+};
+RPG.identityScores = function(){
+  var p=G.player, r=RPG.R(), t=r.cnt||{}, ax=RPG.axes(), fl=RPG.fightLean(), s=p.st||{};
+  var fpS=function(k){ var tot=0; for(var q in (r.fp||{})) tot+=Math.max(0,clN(r.fp[q],0)); return tot? Math.max(0,clN(r.fp[k],0))/tot : 0; };
+  var stg=CL.stage(p), fights=proFightCount(p);
+  var sc={
+    tecnico:   fpS('castigo')*40 + fpS('control')*15 + Math.max(0,ax.estrategia)*0.25 + (clN(s.accuracy,50)+clN(s.timing,50)-130)*0.6,
+    contra:    fpS('castigo')*70 + (p.style==='counter'?18:0),
+    presion:   fpS('adelante')*70 + safeInt(t.press,0)*4 + (p.style==='press'?15:0),
+    showman:   Math.max(0,ax.espectaculo)*0.5 + fpS('espectaculo')*60 + clN(p.pop,0)*0.25,
+    capitan:   Math.max(0,ax.lealtad)*0.45 + (RPG.gymRepR(p.gym)-50)*0.5 + socPartners().length*6,
+    veterano:  (stg.k==='vet'||stg.k==='lvet'? 40:0) + Math.max(0,fights-15)*1.2,
+    estratega: Math.max(0,ax.estrategia)*0.55 + safeInt(t.gpW,0)*6 + safeInt(t.iqW,0)*6,
+    errante:   Math.max(0,-ax.lealtad)*0.45 + safeInt(r.gymMoves,0)*14,
+    constructor:(G.flags&&G.flags.legacyGym?30:0) + clN(r.cp&&r.cp.legado,0)*4 + RPG.disciples().length*8,
+    finalizador:(t.wins? t.fin/t.wins : 0)*55 + safeInt(t.fin,0)*3
+  };
+  return sc;
+};
+RPG.identity = function(){
+  var p=G&&G.player; if(!p) return null;
+  if(proFightCount(p)<3) return {k:null, n:'En formación', d:'Todavía no hay suficientes peleas para que el mundo te ponga un nombre.', why:[]};
+  var sc=RPG.identityScores(), best=null, second=null;
+  for(var k in sc){ if(!sc.hasOwnProperty(k)) continue;
+    if(!best || sc[k]>sc[best]){ second=best; best=k; } else if(!second || sc[k]>sc[second]) second=k; }
+  if(sc[best]<20) return {k:null, n:'Sin etiqueta', d:'Hacés un poco de todo: la prensa todavía no sabe cómo llamarte.', why:[]};
+  var I=RPG.IDS[best];
+  return {k:best, n:I.n, d:I.d, second:second && sc[second]>=20 ? RPG.IDS[second].n : null, score:sc[best]};
+};
+
+/* La que la PRENSA usa (anunciada, con histéresis) manda en la interfaz; la
+   calculada al vuelo es la tendencia. Sin anuncio todavía, vale la calculada. */
+RPG.officialIdentity = function(){
+  var r=RPG.R(), k=r.ident && r.ident.k;
+  var now=RPG.identity();
+  if(!k || !RPG.IDS[k]) return now;
+  return {k:k, n:RPG.IDS[k].n, d:RPG.IDS[k].d, trend:(now && now.k && now.k!==k)? now.n : null,
+          second:now? now.second : null};
+};
+
+/* --------------------------------------------------------------------------
+   9. CHEQUEO SEMANAL — rasgos lentos, cambios de identidad y temperamento
+   -------------------------------------------------------------------------- */
+RPG.weekCheck = function(){
+  var s=RPG.S(), p=G.player;
+  RPG.checkTraits('week');
+  /* identidad: sólo se anuncia un cambio sostenido, con peleas de por medio */
+  var id=RPG.identity();
+  /* histéresis: la prensa no cambia de apodo por un punto. La identidad nueva
+     tiene que superar a la vigente por un margen claro. */
+  if(id && id.k && s.ident.k && id.k!==s.ident.k){
+    var scs=RPG.identityScores();
+    if(clN(scs[id.k],0) < clN(scs[s.ident.k],0)+10) id=null;
+  }
+  if(id && id.k && id.k!==s.ident.k && proFightCount(p)>=5){
+    var prev=s.ident.k;
+    s.ident.hist.unshift({k:id.k, y:G.year, w:G.week, from:prev});
+    if(s.ident.hist.length>12) s.ident.hist.pop();
+    s.ident.k=id.k; s.ident.at=RPG.stamp();
+    pushNews(prev? 'La prensa ya no te llama '+RPG.IDS[prev].n+': ahora sos «'+id.n+'».'
+                 : 'La prensa empieza a llamar a '+fname(p)+' «'+id.n+'». '+id.d);
+    if(CL.remember) CL.remember('identity', {k:id.k, from:prev, t:'Identidad: '+id.n});
+    hookEmit('rpg:identity', {k:id.k, from:prev});
+  }
+  /* temperamento vs personalidad declarada: se pregunta, no se impone */
+  if(safeInt(s.n,0)>=14 && !G.pending.length && !G.camp && (s.tempAsk===null || RPG.stamp()-safeInt(s.tempAsk,0)>=52)){
+    var k=RPG.persFromAxes();
+    if(k && k!==p.pers && k!==p.pers2 && !persConflict(p.pers,k)){
+      s.tempAsk=RPG.stamp();
+      var tp=RPG.temper().map(function(x){ return x.n.toLowerCase(); }).join(', ');
+      CL.ask('rpg_temper', 'En el gimnasio ya no te describen como '+PERS[p.pers].n.toLowerCase()+
+        (p.pers2? ' y '+PERS[p.pers2].n.toLowerCase() : '')+'. Dicen otra cosa: '+tp+'. '+
+        'Tu entrenador te lo dice sin vueltas: "Ya no sos el mismo que llegó."',
+        ['Asumirlo: ahora también soy '+PERS[k].n.toLowerCase(), 'No: sigo siendo el de siempre'], {k:k});
+    }
+  }
+};
+CL.handler('rpg_temper', function(idx, d){
+  var p=G.player;
+  if(idx===0 && d && PERS[d.k] && !persConflict(p.pers,d.k)){
+    var old=p.pers2; p.pers2=d.k; persFix(p);
+    RPG.echo('temper_owned', {t:'Asumiste que ahora también sos '+PERS[d.k].n.toLowerCase()});
+    if(CL.thread) CL.thread('identidad','Tu forma de ser cambió: ahora también sos '+PERS[d.k].n.toLowerCase()+'.');
+    return 'Nadie cambia de un día para el otro. Pero ya no vale la pena fingir. '+(old? '('+PERS[old].n+' → '+PERS[d.k].n+')':'');
+  }
+  RPG.echo('temper_denied');
+  return 'Lo decís con firmeza. La gente del gimnasio se mira y no insiste.';
+});
+
+/* --------------------------------------------------------------------------
+   10. CONSECUENCIAS DE LAS FILOSOFÍAS Y DE LOS RASGOS
+   Entran por los puntos de extensión que ya existían.
+   -------------------------------------------------------------------------- */
+/* la filosofía de CARRERA asumida cambia a qué le da valor tu mánager */
+hookOn('mgr:score','rpg', function(sc, x){
+  var ph=RPG.R().philo.career; if(!ph || !x || !x.o) return sc;
+  var o=x.o, a=x.a, opp=F(o.oppId), p=G.player;
+  var org=G.orgs[o.org]||G.orgs[p.org]||{pay:[2000,8000]};
+  var purseW=clamp(clN(o.purse,0)/Math.max(1,clN(org.pay&&org.pay[1],8000)),0,3);
+  var r=rankOf(opp);
+  if(ph==='dinero') sc += purseW*1.5;
+  if(ph==='gloria') sc += (o.title?4:0) + (o.elim?2.5:0) + (r==='C'||(r&&r<=5)?1.5:0);
+  if(ph==='competencia') sc += (r==='C'?3:(r&&r<=10?(11-r)*0.3:0)) + clN(a&&a.risk,0)*0.4;
+  if(ph==='libertad') sc += (safeInt(o.weeks,9)>=8?0.8:0) - (o.mandatory?1.5:0);
+  if(ph==='lealtad') sc -= (opp && (opp.gym===p.gym || clN((opp.rel||{}).friend,50)>70))? 3 : 0;
+  if(ph==='legado') sc += (a && a.story? 2 : 0);
+  if(ph==='fama') sc += clN(opp&&opp.pop,0)/25 + (o.clTag==='show'?1.5:0);
+  return sc;
+}, 20);
+/* la filosofía de COMBATE asumida ordena las recomendaciones de la esquina:
+   la que coincide con cómo decís que peleás, primero */
+RPG.FP_PRIO = {control:'wrestling', castigo:'counter', adelante:'clinch', finalizar:'grappling', minimizar:'counter', espectaculo:'striking'};
+hookOn('coach:recs','rpgFilosofia', function(recs){
+  var ph=RPG.R().philo.fight; if(!ph || !Array.isArray(recs)) return recs;
+  var want=RPG.FP_PRIO[ph];
+  recs.forEach(function(r){ if(r.prio===want) r.rpgPhilo=true; });
+  recs.sort(function(a,b){ return (b.rpgPhilo?1:0)-(a.rpgPhilo?1:0); });
+  return recs;
+}, 30);
+/* PROFESIONAL: los reemplazos de último momento pagan más y lo dicen */
+hookOn('offers:made','rpgRasgos', function(){
+  if(!Array.isArray(G.offers)) return;
+  if(RPG.hasTrait('profesional')){
+    G.offers.forEach(function(o){
+      if(o && o.type==='fight' && (o.shortNotice || safeInt(o.weeks,9)<=3) && !o.rpgPro){
+        o.purse=Math.round(clN(o.purse,0)*1.3); o.rpgPro=true;
+        o.reason=(o.reason? o.reason+' ' : '')+'Te lo ofrecen a vos porque siempre das el peso (+30 %).';
+      }
+    });
+  }
+}, 80);
+/* PROVOCADOR: los rivales te buscan en público (usa el handler cl_callout que
+   ya existía; se pide como mucho una vez cada diez semanas) */
+hookOn('week','rpgProvocador', function(){
+  if(!G || !G.player || G.player.retired || !RPG.hasTrait('provocador') || G.pending.length) return;
+  var s=RPG.S(), now=RPG.stamp();
+  if(s.lastCallout && now-s.lastCallout<10) return;
+  var p=G.player, pool=(G.orgs[p.org]? G.orgs[p.org].roster:[]).map(F).filter(function(f){
+    return f && !f.isPlayer && f.div===p.div && f.active && !f.retired && (!G.nextFight || G.nextFight.oppId!==f.id);
+  });
+  if(!pool.length) return;
+  pool.sort(function(a,b){ return clN(b.pop,0)-clN(a.pop,0); });
+  var f=pool[(now>>1)%Math.min(3,pool.length)];
+  s.lastCallout=now;
+  CL.ask('cl_callout', fname(f)+' contesta algo que dijiste la semana pasada: "Que venga a decírmelo en la jaula." '+
+    'La prensa ya armó el cruce.', ['Redoblar la apuesta en público','Bajar el tono con respeto','Ignorarlo'], {id:f.id});
+}, 75);
+/* ALTA PRESIÓN: «Cortar el ring» deja de depender del perfil del estilo */
+(function(){
+  var mv=CL.MOVES && CL.MOVES.cutring; if(!mv) return;
+  var base=mv.when;
+  mv.when=function(p,A,c){ return base(p,A,c) || (RPG.hasTrait('alta_presion') && c.dist>0.9); };
+})();
+
+/* REMONTADA y ESTRATEGA: opciones propias dentro de la pelea */
+RPG.behindLate = function(){
+  var f=G&&G.fight; if(!f || f.over) return false;
+  var sp=0, so=0; (f.cards||[]).forEach(function(cd){ sp+=clN(cd&&cd.p,0); so+=clN(cd&&cd.o,0); });
+  return f.round>=f.rounds && sp<so;
+};
+hookOn('fight:options','rpgRasgos', function(ops){
+  var f=G&&G.fight; if(!f || f.over || !Array.isArray(ops)) return ops;
+  if(RPG.hasTrait('remontada') && RPG.behindLate() && f.pos==='stand' && !(f.rpgSurge>=2))
+    ops.unshift({k:'rpg_surge', t:'🔥 Cambio de marcha', d:'Vas abajo y es el último round: ya lo diste vuelta antes. Gasta aire, pega de verdad.', rec:'Tu rasgo'});
+  return ops;
+}, 40);
+hookOn('act:translate','rpgRasgos', function(k){ return k==='rpg_surge' ? 'combo' : k; }, 40);
+hookOn('act:pre','rpgRasgos', function(ctx){
+  var f=G&&G.fight; if(!f) return;
+  f._rpgSurge = (ctx.key==='rpg_surge');
+  if(f._rpgSurge){ f.rpgSurge=safeInt(f.rpgSurge,0)+1; drain('p',6); flog('🔥 Cambio de marcha: '+fname(G.player)+' encuentra un round más.'); }
+}, 40);
+hookOn('act:post','rpgRasgos', function(){ var f=G&&G.fight; if(f) f._rpgSurge=false; }, 40);
+hookOn('gp:mod','rpgRasgos', function(v, ctx){
+  var f=G&&G.fight; if(!f || !f._rpgSurge || ctx.kind!=='strike') return v;
+  return v+5;
+}, 40);
+/* ESTRATEGA: cambiar el plan entre rounds, una vez por pelea */
+RPG.replan = function(prio){
+  safeRun('RPG.replan', function(){
+    var f=G&&G.fight; if(!f || f.over || UI.sub!=='corner' || !RPG.hasTrait('estratega') || f.rpgReplan) return;
+    if(['striking','counter','wrestling','grappling','clinch'].indexOf(prio)<0) return;
+    f.gp = Object.assign({}, f.gp||{}, {prio:prio}); f.rpgReplan=true;
+    flog('🧩 Cambio de plan en la esquina: ahora '+prio+'.');
+    render();
+  }, null, true);
+};
+hookOn('screen:fight','rpgEstratega', function(h){
+  var f=G&&G.fight; if(!f || UI.sub!=='corner' || !RPG.hasTrait('estratega') || f.rpgReplan) return h;
+  var cur=(f.gp&&f.gp.prio)||'—';
+  var opts=[['striking','De pie'],['counter','Contra'],['wrestling','Wrestling'],['grappling','Suelo'],['clinch','Clinch']]
+    .filter(function(o){ return o[0]!==cur; });
+  var box='<div class="card"><div class="hdr"><span class="b">🧩 Cambiar el plan</span><span class="tag">Estratega · una vez</span></div>'+
+    '<p class="xs dim2">Plan actual: '+esc(cur)+'. Lo que viste en este round puede pedir otro.</p><div class="grid g3">'+
+    opts.map(function(o){ return '<button class="btn" style="text-align:center" onclick="RPG.replan(\''+o[0]+'\')">'+o[1]+'</button>'; }).join('')+'</div></div>';
+  var i=h.indexOf('<div class="card"><div class="log">');
+  return i<0? h+box : h.slice(0,i)+box+h.slice(i);
+}, 50);
+/* LÍDER: dar una clase a un compañero más joven del gimnasio */
+RPG.teach = function(id){
+  safeRun('RPG.teach', function(){
+    var f=F(id), p=G.player; if(!f || !RPG.hasTrait('lider')) return;
+    if(f.gym!==p.gym || ageOf(f)>=ageOf(p)){ toast('Sólo a los más jóvenes de tu gimnasio.'); return; }
+    var so={weight:SOC_W.NORMAL, actor:f.id, cat:'gym'};
+    if(!socSpend('teach:'+f.id,'teach',so)){ toast('⛔ '+(socWhyBlocked('teach:'+f.id,so)||'No podés ahora.')); return; }
+    var r=relV(f), b=bondOf(f);
+    r.respect=clamp(r.respect+7,0,100); r.trust=clamp(r.trust+5,0,100);
+    b.taught=safeInt(b.taught,0)+1;
+    bondNote(f,'Le diste una clase');
+    addMemF(f,'le enseñaste lo que sabés',3);
+    if(b.taught>=3 && !b.disciple){ b.disciple=true; bondNote(f,'Se volvió tu discípulo'); pushNews(fname(f)+' dice que aprendió todo de '+fname(p)+'.'); }
+    CL.gymRepAdd(p.gym, 1.2);
+    G.socOut={t:'🎓 Le diste una clase a '+fname(f)+'.'+(b.disciple?' Ya es tu discípulo.':'')};
+    render();
+  }, null, true);
+};
+/* el botón vive en la ficha social, junto a las demás acciones */
+hookOn('screen:social','rpgLider', function(h){
+  if(!RPG.hasTrait('lider') || !UI.sub) return h;
+  var f=F(UI.sub), p=G.player;
+  if(!f || f.gym!==p.gym || ageOf(f)>=ageOf(p) || !f.active) return h;
+  var why=socWhyBlocked('teach:'+f.id,{actor:f.id,cat:'gym'});
+  var btn=why? '<button class="btn" disabled style="opacity:.45">🎓 Dar una clase<small>'+esc(why)+'</small></button>'
+             : '<button class="btn" onclick="RPG.teach(\''+f.id+'\')">🎓 Dar una clase<small>Líder de gimnasio</small></button>';
+  var anchor='<button class="btn ghost" onclick="go(\'fighter\',\''+f.id+'\')">Ver ficha</button>';
+  var i=h.indexOf(anchor);
+  return i<0? h : h.slice(0,i)+btn+h.slice(i);
+}, 50);
+
+/* --------------------------------------------------------------------------
+   11. DIARIO DE CARRERA — se escribe solo, con lo que pasó
+   -------------------------------------------------------------------------- */
+RPG.legacyProfile = function(){
+  var p=G.player, r=RPG.R(), t=r.cnt||{}, ax=RPG.axes(), id=RPG.identity(), cl=RPG.careerLean();
+  var P=[
+    {k:'campeon', n:'El Campeón', d:'Llegó arriba y se quedó.', s: clN(p.titles,0)*30 + clN(p.defenses,0)*12},
+    {k:'maestro', n:'El Maestro', d:'Dejó alumnos y una forma de pelear.', s:RPG.disciples().length*14 + (r.traits.lider?25:0) + Math.max(0,ax.estrategia)*0.3},
+    {k:'leyenda', n:'La Leyenda', d:'Su nombre ya se usa para medir a otros.', s:(clN(p.titles,0)>=2&&clN(p.defenses,0)>=4)? 80+clN(p.pop,0)*0.3 : 0},
+    {k:'showman', n:'El Showman', d:'Nadie vendió peleas como él.', s:Math.max(0,ax.espectaculo)*0.6 + Math.max(0,clN(p.pop,0)-55)*0.6 + (r.traits.provocador?20:0)},
+    {k:'guerrero', n:'El Guerrero', d:'Cada noche suya fue una batalla.', s:safeInt(t.war,0)*14 + (r.traits.guerra?20:0) + (r.traits.remontada?15:0)},
+    {k:'estratega', n:'El Estratega', d:'Ganó en la pizarra antes que en la jaula.', s:safeInt(t.gpW,0)*8 + safeInt(t.iqW,0)*8 + Math.max(0,ax.estrategia)*0.4},
+    {k:'constructor', n:'El Constructor', d:'Peleó para que quedara algo.', s:clN(r.cp&&r.cp.legado,0)*6 + (G.flags&&G.flags.legacyGym?30:0)},
+    {k:'errante', n:'El Errante', d:'Pasó por todos lados y aprendió en todos.', s:safeInt(r.gymMoves,0)>=2? safeInt(r.gymMoves,0)*16 + Math.max(0,-ax.lealtad)*0.4 : 0}
+  ];
+  P.sort(function(a,b){ return b.s-a.s; });
+  /* un perfil necesita evidencia de verdad: por debajo, la carrera no se
+     deja resumir en una palabra, y eso también es una respuesta */
+  return P[0].s>=25 ? P[0] : {k:'peleador', n:'El Peleador', d:'Hizo su camino, sin etiquetas.', s:0};
+};
+RPG.journalHTML = function(){
+  var p=G.player, r=RPG.R(), t=r.cnt||{};
+  var h='';
+  /* CARRERA */
+  var tl=(typeof META!=='undefined' && META.timeline)? META.timeline() : [];
+  var carrera='<div class="card"><div class="grid g3">'+
+    '<div class="leg-stat"><span>Récord</span><b>'+esc(recStr(p))+'</b></div>'+
+    '<div class="leg-stat"><span>Títulos</span><b>'+clN(p.titles,0)+'</b></div>'+
+    '<div class="leg-stat"><span>Defensas</span><b>'+clN(p.defenses,0)+'</b></div></div>'+
+    (tl.length? '<div class="log" style="margin-top:8px">'+tl.slice(-10).reverse().map(function(x){ return '<div><span class="dim2 xs mono">'+x.y+'</span> '+x.ico+' '+esc(x.t)+'</div>'; }).join('')+'</div>' : '')+
+    '<div class="grid g2" style="margin-top:8px"><button class="btn" onclick="go(\'history\')">Todas las peleas</button><button class="btn" onclick="go(\'bio\')">Biografía pública</button></div></div>';
+  h+=CL.seccion('dCarrera','Carrera',carrera,true);
+  /* IDENTIDAD */
+  var id=RPG.officialIdentity(), tp=RPG.temper(), fl=RPG.fightLean(), cl=RPG.careerLean();
+  var ident='<div class="card"><div class="hdr"><span class="b gold">'+esc(id?id.n:'—')+'</span><span class="tag">'+esc(CL.identity(p).n)+'</span></div>'+
+    '<p class="sm dim">'+esc(id?id.d:'')+(id&&id.trend?' Últimamente se te ve más como '+esc(id.trend)+'.':(id&&id.second?' También se te ve algo de '+esc(id.second)+'.':''))+'</p>'+
+    '<div class="xs dim2">Personalidad declarada: '+esc(PERS[p.pers].n)+(p.pers2?' + '+esc(PERS[p.pers2].n):'')+'</div>'+
+    '<div class="xs">Temperamento que mostraste: '+(tp.length? tp.map(function(x){ return '<b>'+esc(x.n)+'</b>'; }).join(' · ') : '<span class="dim2">todavía no hay suficientes decisiones</span>')+'</div>';
+  ident+='<hr><div class="hdr"><span class="b sm">Filosofía de combate</span><span class="tag'+(r.philo.fight?' on':'')+'">'+esc(r.philo.fight? RPG.FP[r.philo.fight] : 'sin asumir')+'</span></div>'+
+    '<p class="xs dim2">Lo que muestran tus peleas: '+(fl? esc(RPG.FP[fl.k])+' ('+Math.round(fl.share*100)+' %)' : '—')+'</p>';
+  var cf=RPG.canAdopt('fight');
+  if(cf.ok) ident+='<button class="btn" onclick="RPG.adopt(\'fight\')">Asumir en público: «'+esc(RPG.FP[cf.k])+'»<small>'+esc(RPG.FP_D[cf.k])+'</small></button>';
+  else if(!cf.same) ident+='<p class="xs dim2">'+esc(cf.why)+'</p>';
+  ident+='<hr><div class="hdr"><span class="b sm">Filosofía de carrera</span><span class="tag'+(r.philo.career?' on':'')+'">'+esc(r.philo.career? RPG.CP[r.philo.career] : 'sin asumir')+'</span></div>'+
+    '<p class="xs dim2">Lo que muestran tus decisiones: '+(cl? esc(RPG.CP[cl.k])+' ('+Math.round(cl.share*100)+' %)' : '—')+'. Cambia a qué le da valor tu mánager.</p>';
+  var cc=RPG.canAdopt('career');
+  if(cc.ok) ident+='<button class="btn" onclick="RPG.adopt(\'career\')">Asumir en público: «'+esc(RPG.CP[cc.k])+'»<small>'+esc(RPG.CP_D[cc.k])+'</small></button>';
+  else if(!cc.same) ident+='<p class="xs dim2">'+esc(cc.why)+'</p>';
+  var tr=Object.keys(r.traits||{});
+  ident+='<hr><div class="b sm">Rasgos</div>'+(tr.length? tr.map(function(k){ var T=RPG.TRAITS[k]; if(!T) return '';
+      return '<div class="mrow"><span class="b sm">'+T.i+' '+esc(T.n)+' <span class="dim2 xs mono">'+r.traits[k].y+'</span></span><span class="xs dim2">'+esc(T.fx)+'</span></div>'; }).join('')
+    : '<p class="xs dim2">Ninguno todavía. Se ganan con hechos: remontadas, guerras, revanchas, disciplina, lectura.</p>')+
+    '</div>';
+  h+=CL.seccion('dIdentidad','Identidad',ident,true);
+  /* PERSONAS */
+  var circle=socCircle();
+  var pers='<div class="card">'+(circle.length? circle.slice(0,8).map(function(f){
+      var b=bondOf(f), k=relStage(f), S=REL_STAGES[k], first=b.hist.length? b.hist[b.hist.length-1] : null;
+      return '<div class="mrow" onclick="go(\'social\')" style="cursor:pointer"><span class="sm">'+S.i+' '+esc(fname(f))+' <span class="dim2 xs">'+esc(S.n)+(relShared(f)?' · 📜':'')+'</span></span>'+
+        '<span class="xs dim2">'+(first? esc(first.y+': '+first.t) : '')+'</span></div>';
+    }).join('') : '<p class="sm dim">Nadie todavía.</p>')+'</div>';
+  h+=CL.seccion('dPersonas','Personas',pers);
+  /* RIVALIDADES */
+  var rivals=circle.filter(function(f){ var k=relStage(f); return k==='rival'||k==='nemesis'; });
+  (p.career||[]).forEach(function(x){ var f=F(x.oppId); if(f && rivals.indexOf(f)<0 && (p.career||[]).filter(function(y){ return y.oppId===x.oppId; }).length>=2) rivals.push(f); });
+  var riv='<div class="card">'+(rivals.length? rivals.slice(0,6).map(function(f){
+      var w=0,l=0; (p.career||[]).forEach(function(x){ if(x.oppId===f.id){ if(x.res==='W') w++; else if(x.res==='L') l++; } });
+      return '<div class="mrow"><span class="sm">⚔️ '+esc(fname(f))+'</span><span class="xs dim2">'+esc(RPG.rivalStage(f))+' · '+w+'-'+l+'</span></div>';
+    }).join('') : '<p class="sm dim">Ninguna rivalidad declarada.</p>')+'</div>';
+  h+=CL.seccion('dRivales','Rivalidades',riv);
+  /* MOMENTOS: peleas que importaron y decisiones que dejaron eco */
+  var mom=[];
+  (p.career||[]).forEach(function(x){
+    if(x.title) mom.push({y:x.y, t:(x.res==='W'?'🏆 Pelea de título ganada ante ':'💔 Pelea de título perdida ante ')+x.opp});
+    else if(x.res==='W' && /KO|sumisión|TKO/i.test(String(x.m)) && (x.oppRank||99)<=5) mom.push({y:x.y, t:'💥 Terminó a '+x.opp+' por '+x.m});
+  });
+  RPG.recentEchoes(10).forEach(function(m){ mom.push({y:m.y, t:'🗣️ '+m.t}); });
+  mom.sort(function(a,b){ return b.y-a.y; });
+  h+=CL.seccion('dMomentos','Momentos','<div class="card"><div class="log">'+(mom.length? mom.slice(0,14).map(function(x){ return '<div><span class="dim2 xs mono">'+x.y+'</span> '+esc(x.t)+'</div>'; }).join('') : '<div class="dim">Todavía nada.</div>')+'</div></div>');
+  /* LEGADO */
+  var lp=RPG.legacyProfile(), L=(CL.legacyExtra && G.cl && p.cl)? CL.legacyExtra() : {marks:[]};
+  h+=CL.seccion('dLegado','Legado','<div class="card"><div class="hdr"><span class="b gold">'+esc(lp.n)+'</span><span class="tag">perfil al día de hoy</span></div>'+
+    '<p class="sm dim">'+esc(lp.d)+'</p>'+(L.marks.length? '<div class="log">'+L.marks.map(function(m){ return '<div>'+esc(m)+'</div>'; }).join('')+'</div>':'')+
+    '<div class="grid g2" style="margin-top:8px"><button class="btn" onclick="go(\'clcareer\')">Etapas y estilo</button><button class="btn" onclick="go(\'hall\')">Salón de la fama</button></div></div>');
+  return h;
+};
+/* etapa del ciclo de una rivalidad, derivada de lo que pasó */
+RPG.rivalStage = function(f){
+  var p=G.player, b=bondOf(f), r=relV(f);
+  var n=(p.career||[]).filter(function(x){ return x.oppId===f.id; }).length;
+  if(f.retired) return 'cerrada por retiro';
+  if(n>=3) return 'trilogía';
+  if(n===2) return 'revancha disputada';
+  if(n===1 && r.rivalry>=40) return 'pide revancha';
+  if(n===1) return 'ya se pelearon';
+  if(G.nextFight && G.nextFight.oppId===f.id) return 'pelea firmada';
+  if(b.clash>=2 || r.rivalry>=60) return 'tensión pública';
+  return 'cruce';
+};
+CL.screen('diario', function(){
+  if(!G || !G.player) return null;
+  var h='<div class="topbar"><div class="r1"><h2>📓 Diario de carrera</h2><span class="sm dim">'+weekDate()+'</span></div></div>';
+  h+='<p class="xs dim2" style="margin:0 0 8px">Se escribe solo, con lo que pasó de verdad: tus peleas, tus decisiones y la gente que cruzaste.</p>';
+  h+=safeRun('RPG.journal', RPG.journalHTML, function(){ return '<div class="card"><p class="sm dim">No se pudo armar el diario.</p></div>'; }, true);
+  return hookFilter('screen:diario', h, {});
+});
+/* el diario, desde CARRERA (inicio) y desde el menú */
+(function(){
+  var prev=CL.hubCards.filter(function(c){ return c.id==='carreraLinks'; })[0];
+  CL.hubCard('carreraLinks', function(){
+    if(!G || !G.player) return '';
+    var id=RPG.officialIdentity(), tp=RPG.temper();
+    return '<div class="card tight">'+
+      (id && id.k? '<div class="xs dim2" style="margin-bottom:6px">'+esc(id.n)+(tp.length?' · '+esc(tp.map(function(x){ return x.n; }).join(', ')):'')+'</div>' : '')+
+      '<div class="grid g4">'+
+      '<button class="btn" style="text-align:center;padding:12px 4px" onclick="go(\'offers\')">Ofertas</button>'+
+      '<button class="btn" style="text-align:center;padding:12px 4px" onclick="go(\'contracts\')">Contratos</button>'+
+      '<button class="btn" style="text-align:center;padding:12px 4px" onclick="go(\'history\')">Historial</button>'+
+      '<button class="btn" style="text-align:center;padding:12px 4px" onclick="go(\'diario\')">Diario</button>'+
+      '</div></div>';
+  }, prev? prev.o : 86);
+})();
+hookOn('screen:menu','rpgDiario', function(h){
+  return h.replace('<button class="btn" onclick="go(\'history\')">Historial de carrera</button>',
+    '<button class="btn" onclick="go(\'history\')">Historial de carrera</button><button class="btn" onclick="go(\'diario\')">📓 Diario de carrera<small>identidad, personas, rivalidades, momentos, legado</small></button>');
+}, 50);
+/* el final y el legado dicen QUÉ perfil fue la carrera, además del resultado */
+hookOn('screen:ending','rpgPerfil', function(h){
+  var lp=safeRun('RPG.profile', RPG.legacyProfile, function(){ return null; }, true);
+  if(!lp) return h;
+  var box='<div class="card gold"><div class="xs dim2">PERFIL DE CARRERA</div><div class="b gold" style="font-size:18px">'+esc(lp.n)+'</div><p class="sm dim">'+esc(lp.d)+'</p></div>';
+  var i=h.indexOf('<button class="btn pri" onclick="go(\'title\')">');
+  return i<0? h+box : h.slice(0,i)+box+h.slice(i);
+}, 50);
+
+/* --------------------------------------------------------------------------
+   12. ARRANQUE: la capa nace con la carrera y se completa al cargar
+   -------------------------------------------------------------------------- */
+hookOn('careerCreated','rpg', function(){ G.rpg=RPG.DEF(); if(G.player){ G.rpg.gym=G.player.gym; G.rpg.gymAt=RPG.stamp(); G.rpg.coach=G.player.coach; } }, 60);
+hookOn('load','rpg', function(){ if(G && G.player) RPG.S(); }, 60);
 
 /* ==========================================================================
    FASES 4, 5 y 6 — BANCO DE PRUEBAS AISLADO, ESCENARIOS Y DETERMINISMO

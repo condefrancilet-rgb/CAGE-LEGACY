@@ -10,6 +10,65 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-02 · Fase 4: la carrera deja huella
+**Tipo** sistema de identidad (capa sobre lo existente) + fix · **Cambio observable:** sí,
+también en la carrera del autopiloto (ver evidencia).
+
+**Principio.** Nada de clases fijas ni de "+5 %". Todo sale de decisiones que el juego ya
+pedía; lo nuevo es que se **registran**, se **nombran** y **vuelven**. Estado propio:
+`G.rpg` (un objeto; save compatible: `RPG.S()` lo completa en partidas viejas).
+
+| pieza | de dónde sale | qué cambia en el juego |
+|---|---|---|
+| **ecos** (62 tipos, 32 dejan memoria) | eventos del banco (`event:pre`, tabla `RPG.EV_ECHO`, 23 eventos), `media:done` (prensa/podcast), reacciones y charlas sociales, gastos de estilo de vida, `fight:scheduled` (título, poco aviso, rival arriesgado), decisiones del mánager, foco semanal, cambios de gimnasio/entrenador | mueven 8 ejes de temperamento (bipolares: riesgo, disciplina, lealtad, ego, confrontación, estrategia, espectáculo, ambición) y la tendencia de carrera; los importantes van a `G.story.memories` por `CL.remember` |
+| **temperamento** | los ejes | si describe un rasgo de `PERS` distinto del declarado, el juego **lo pregunta** (como mucho una vez por año): asumirlo cambia `pers2` por la vía existente (`persFix`); negarlo también queda |
+| **filosofía de combate** | las acciones que elegís en cada pelea (`RPG.ACT_FP`, 33 acciones → 6 filosofías) | se puede asumir en público; ordena las recomendaciones de tu esquina (`coach:recs`) |
+| **filosofía de carrera** | ecos de carrera (dinero, gloria, competencia, libertad, lealtad, legado, fama) | asumida, cambia a qué le da valor el mánager (`mgr:score`) |
+| **rasgos** (10) | hechos contados en `G.rpg.cnt` (remontadas, guerras, revanchas ganadas, pesajes seguidos, planes cumplidos…) | cada uno abre algo concreto: «Cambio de marcha» en el último round yendo abajo; replantear una vez entre rounds; reemplazos +30 %; bono asegurado en finalizaciones; revanchas de hasta 12 peleas atrás; cruces públicos; «Cortar el ring» sin depender del estilo; clases a los jóvenes del gimnasio. `cerebro_frio` queda definido para la fase 5 (lo alimenta el Fight IQ) |
+| **identidad** (10 nombres) | los mismos hechos | la prensa la anuncia; cambia sólo si la nueva supera a la vigente por 10 puntos (sin eso cambiaba de apodo por un punto); se ve en Carrera |
+| **diario** | memoria, rivales, rasgos, identidad | pantalla `diario` (desde Carrera y Menú): Carrera · Identidad · Personas · Rivalidades · Momentos · Legado |
+| **perfil de legado** | la carrera entera | la pantalla final dice qué perfil fue (con umbrales: sin 2 títulos y 4 defensas no hay "Leyenda") |
+
+**Puntos de extensión nuevos** (emisiones en funciones existentes, sin cambiar su lógica):
+`social:react`, `social:chat`, `social:spend`, `fight:scheduled`.
+
+**Bug encontrado por la suite y corregido en esta misma fase.** `saveReplacer` compacta
+TODA clave llamada `st`/`pot`/`lr` como si fueran atributos de peleador. Los contadores
+del RPG se llamaban `st`: al cargar volvían como un array de 26 cincuentas y los rasgos
+se recalculaban desde cero. Lo mostró *guardar → cargar → continuar equivale a continuar*.
+Se renombran a `cnt` (comentado en `RPG.DEF`) y la prueba de guardado ahora compara
+`G.rpg` entero con contadores distintos de cero; un mutante que vuelve a compactar
+`cnt` la pone roja.
+
+**Evidencia (autopiloto).** `node dev/rpg-neutralidad.js --ref <RPG-3>`: las 5 trazas
+difieren, y la primera diferencia de cada una se buscó por bisección:
+
+| semilla | primera semana distinta | causa |
+|---|---|---|
+| 101 | 2017 s29 | «Profesional impecable»: un reemplazo pagó 6.287 en vez de 4.836 (+30 %) |
+| 202 | 2017 s27 | la pregunta de temperamento ocupa la semana y el evento al azar no sale |
+| 303 | 2017 s32 | ídem (la pregunta sustituye a un evento `short_notice`) |
+| 404 | 2017 s24 | «Profesional»: una oferta con `rpgPro` |
+| 505 | 2018 s13 | la pregunta de temperamento |
+
+Antes de esas semanas el RNG del mundo es idéntico aunque los ganchos de registro corren
+desde el debut: registrar no consume azar. Dibujar tampoco (la prueba de pureza de RPG-3
+recorre `CL.SCREENS`, que ya incluye `diario`).
+Balance, `dev/sim.js --n 60 --weeks 250` antes/después: win rate 78,4 → 80,4 %,
+campeones 53,3 → 55 %, popularidad media 79,8 → 83,8, dinero medio 745.849 → 702.375,
+finalizaciones 44,1 → 41,9 %, 0 fallos de invariante en ambas. Las diferencias por estilo
+son grandes en las dos direcciones (las carreras divergen desde la semana ~80); la de
+popularidad es consistente con «Veterano de guerras» y los cruces del «Provocador».
+Carreras largas con invariantes **cada semana** (`dev/e5-largas.js --n 20 --weeks 300`):
+20/20 sin fallos. Por todo esto se regeneraron las trazas del golden (`--solo-trazas`);
+las fixtures no se tocan.
+
+**Pruebas:** `dev/tests/17-rpg-identidad.js`, 17 pruebas. Mutantes: quitar la emisión de
+`fight:scheduled`, que asumir el temperamento cambie `pers2`, el +30 % de «Profesional»,
+«Alta presión» en `cutring`, la condición de rasgo de «Cambio de marcha», el límite de un
+replanteo y la histéresis de 10 puntos → 7/7 detectados (la de la histéresis **no** se
+detectaba con puntajes de carreras reales: la prueba se reescribió con puntajes fijos).
+
 ## RPG-01 · Fase 3: lo que existía y no se podía alcanzar
 **Tipo** accesibilidad + fix · **Cambio observable:** grande en interfaz, **nulo en la
 carrera del autopiloto** (ver evidencia).
