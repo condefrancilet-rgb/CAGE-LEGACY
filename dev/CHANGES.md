@@ -10,6 +10,54 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-13 · Fase 15: las decisiones deciden algo
+**Tipo:** auditoría de decisiones y agencia, más cuatro correcciones de información o repetición
+· **Cambio observable:** sí. El entrenamiento informa lo que realmente cambió; las respuestas
+carismáticas de la prensa rinden; la ficha de personalidad ya no muestra una barra de mánager que no
+hace nada; la investigación del patrocinador turbio sale una vez y no cada semana y media. Archivo de
+partida: `5c4396b` (sha256 `e3bfce85…5391d3a`). Auditoría en `dev/DECISIONES-AUDITORIA.md`;
+herramienta en `dev/decisiones.js`.
+
+**Medido:** cada decisión donde el jugador la encuentra, con el mismo azar para todas las opciones
+(4 carreras × 400 semanas, 52 decisiones en contexto; 173 opciones del banco forzadas en dos partidas;
+trabajo de la semana en 6 contextos × 24 muestras; plan del camp en 2 partidas × 60 peleas por celda;
+personalidad, entrenador y mánager en carreras idénticas salvo esa elección; 5 builds de 10 años).
+- **0 decisiones falsas** en el banco de eventos.
+- **15 eventos con una opción dominada:** 7 neutras gratis, 6 malas a propósito, 1 que depende del
+  mánager, 1 con premisa sin consecuencia.
+- **«Semana tranquila» dominada por la recuperación fuera del campamento** (en campamento no).
+- **El plan óptimo cambia con el rival:** lucha contra striking, +42/+37 puntos contra un fajador y
+  +1/+13 contra un luchador.
+
+**1. El entrenamiento informa lo que pasó.** Las stats son enteras y `cap` redondea: una ganancia de 0,3
+no mueve nada y una de 0,6 mueve un punto. La pantalla anunciaba la fracción calculada; medido en 10
+años, +769 anunciado y +429 real, con el 82 % de las líneas «+0,x» sin efecto. Ahora cada línea es el
+cambio real. **La regla de progreso no se tocó:** con un acumulador de fracciones la misma carrera
+terminaba con OVR 79 en vez de 71. Es la curva de poder y queda para su fase.
+
+**2. El tono carismático rinde.** Seis respuestas del banco de prensa tenían tono `charisma`, que las
+tablas no tenían (fase 14: `NaN`, después 0). Ahora rinden como el tono gracioso, la misma equivalencia
+que el eco de prensa de la capa RPG ya hacía.
+
+**3. La ficha de personalidad no muestra lo que no pasa.** La barra «Con tu manager» (`PERSX.mgr`) no la
+leía ninguna regla y se quitó. Las otras tres (esquina, conflicto, prensa) actúan cada semana.
+
+**4. La investigación del patrocinador turbio sale una vez.** La guarda escribía `done` y la condición no
+lo miraba: en una carrera de 10 años que aceptó ese patrocinador, la misma pregunta salió 282 veces
+(una cada semana y media), cada una restando reputación o popularidad.
+
+**Lo que NO se tocó (documentado con su medición, para su fase):**
+- la curva de progresión por el redondeo (fases 21 y 27);
+- «counter» rinde alto contra los dos perfiles de rival (fase 16);
+- tres premisas de campamento sin consecuencia en la pelea: video filtrado, entrenador nuevo del rival
+  y `counterPlan` (fase 16);
+- la relación con el mánager no pesa en ninguna regla y el contrato no vence (fases 17 y 18);
+- cambiar de entrenador o de mánager es un toque sin confirmación (fases 23 y 28);
+- la respuesta pública del rival depende del sorteo general (fase 25);
+- las opciones neutras dominadas: son rol, no se inventaron costes.
+
+**Evidencia.** EVID_15
+
 ## RPG-12 · Fase 14: el mundo existe sin el jugador
 **Tipo** auditoría del mundo dinámico + nueve bugs del mundo corregidos + tres bugs viejos que la
 regresión sacó a la luz · **Cambio observable:** sí — el mundo pelea desde la primera semana, no se

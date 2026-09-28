@@ -268,20 +268,29 @@ suite('MUNDO-14 · hallazgos de la regresión', () => {
     eq(c.G.contract.left, antes, 'un empate de otra organización consumió el contrato');
   });
 
-  test('conferencia: una respuesta de tono carismático no borra popularidad, reputación ni hype', () => {
-    const c = firmado(12), p = c.G.player;
-    const q = c.PRESSQ.find(x => x.o.some(o => o[1] === 'charisma'));
-    ok(q, 'el banco ya no tiene respuestas carismáticas: la prueba no aplica');
-    p.pop = 40; p.rep = 30; p.hype = 20;
-    c.G.camp.oppId = c.G.nextFight.oppId;
-    c.pressStart();
-    c.G.mg.qs = [q, q, q, q];                      /* las cuatro, la respuesta carismática */
-    const i = q.o.findIndex(o => o[1] === 'charisma');
-    for(let k = 0; k < 4; k++) c.pressPick(i);
-    ok(c.G.mg.done, 'la conferencia no terminó');
-    ok(Number.isFinite(c.G.mg.pop) && Number.isFinite(c.G.mg.heat) && Number.isFinite(c.G.mg.resp), 'la conferencia quedó con NaN: ' + [c.G.mg.pop, c.G.mg.heat, c.G.mg.resp]);
-    eq([p.pop, p.rep, p.hype], [40, 30, 20], 'una respuesta sin fila en las tablas movió (o borró) popularidad, reputación o hype');
-    ok(!/NaN/.test(c.G.mg.result), 'el resumen dice NaN: ' + c.G.mg.result);
+  test('conferencia: una respuesta de tono carismático no borra popularidad, reputación ni hype (y rinde como la graciosa)', () => {
+    /* fase 14: el tono no tenía fila y daba NaN; fase 15: rinde como 'funny', la
+       equivalencia que el juego ya usa para el eco de prensa */
+    const correr = (tono) => {
+      const c = firmado(12), p = c.G.player;
+      const q = c.PRESSQ.find(x => x.o.some(o => o[1] === 'charisma') && x.o.some(o => o[1] === 'funny'))
+             || c.PRESSQ.find(x => x.o.some(o => o[1] === 'charisma'));
+      ok(q, 'el banco ya no tiene respuestas carismáticas: la prueba no aplica');
+      p.pop = 40; p.rep = 30; p.hype = 20; p.pers = 'pro';
+      c.G.camp.oppId = c.G.nextFight.oppId;
+      c.pressStart();
+      const fila = { q: q.q, o: q.o.map(o => [o[0], o[1] === 'charisma' ? tono : o[1]]) };
+      c.G.mg.qs = [fila, fila, fila, fila];
+      const i = q.o.findIndex(o => o[1] === 'charisma');
+      for(let k = 0; k < 4; k++) c.pressPick(i);
+      ok(c.G.mg.done, 'la conferencia no terminó');
+      ok(Number.isFinite(c.G.mg.pop) && Number.isFinite(c.G.mg.heat) && Number.isFinite(c.G.mg.resp), 'la conferencia quedó con NaN: ' + [c.G.mg.pop, c.G.mg.heat, c.G.mg.resp]);
+      ok(!/NaN/.test(c.G.mg.result), 'el resumen dice NaN: ' + c.G.mg.result);
+      return [p.pop, p.rep, p.hype].map(v => +v.toFixed(6));
+    };
+    const car = correr('charisma'), gra = correr('funny');
+    ok(car[0] > 40, 'la respuesta carismática no movió la popularidad: ' + car);
+    eq(car, gra, 'el tono carismático no rinde como el gracioso');
   });
 
   test('ex entrenador enfrente: el bono de lectura es +12 exacto, también con medio punto de adaptación', () => {

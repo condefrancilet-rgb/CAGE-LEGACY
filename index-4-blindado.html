@@ -2491,7 +2491,12 @@ function applyTrain(actKey, intensity, bonus){
     if(room<=0) return;
     var g = (room/26) * (p.lr[k]/100) * t.w[k] * intensity * q * curve.grow * 1.9;
     if(p.fatigue>75) g*=.45; else if(p.fatigue>55) g*=.75;
-    if(g>0.05){ p.st[k]=cap(p.st[k]+g); gained.push([k,g]); }
+    /* FASE 15: lo que se informa es lo que cambió. Las stats son enteras (cap
+       redondea), así que una ganancia de 0,3 no mueve nada y una de 0,6 mueve
+       un punto entero; la pantalla anunciaba la fracción calculada. Medido en
+       10 años: +769 anunciado, +429 real; el 82 % de las líneas «+0,x» no
+       movía la stat. La regla de progreso no cambia: cambia lo que se dice. */
+    if(g>0.05){ var st0=p.st[k]; p.st[k]=cap(p.st[k]+g); if(p.st[k]>st0) gained.push([k,p.st[k]-st0]); }
   });
   p.fatigue = clamp(p.fatigue + t.fat*intensity*(1-p.st.recovery/300), 0, 100);
   // riesgo de lesión
@@ -2511,7 +2516,7 @@ function applyTrain(actKey, intensity, bonus){
 function gainText(g){
   if(!g.length) return 'Sin progreso medible esta semana.';
   g.sort(function(a,b){return b[1]-a[1];});
-  return g.slice(0,4).map(function(x){ return STNAME[x[0]]+' +'+x[1].toFixed(1); }).join(' · ');
+  return g.slice(0,4).map(function(x){ var v=Math.round(x[1]*10)/10; return STNAME[x[0]]+' +'+(v%1===0? v : v.toFixed(1)); }).join(' · ');
 }
 
 /* ---------- CAMPAMENTO ---------- */
@@ -2994,9 +2999,15 @@ function pressPick(i){
      nada, que es lo que la pantalla ya le decía al jugador («Respuesta sin
      ruido»). Cuánto rinde el tono carismático es una decisión de diseño que
      no se inventa acá. */
-  var popGain = (({humble:1.2,arrogant:3.2,quiet:.5,funny:2.8,aggro:2.6,pro:1.0})[tone]||0)*fit*(pp.pop);
-  var heat = ({humble:0,arrogant:3,quiet:0,funny:1,aggro:4,pro:0})[tone]||0;
-  var resp = ({humble:2.5,arrogant:-2,quiet:.5,funny:0,aggro:-2.5,pro:2})[tone]||0;
+  /* FASE 15: el tono carismático rinde como el gracioso. No es un número
+     nuevo: es la equivalencia que el juego ya hace en todos lados —el eco de
+     prensa de la capa RPG trata 'charisma' igual que 'funny' (media_funny) y
+     el trato social los agrupa como tonos cálidos—. Antes sumaba 0: las seis
+     respuestas carismáticas del banco eran una decisión sin consecuencia. */
+  var TONE = tone==='charisma' ? 'funny' : tone;
+  var popGain = (({humble:1.2,arrogant:3.2,quiet:.5,funny:2.8,aggro:2.6,pro:1.0})[TONE]||0)*fit*(pp.pop);
+  var heat = ({humble:0,arrogant:3,quiet:0,funny:1,aggro:4,pro:0})[TONE]||0;
+  var resp = ({humble:2.5,arrogant:-2,quiet:.5,funny:0,aggro:-2.5,pro:2})[TONE]||0;
   mg.pop+=popGain; mg.heat+=heat; mg.resp+=resp;
   (mg.tones=mg.tones||[]).push(tone);
   mg.log.unshift('“'+o[0].replace(/"/g,'')+'” — '+
@@ -13641,7 +13652,7 @@ hookOn('train:applied','esquinaIQ', function(c){
   var p=G.player, r=c.r;
   if(p.st.fightiq < p.pot.fightiq){
     var g=iq*0.5*clamp(safeNum(c.intensity,1),0.3,1.4);
-    if(g>0.02){ p.st.fightiq=cap(p.st.fightiq+g); if(r&&r.gain) r.gain.push(['fightiq',g]); }
+    if(g>0.02){ var iq0=p.st.fightiq; p.st.fightiq=cap(p.st.fightiq+g); if(r&&r.gain&&p.st.fightiq>iq0) r.gain.push(['fightiq',p.st.fightiq-iq0]); }
   }
 }, 60);
 /* Mostrar en el gimnasio qué te aporta realmente tu coach. */
@@ -20388,8 +20399,10 @@ CL.on('week','gymrep', function(){
 /* ==========================================================================
    MÓDULO 15 — PERSONALIDAD CONECTADA
    PERS ya definía pop/resp/heat y un estilo de prensa. Ahora también decide
-   cómo te trata tu coach, cómo negocia tu manager, qué eventos te tocan, qué
-   ofertas aparecen y cuánta rivalidad generás.
+   cómo te trata tu coach, qué ofertas aparecen, cuánta prensa te sigue y
+   cuánta rivalidad generás. (FASE 15: decía también «cómo negocia tu manager»
+   y «qué eventos te tocan»; ninguna de las dos cosas existe: PERSX.mgr no lo
+   lee nadie y ningún evento del banco mira la personalidad.)
    ========================================================================== */
 CL.mod('personalidad','La personalidad decide relaciones, prensa, ofertas y conflicto');
 
@@ -20918,7 +20931,10 @@ function clTakeInvite(){
         '<p class="sm dim">'+esc(x.line)+'</p>'+
         '<div class="grid g2">'+
         '<div><div class="xs dim2">Con tu esquina</div>'+clBar(50+x.coach*25,100,x.coach>0?'g':'')+'</div>'+
-        '<div><div class="xs dim2">Con tu manager</div>'+clBar(50+x.mgr*25,100,x.mgr>0?'g':'')+'</div>'+
+        /* FASE 15: acá había una barra «Con tu manager» (PERSX.mgr) que ningún
+           sistema lee: la relación con el mánager no pesa en ninguna regla. Las
+           otras tres sí actúan cada semana (paciencia de la esquina, rivalidades
+           por carácter, calor de prensa). No se muestra lo que no pasa. */
         '<div><div class="xs dim2">Conflicto que generás</div>'+clBar(50+x.rival*25,100,x.rival>0?'':'g')+'</div>'+
         '<div><div class="xs dim2">Interés de la prensa</div>'+clBar(50+x.media*25,100,'y')+'</div>'+
         '</div></div>';
@@ -32199,7 +32215,11 @@ hookOn('week','promesas', function(){
   }
   /* «Dos periodistas empiezan a investigarte.» (x4_sponsor) */
   if(G.flags.dirtyMoney===true) G.flags.dirtyMoney={at:now};
-  if(G.flags.dirtyMoney && typeof G.flags.dirtyMoney==='object' && now-safeInt(G.flags.dirtyMoney.at,now)>=12){
+  /* FASE 15: la nota sale UNA vez. La marca `done` se escribía y la condición
+     no la miraba: medido en una carrera de 10 años que aceptó el patrocinador
+     turbio, la misma pregunta salió 282 veces (una cada semana y media), cada
+     una restando reputación o popularidad. */
+  if(G.flags.dirtyMoney && typeof G.flags.dirtyMoney==='object' && !G.flags.dirtyMoney.done && now-safeInt(G.flags.dirtyMoney.at,now)>=12){
     G.flags.dirtyMoney={at:safeInt(G.flags.dirtyMoney.at,now), done:1};
     CL.ask('prom_invest', 'Sale la nota: "El logo que '+fname(p)+' lleva en el pecho paga con plata que nadie sabe de dónde viene."',
       ['Negarlo todo','Asumirlo y cortar el contrato','No decir nada']);
