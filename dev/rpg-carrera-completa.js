@@ -105,6 +105,25 @@ function comprasDeJugador(c, rnd, k11){
     c.G.socOut = null; c.UI.screen = 'hub';
   }
 }
+/* fase 12: los servicios que se pagan fuera de la tienda, por la vía del jugador */
+function serviciosDeJugador(c, rnd, k12){
+  if(c.G.fight || c.G.mg || c.G.pending.length) return;
+  const p = c.G.player, cash = c.G.cash;
+  if(c.CL.spend() === 'normal' && cash > 60000){ c.clSetSpend('pro'); k12.plan++; }
+  const lv = c.gameplayLevel();
+  if(lv < 5 && cash > 3 * c.GAMEPLAY_COST[lv + 1] && rnd() < 0.05){ c.requestGameplayUpgrade(); k12.exp++; }
+  if(c.CL.debtTotal() > 0 && cash > c.CL.debtTotal() + 20000){ c.CL.debtPayNow(); k12.deuda++; }
+  if(c.shopOwned('camera') && cash > 20000 && rnd() < 0.08){ c.contentBoost(); k12.contenido++; }
+  if(!c.G.camp && !k12.mudanza && cash > 200000){
+    const g = c.G.gyms.filter(x => x.id !== p.gym && c.gymMoveFee(x) * 10 < cash).sort((a, b) => b.prest - a.prest || String(a.id).localeCompare(String(b.id)))[0];
+    if(g){ const g0 = p.gym; c.gymJoin(g.id); if(p.gym !== g0) k12.mudanza++; }
+  }
+  if(!c.G.camp && rnd() < 0.06){
+    const f = (c.socCircle() || []).slice(0, 14).find(y => y && !y.isPlayer && y.active && !y.retired && !c.socWhyBlocked('watch:' + y.id, { weight: c.SOC_W.MAYOR, actor: y.id, cat: 'evento' }));
+    if(f && cash > 2000){ c.watchFight(f.id); if(c.G.soc && c.G.soc.intel && c.G.soc.intel[f.id]) k12.verPelea++; }
+  }
+  c.G.socOut = null; c.UI.screen = 'hub';
+}
 
 const t0 = Date.now();
 let rotas = 0;
@@ -117,6 +136,7 @@ for(let i = 0; i < N; i++){
   /* fase 10: ¿se llega a lo nuevo por la vía del jugador? (sólo cuenta) */
   const k10 = { espalda: 0, defensa: 0, heatOf: 0, heatFirmadas: 0, sparMem: 0, sparPlan: 0, heatMax: 0 };
   const k11 = { compras: [], estilista: 0, visitas: 0, jet: 0, invit: 0, villa: 0, docOf: 0, docFirm: 0, resto: 0 };
+  const k12 = { plan: 0, exp: 0, deuda: 0, contenido: 0, mudanza: 0, verPelea: 0 };
   c.hookOn('media:done', 'dev11', () => { if(c.G.mg && c.G.mg.styl) k11.estilista++; }, 99);
   c.hookOn('offers:made', 'dev11', () => { if((c.G.offers || []).some(o => o && o.docMade)) k11.docOf++; }, 101);
   c.hookOn('fight:accepted', 'dev11', (x) => { if(x && x.offer && x.offer.docMade) k11.docFirm++; }, 99);
@@ -134,6 +154,7 @@ for(let i = 0; i < N; i++){
       A.correrCarrera(h, { maxWeeks: 1, politica: 'rpg', seedPolitica: seed * 1000 + semanas });
       semanaDeJugador(c, rnd);
       comprasDeJugador(c, rnd, k11);
+      serviciosDeJugador(c, rnd, k12);
     } catch(e){ fallo = 'excepción en la semana ' + semanas + ': ' + e.message; break; }
     semanas++;
     const malas = INV.checkInvariants(c.G, c.UI, {}) || [];
@@ -177,6 +198,8 @@ for(let i = 0; i < N; i++){
               ' · sparring que ofreció ajustar el plan ' + k10.sparPlan + ' · etapas de rivalidad ' + (JSON.stringify(etapas)) + ' · sellos ' + (sellos || '—'));
   console.log('   fase 11 · compras ' + k11.compras.length + ' (' + k11.compras.join(',') + ') · apariciones con estilista ' + k11.estilista + ' · visitas a otro gimnasio ' + k11.visitas + ' (con jet ' + k11.jet + ')' +
               ' · invitaciones a entrenar ' + k11.invit + ' (vinieron a la villa ' + k11.villa + ')' + ' · coestelares del documental ' + k11.docOf + ' (firmadas ' + k11.docFirm + ') · semanas de camp con el restaurante ' + k11.resto);
+  console.log('   fase 12 · plan profesional ' + k12.plan + ' · niveles de experiencia ' + k12.exp + ' · pagos de deuda ' + k12.deuda + ' · refuerzos de contenido ' + k12.contenido +
+              ' · mudanzas ' + k12.mudanza + ' · peleas que fue a ver ' + k12.verPelea + ' · deuda al retiro ' + c.CL.debtTotal());
 }
 console.log('\n' + (N - rotas) + '/' + N + ' carreras completas sin fallos · invariantes cada semana (' + Object.keys(INV.SISTEMAS).length + ' sistemas) · ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 process.exit(rotas ? 1 : 0);

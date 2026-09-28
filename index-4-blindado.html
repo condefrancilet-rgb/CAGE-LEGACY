@@ -2956,7 +2956,10 @@ function pressEnd(){
   hookEmit('media:done', {kind:'press', heat:mg.heat, pop:mg.pop, resp:mg.resp, host:op?op.id:null, tones:mg.tones||[]});
   mg.result='Popularidad +'+ (mg.pop*0.55).toFixed(1) + ' · Rivalidad '+(mg.heat>=7?'ALTA':(mg.heat>=4?'media':'baja'))+
     ' · Reputación '+(mg.resp>=0?'+':'')+(mg.resp*0.6).toFixed(1);
-  if(mg.heat>=7) mg.result += ' — El pesaje va a ser un caos. La bolsa por PPV sube.';
+  /* FASE 12: prometía que la bolsa de PPV subía; no existe ningún ingreso por PPV.
+     Lo que sí pasa con la previa caliente (G.camp.pressHeat ≥ 7) es más
+     popularidad al terminar la pelea (applyWinLossResult). */
+  if(mg.heat>=7) mg.result += ' — El pesaje va a ser un caos: la pelea se vende sola y, al terminarla, tu nombre sale ganando en popularidad.';
 }
 
 /* =============== MINIJUEGO 8: RECOVERY =============== */
@@ -3168,7 +3171,7 @@ var EVENTS = [
     {t:'Pedirle la pelea a la organización',f:function(){G.flags.wantFight=G.tmpOpp;G.player.pop=clamp(G.player.pop+1.5,1,100);return 'El matchmaker lo escucha. Puede aparecer pronto.';}}]},
 
 {id:'injury_scare',w:4,c:function(){return !G.player.inj;},
- x:function(){return 'Sentiste un tirón fuerte en el último entrenamiento. Podría no ser nada.';},
+ x:function(){return 'Sentiste un tirón fuerte en el último entrenamiento. Podría no ser nada. Hacer estudios cuesta '+money(600)+'.';},
  o:[{t:'Parar y hacer estudios',f:function(){G.cash-=600;G.player.fatigue=clamp(G.player.fatigue-10,0,100);
       if(chance(.35)){G.player.inj='lesión menor';G.player.injWeeks=ri(2,5);return 'Era algo: '+G.player.injWeeks+' semanas de recuperación. Mejor ahora que en la pelea.';}
       return 'Todo limpio. Susto nada más.';}},
@@ -3217,8 +3220,8 @@ var EVENTS = [
 
 {id:'training_camp_invite',w:4,c:function(){return true;},
  x:function(){var g=pick(G.gyms.filter(function(x){return x.id!==G.player.gym;}));G.tmpGym=g.id;
-  return g.name+' te invita a un campamento abierto de dos semanas. Sparring de altísimo nivel.';},
- o:[{t:'Ir',f:function(){var g=gymById(G.tmpGym);G.cash-=g.cost/2;
+  return g.name+' te invita a un campamento abierto de dos semanas. Sparring de altísimo nivel. Ir cuesta '+money(Math.round(g.cost/2))+' (viaje y estadía).';},
+ o:[{t:'Ir',f:function(){var g=gymById(G.tmpGym);G.cash-=Math.round(g.cost/2);
       var r=applyTrain(pick(['spar','box','wrest','grap']),1.0,g.a.spar/220);
       addMem(coachById(G.player.coach),'te fuiste dos semanas a otro gimnasio',-2);
       return 'Dos semanas brutales en '+g.name+'. '+gainText(r.gain);}},
@@ -3915,7 +3918,7 @@ function applyWinLossResult(){
   /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
      tanto" y su flag no se leia. Entra aqui: la multa por no dar el peso pasa
      del 20% al 10%. */
-  if(G.camp && G.camp.missWeight) purse *= (G.flags.nutri? .9 : .8);
+  if(G.camp && G.camp.missWeight && !G.camp.missFinePaid) purse *= (G.flags.nutri? .9 : .8);
   var pay = won? purse : purse*0.6;
   var bonus = 0;
   /* el chance(.45) va PRIMERO: con o sin el rasgo, la tirada se consume igual
@@ -5829,7 +5832,7 @@ function scrGym(){
      que TENÉS queda abierto; los catalogos, plegados. */
   var catGym='<div class="card"><p class="sm dim">Cambiar mejora unas áreas y empeora otras, cuesta dinero y afecta relaciones.</p>';
   G.gyms.forEach(function(g){
-    catGym+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes</span>'+
+    catGym+='<button class="btn '+(p.gym===g.id?'sel':'')+'" onclick="changeGym(\''+g.id+'\')">'+esc(g.name)+' <span class="dim2 xs">'+money(g.cost)+'/mes'+(p.gym===g.id?'':' · mudarte '+money(gymMoveFee(g)))+'</span>'+
      '<small>'+esc(g.desc)+' · STR '+g.a.strike+' · WR '+g.a.wrest+' · GR '+g.a.grap+' · SPAR '+g.a.spar+' · prestigio '+g.prest+'</small></button>';
   });
   var catGymHtml = catGym + '</div>';
@@ -5842,7 +5845,9 @@ function scrGym(){
   var catCoach='<div class="card">';
   G.coaches.forEach(function(c){
     var inT = team().filter(function(x){return x.id===c.id;}).length>0;
+    var conoce=!!(G.flags && G.flags.coachSeen && G.flags.coachSeen[c.id]);
     catCoach+='<button class="btn '+(p.coach===c.id?'sel':'')+'" onclick="changeCoach(\''+c.id+'\')">'+esc(c.name)+' <span class="tag">'+c.pers+'</span>'+
+     (conoce? ' <span class="tag on">te conoce</span>' : '')+
      '<small>'+esc(c.desc)+' · calidad '+c.q+'</small></button>'+
      /* E3b: 44 px. Median 32 y eran 14 de los 14 objetivos tactiles chicos que
         quedaban en todo el juego. */
@@ -5873,20 +5878,23 @@ function metaLock(k){
 }
 var META_LOCK_TXT = {gym:'Esta carrera es de un solo gimnasio: no podés mudarte.',
                      div:'Esta carrera es sin cambiar de peso: no podés cambiar de categoría.'};
-function changeGym(id){
-  var p=G.player; if(p.gym===id) return;
-  if(metaLock('gym')){ toast(META_LOCK_TXT.gym); return; }
-  var g=gymById(id);
-  if(G.cash < g.cost){ toast('No te alcanza el dinero.'); return; }
-  G.cash -= g.cost;
-  addMem(coachById(p.coach),'te fuiste de su gimnasio',-10);
-  p.gym=id;
-  // el cambio de gimnasio modifica techos según fortalezas
-  if(g.a.strike>75) ['boxing','kicks','muay','accuracy'].forEach(function(k){ p.pot[k]=cap(p.pot[k]+1); });
-  if(g.a.wrest>75) ['wrestling','takedowns','tdd'].forEach(function(k){ p.pot[k]=cap(p.pot[k]+1); });
-  if(g.a.grap>75) ['grappling','submission','ground'].forEach(function(k){ p.pot[k]=cap(p.pot[k]+1); });
-  toast('Te mudaste a '+g.name);
-  saveGame(true); render();
+/* FASE 12 — UNA SOLA MUDANZA. Había dos: esta (catálogo de Equipo) cobraba
+   una cuota mensual, subía techos y dejaba mudarse en pleno campamento; la de
+   Gimnasios (gymJoin) cobraba dos cuotas, no dejaba mudarse en campamento y
+   cuidaba compañeros y entrenador. Mismo acto, dos precios y dos resultados.
+   Ahora las dos entradas son gymJoin, que hace todo lo de las dos. */
+function changeGym(id){ return gymJoin(id); }
+/* lo que cuesta mudarse: dos cuotas mensuales de la casa nueva */
+function gymMoveFee(g){ return Math.round(safeNum(g&&g.cost,900)*2); }
+/* el cambio de gimnasio modifica techos según fortalezas: +1 en lo que la
+   casa nueva hace muy bien (más de 75). Devuelve qué techos subieron. */
+var GYM_CEIL = {strike:['boxing','kicks','muay','accuracy'], wrest:['wrestling','takedowns','tdd'], grap:['grappling','submission','ground']};
+function gymCeilings(g){
+  var p=G.player, up=[];
+  ['strike','wrest','grap'].forEach(function(a){
+    if(safeNum(g&&g.a&&g.a[a],0)>75) GYM_CEIL[a].forEach(function(k){ var v=p.pot[k]; p.pot[k]=cap(p.pot[k]+1); if(p.pot[k]>v) up.push(k); });
+  });
+  return up;
 }
 function changeCoach(id){
   var p=G.player; if(p.coach===id) return;
@@ -5917,7 +5925,7 @@ function scrContracts(){
   h+='</div>';
   h+='<div class="card"><h3>Finanzas</h3>'+
    '<div class="kv"><span>Ganancias de carrera</span><span class="mono gold">'+money(G.careerEarn)+'</span></div>'+
-   '<div class="kv"><span>Gastos semanales</span><span class="mono">'+money(120+(gymById(p.gym).cost/4))+'</span></div>'+
+   '<div class="kv"><span>Gastos semanales</span><span class="mono">'+money(-CL.weeklyLines().reduce(function(a,l){ return a+Math.min(0,l[1]); },0))+'</span></div>'+
    '<div class="kv"><span>Patrocinios</span><span class="mono">'+money(G.spons.reduce(function(a,s){return a+s.week;},0))+' / semana</span></div></div>';
   if(G.spons.length){
     h+='<div class="card"><h3>Patrocinadores</h3>'+G.spons.map(function(s){
@@ -6312,9 +6320,9 @@ ev({id:'x1_parking',w:9,drama:1,c:function(){return !seen('x1_parking')&&G.playe
     G.flags.heat=(G.flags.heat||0)+2;return 'El video explota. Ganás cientos de miles de seguidores y una rivalidad que va a durar años.';}}]});
 
 ev({id:'x2_house',w:7,drama:1,c:function(){return !seen('x2_house')&&G.player.pop>40;},
- x:function(){return 'Tras la última polémica, un grupo de fanáticos radicales averiguó dónde vivís. Hay gente en la puerta a las once de la noche.';},
+ x:function(){return 'Tras la última polémica, un grupo de fanáticos radicales averiguó dónde vivís. Hay gente en la puerta a las once de la noche. Mudarte de urgencia cuesta '+money(8000)+'.';},
  o:[{t:'Mudarte de urgencia',f:function(){G.cash-=8000;G.player.st.composure=cap(G.player.st.composure-2);
-    return 'Te mudás en 48 horas. Cuesta '+money(8000)+' y dos semanas de concentración, pero volvés a dormir.';}},
+    return 'Te mudás en 48 horas. Cuesta '+money(8000)+' y te saca de eje (−2 de temple), pero volvés a dormir.';}},
   {t:'Salir a dar la cara y firmar autógrafos',f:function(){G.player.pop=clamp(G.player.pop+5,1,100);G.player.rep=clamp(G.player.rep+2,1,100);
     if(chance(.25)){G.player.st.composure=cap(G.player.st.composure-4);return 'Firmás durante una hora. Alguien se pasa de la raya y la noche termina con la policía en tu vereda.';}
     return 'Salís, firmás, hablás. Se van tranquilos y la historia te vuelve más humano ante la prensa.';}},
@@ -6381,11 +6389,13 @@ ev({id:'x9_weight',w:8,c:function(){
   var remaining=Math.max(0,safeInt(G.camp.weeks,0)-safeInt(G.camp.i,0));
   return remaining===1;
 },
- x:function(){return 'Faltan 24 horas para el pesaje y estás casi 3 kilos por encima del límite. La balanza no negocia.';},
+ x:function(){return 'Faltan 24 horas para el pesaje y estás casi 3 kilos por encima del límite. La balanza no negocia. Pelear en peso pactado cuesta una multa del 25 % de la bolsa ('+money(Math.round((G.nextFight?G.nextFight.purse:5000)*0.25))+').';},
  o:[{t:'Corte extremo de urgencia',f:function(){if(G.camp){G.camp.cutPenalty=(G.camp.cutPenalty||0)+16;}
     G.player.weightNow=DIVS[G.player.div].lb;return 'Das el peso. Vas a entrar al octágono vacío, y lo vas a sentir en el tercer round.';}},
   {t:'Pelear en peso pactado y pagar la multa',f:function(){var f=Math.round((G.nextFight?G.nextFight.purse:5000)*0.25);G.cash-=f;
-    G.player.rep=clamp(G.player.rep-6,1,100);if(G.camp)G.camp.missWeight=true;
+    /* FASE 12: la multa se paga acá; missWeight queda como el hecho (no diste
+       el peso) y missFinePaid evita que la liquidación la cobre otra vez */
+    G.player.rep=clamp(G.player.rep-6,1,100);if(G.camp){G.camp.missWeight=true;G.camp.missFinePaid=f;}
     return 'Perdés '+money(f)+' y parte del respeto del vestuario, pero entrás fuerte.';}},
   {t:'Cancelar la pelea y subir de división',f:function(){var idx=DIVS[G.player.div].o;
     var up=DIVKEYS.filter(function(d){return DIVS[d].f===DIVS[G.player.div].f&&DIVS[d].o===idx+1;})[0];
@@ -6450,16 +6460,16 @@ ev({id:'x14_fix',w:5,drama:1,c:function(){return !seen('x14_fix')&&G.player.rec.
 
 ev({id:'x15_ambush',w:7,drama:1,c:function(){return !seen('x15_ambush')&&!!G.camp&&G.camp.pressDone;},
  x:function(){var o=F(G.camp.oppId);
-  return fname(o)+' te tira una bebida encima en pleno escenario. Los equipos se cruzan y se arma un caos frente a las cámaras.';},
+  return fname(o)+' te tira una bebida encima en pleno escenario. Los equipos se cruzan y se arma un caos frente a las cámaras. Si respondés con las manos, la comisión multa con '+money(15000)+'.';},
  o:[{t:'Devolvérsela ahí mismo',f:function(){var o=F(G.camp.oppId);addMemF(o,'te fuiste a las manos con él en la conferencia',-14);
     G.player.pop=clamp(G.player.pop+9,1,100);G.player.rep=clamp(G.player.rep-6,1,100);
-    G.cash-=15000;return 'Multa de '+money(15000)+' para los dos. La pelea pasa a ser la más vendida del año.';}},
+    G.cash-=15000;return 'Multa de '+money(15000)+' para los dos. El video da la vuelta al mundo.';}},
   {t:'Quedarte quieto y mirarlo fijo',f:function(){var o=F(G.camp.oppId);addMemF(o,'no reaccionaste a su provocación y quedó como el descontrolado',-4);
     G.player.rep=clamp(G.player.rep+8,1,100);G.player.pop=clamp(G.player.pop+4,1,100);G.player.st.composure=cap(G.player.st.composure+4);
     return 'La foto de tu cara impasible da la vuelta al mundo. Él queda como el desesperado.';}},
   {t:'Usarlo para vender la pelea al micrófono',f:function(){G.player.pop=clamp(G.player.pop+12,1,100);
     if(G.camp)G.camp.pressHeat=(G.camp.pressHeat||0)+6;
-    return 'Agarrás el micrófono y convertís el papelón en una promo perfecta. La bolsa por PPV se dispara.';}}]});
+    return 'Agarrás el micrófono y convertís el papelón en una promo perfecta. La previa queda al rojo: al terminar la pelea, tu nombre sale ganando.';}}]});
 /* ==========================================================================
    8. ROSTER REAL POR ÉPOCA + PASO DEL TIEMPO POR MES/AÑO CON FOCO
    Datos deportivos públicos (nombre, división, año de debut, trayectoria).
@@ -7443,6 +7453,7 @@ hookOn('press:start','arcade', function(){
 /* ---------- mejora progresiva de experiencia de carrera ---------- */
 var GAMEPLAY_LEVELS=['Básico','Decente','Bueno','Muy bueno','Excelente','Avanzado'];
 var GAMEPLAY_COST=[0,3500,8000,16000,30000,55000];
+var GAMEPLAY_GAIN=1.2;   /* por nivel, en adaptabilidad y en Fight IQ (cap() lo deja en +1) */
 function gameplayLevel(){ return clamp(safeInt(G.gameplayLevel,0),0,5); }
 function requestGameplayUpgrade(){
   var lv=gameplayLevel();
@@ -7450,12 +7461,14 @@ function requestGameplayUpgrade(){
   var cost=GAMEPLAY_COST[lv+1];
   if(G.cash<cost){ toast('Necesitás '+money(cost)+' para esta mejora.'); return; }
   G.cash-=cost; G.gameplayLevel=lv+1;
-  // Mejora real: +1,2 de adaptabilidad y +1,2 de Fight IQ por nivel. El nivel
-  // en sí sólo fija el próximo costo y la etiqueta (fase 11: el comentario
-  // hablaba de multiplicadores en los minijuegos que no existen).
-  G.player.st.adaptability=cap(G.player.st.adaptability+1.2);
-  G.player.st.fightiq=cap(G.player.st.fightiq+1.2);
-  pushNews('Tu equipo invirtió en mejorar la experiencia de carrera: nivel '+GAMEPLAY_LEVELS[G.gameplayLevel]+'.');
+  /* Lo que compra: +1 de adaptabilidad y +1 de Fight IQ por nivel (el +1,2
+     que se suma lo redondea cap()). El nivel en sí sólo fija el próximo costo
+     y la etiqueta. FASE 12: la pantalla y la noticia no decían qué se compraba. */
+  var st=G.player.st, a0=st.adaptability, i0=st.fightiq;
+  st.adaptability=cap(st.adaptability+GAMEPLAY_GAIN);
+  st.fightiq=cap(st.fightiq+GAMEPLAY_GAIN);
+  pushNews('Tu equipo invirtió en mejorar la experiencia de carrera: nivel '+GAMEPLAY_LEVELS[G.gameplayLevel]+
+    ' (adaptabilidad +'+(st.adaptability-a0)+', Fight IQ +'+(st.fightiq-i0)+').');
   saveGame(true); render();
 }
 
@@ -7525,7 +7538,7 @@ hookOn('screen:contracts','scrContractsStable', function(h){
     '<p class="sm dim">Poder comercial: '+Math.round(fighterLeverage())+'/100 · tu peso en la mesa depende de récord, ranking, popularidad y títulos.</p>'+
     (G.contract?'<button class="btn" onclick="askManagerRaise()">Quiero ganar más dinero<small>Negociar una bolsa mayor según tu valor actual.</small></button>':'')+
     '<button class="btn" onclick="requestPromoterChange()">Quiero cambiar de promotora<small>Tu manager intentará abrir una negociación con una organización superior.</small></button>'+
-    '<button class="btn" onclick="requestGameplayUpgrade()">Mejorar experiencia de carrera: '+GAMEPLAY_LEVELS[lv]+'<small>'+((lv<5)?'Siguiente nivel: '+GAMEPLAY_LEVELS[lv+1]+' · costo '+money(GAMEPLAY_COST[lv+1]):'Máximo alcanzado')+'</small></button>'+
+    '<button class="btn" onclick="requestGameplayUpgrade()">Mejorar experiencia de carrera: '+GAMEPLAY_LEVELS[lv]+'<small>'+((lv<5)?'Siguiente nivel: '+GAMEPLAY_LEVELS[lv+1]+' · costo '+money(GAMEPLAY_COST[lv+1])+' · +1 adaptabilidad y +1 Fight IQ':'Máximo alcanzado')+'</small></button>'+
     '</div><div class="card"><h3>Finanzas</h3>');
   if(p.titles>0 && p.org){
     var idx=DIVS[p.div].o;
@@ -12207,16 +12220,19 @@ function relStageHTML(f){
    no tenían ningún botón en el juego. Cada una conserva sus propias reglas y
    su costo en el presupuesto social: acá sólo se decide cuándo tiene sentido
    ofrecerla y se muestra por qué está bloqueada. */
+/* FASE 12: el precio de lo que se paga en el círculo vive en un solo lugar;
+   el botón lo muestra antes de pagar (antes sólo aparecía si no te alcanzaba) */
+var SOC_PRICE = {travel:1800, watch:400};
 function relActionsHTML(f, busy, btn){
   if(!f || f.retired || !f.active) return '';
   var b=bondOf(f), r=relV(f), k=relStage(f), out='';
   if(!busy && !b.ally && (r.friend>=55 || b.partner) && k!=='rival' && k!=='nemesis')
     out+=btn('allyForm','🤜 Proponer una alianza', socWhyBlocked('ally:'+f.id,{actor:f.id,cat:'alianza'}));
   if(!busy && (r.friend>=62 || b.ally || b.partner) && k!=='rival' && k!=='nemesis')
-    out+=btn('travelWith','✈️ Viajar juntos a un evento',
-      G.camp? 'Estás en campamento.' : (safeNum(G.cash,0)<1800? 'El viaje sale '+money(1800)+'.' : socWhyBlocked('travel:'+f.id,{actor:f.id,cat:'viaje'})));
-  out+=btn('watchFight','🏟️ Ir a ver su pelea',
-    safeNum(G.cash,0)<400? 'La entrada sale $400.' : socWhyBlocked('watch:'+f.id,{actor:f.id,cat:'evento'}));
+    out+=btn('travelWith','✈️ Viajar juntos a un evento<small>'+money(SOC_PRICE.travel)+' · una semana · +'+travelFatigue(8)+' de fatiga</small>',
+      G.camp? 'Estás en campamento.' : (safeNum(G.cash,0)<SOC_PRICE.travel? 'El viaje sale '+money(SOC_PRICE.travel)+'.' : socWhyBlocked('travel:'+f.id,{actor:f.id,cat:'viaje'})));
+  out+=btn('watchFight','🏟️ Ir a ver su pelea<small>'+money(SOC_PRICE.watch)+' · una semana · leés su juego</small>',
+    safeNum(G.cash,0)<SOC_PRICE.watch? 'La entrada sale '+money(SOC_PRICE.watch)+'.' : socWhyBlocked('watch:'+f.id,{actor:f.id,cat:'evento'}));
   if(k==='rival' || k==='nemesis' || r.rivalry>=45)
     out+='<button class="btn"'+(socWhyBlocked('pod:rival',{actor:f.id,cat:'prensa'})?' disabled style="opacity:.45"':'')+
       ' onclick="podcastStart(\'rival\',\''+f.id+'\')">🎙️ Podcast cara a cara<small>'+
@@ -13606,7 +13622,7 @@ function fightPayout(f, won, res){
   /* H-011: el nutricionista prometia que "el corte de peso deja de castigarte
      tanto" y su flag no se leia. Entra aqui, en la fuente unica del pago: la
      multa por no dar el peso pasa del 20% al 10%. */
-  if(G.camp && G.camp.missWeight){ penalty=Math.round((showUp+winB)*(G.flags&&G.flags.nutri?0.10:0.20)); lines.push(['Multa por no dar el peso', -penalty]); }
+  if(G.camp && G.camp.missWeight && !G.camp.missFinePaid){ penalty=Math.round((showUp+winB)*(G.flags&&G.flags.nutri?0.10:0.20)); lines.push(['Multa por no dar el peso', -penalty]); }
   var gross = showUp+winB+perfB+titleB-penalty;
   var m=mgrById(G.mgId), cut=m? safeNum(m.cut,0) : 0;
   var fee=Math.round(gross*cut);
@@ -14415,7 +14431,7 @@ function gymVisit(id){
       var cs=gymCoaches(g.id);
       if(cs.length){ var co=cs[Math.floor(rnd()*cs.length)];
         G.flags.coachSeen=G.flags.coachSeen||{}; G.flags.coachSeen[co.id]=1;
-        extra=' '+co.name+' te miró entrenar y te dejó su número.'; }
+        extra=' '+co.name+' te miró entrenar: ahora te conoce (se ve en el catálogo de entrenadores).'; }
     } else if(roll<0.36 && met){
       G.soc=G.soc||{}; G.soc.intel=G.soc.intel||{}; G.soc.intel[met.id]=socWeakness(met);
       extra=' Te quedaste mirando los rounds: '+shortName(met)+' '+G.soc.intel[met.id]+'.';
@@ -14438,7 +14454,11 @@ function gymJoin(id){
     if(metaLock('gym')){ toast(META_LOCK_TXT.gym); return; }
     if(g.id===p.gym) return;
     if(G.camp){ toast('No podés mudarte en medio de un campamento.'); return; }
-    var fee=Math.round(safeNum(g.cost,900)*2);
+    /* «pueden rechazarte la mudanza» (CL.gymPerks): con la reputación en esa
+       casa por debajo del umbral, no te aceptan y no se cobra nada */
+    var gr=(typeof CL!=='undefined' && CL.gymRepOf)? CL.gymRepOf(g.id) : 45;
+    if(gr < GYM_REJECT){ toast('⛔ '+g.name+' no te acepta: tu reputación ahí es de '+Math.round(gr)+'.'); return; }
+    var fee=gymMoveFee(g);
     if(safeNum(G.cash,0)<fee){ toast('La cuota de entrada son '+money(fee)); return; }
     G.cash=safeNum(G.cash,0)-fee;
     /* el gimnasio viejo NO desaparece de la historia: los compañeros recuerdan */
@@ -14453,14 +14473,18 @@ function gymJoin(id){
       });
     }
     p.gym=g.id;
-    /* si tu coach era de la casa vieja, se queda ahí */
+    var techos=gymCeilings(g);
+    /* si tu coach era de la casa vieja, se queda ahí, y no le gustó */
     var co=coachById(p.coach);
+    if(co && old && co.gym===old.id) addMem(co,'te fuiste de su gimnasio',-10);
     if(co && co.gym && co.gym!==g.id){
       var newc=gymCoaches(g.id)[0];
-      if(newc){ p.coach=newc.id; if(!p.coaches) p.coaches=[]; if(p.coaches.indexOf(newc.id)<0) p.coaches.push(newc.id); }
+      if(newc) p.coach=newc.id;
     }
     G.socOut={t:'🏠 Te mudaste a '+g.name+' ('+g.tier+' · '+g.specName+'). Cuota: '+money(fee)+'.'+
+      (techos.length? ' Tu techo sube en '+techos.map(function(k){ return STNAME[k]||k; }).join(', ')+'.' : '')+
       (left.length? ' No todos lo tomaron bien: '+left.slice(0,3).join(', ')+'.' : '')};
+    toast('Te mudaste a '+g.name);
     saveGame(true); render();
   });
 }
@@ -14699,9 +14723,9 @@ function watchFight(id){
     var so={weight:SOC_W.MAYOR, actor:f.id, cat:'evento'};
     var why=socWhyBlocked('watch:'+f.id, so);
     if(why){ toast('⛔ '+why); return; }
-    if(safeNum(G.cash,0)<400){ toast('La entrada sale $400.'); return; }
+    if(safeNum(G.cash,0)<SOC_PRICE.watch){ toast('La entrada sale '+money(SOC_PRICE.watch)+'.'); return; }
     if(!socSpend('watch:'+f.id,'watch',so)) return;
-    G.cash=safeNum(G.cash,0)-400;
+    G.cash=safeNum(G.cash,0)-SOC_PRICE.watch;
     var p=G.player;
     /* mini análisis: reconocer el patrón del peleador */
     var pat=socWeakness(f);
@@ -14734,7 +14758,7 @@ function travelWith(id){
     var so={weight:SOC_W.MAYOR, actor:f.id, cat:'viaje'};
     var whyT=socWhyBlocked('travel:'+f.id, so);
     if(whyT){ toast('⛔ '+whyT); return; }
-    var cost=1800;
+    var cost=SOC_PRICE.travel;
     if(safeNum(G.cash,0)<cost){ toast('El viaje sale '+money(cost)); return; }
     if(!socSpend('travel:'+f.id,'travel',so)) return;
     G.cash=safeNum(G.cash,0)-cost;
@@ -15822,9 +15846,9 @@ ev({id:'sg_invcamp', w:9, drama:1,
        if(elite){
          var cs=(G.coaches||[]).filter(function(c){ return safeNum(c.q,60)>=82; });
          if(cs.length){ var co=cs[Math.floor(rnd()*cs.length)];
-           G.flags.coachSeen=G.flags.coachSeen||{}; G.flags.coachSeen[co.id]=1;
-           if(!p.coaches) p.coaches=[];
-           if(p.coaches.indexOf(co.id)<0){ p.coaches.push(co.id); extra=' '+co.name+' quedó disponible para tu esquina.'; } }
+           G.flags.coachSeen=G.flags.coachSeen||{};
+           if(!G.flags.coachSeen[co.id]) extra=' '+co.name+' te vio entrenar: ahora te conoce.';
+           G.flags.coachSeen[co.id]=1; }
          p.rep=clamp(safeNum(p.rep,45)+6,1,100);
        } else p.rep=clamp(safeNum(p.rep,45)+2,1,100);
        if(!b.ally && r.friend>=72){ b.ally=true; extra+=' 🤜 Volvieron siendo equipo.'; }
@@ -20105,14 +20129,29 @@ CL.on('week','camp', function(){
    ========================================================================== */
 CL.mod('economia','Plan de gasto con contrapartidas y reputación por gimnasio');
 
+/* FASE 12: cada plan tiene dos efectos, y son los únicos: la recuperación
+   semanal (rec: ×6 de fatiga y ×3 de daño, hook 'economia') y la calidad del
+   entrenamiento (train, filtro 'train:mod'). Los campos rep e inj que traían
+   el profesional y el todo adentro no los leía nadie desde el archivo
+   original y ningún texto los prometía: se quitaron. CL.spendFx dice en
+   pantalla exactamente lo que hace cada plan. */
 CL.SPEND = {
   lean:{n:'Austero', d:'Vivís con lo mínimo. Ahorrás, pero te recuperás peor y entrenás con lo que hay.',
-        ico:'🪙', cost:0, rec:-0.35, train:-0.06, rep:-0.02},
-  normal:{n:'Normal', d:'Lo justo: comida, fisio y suplementos.', ico:'⚖️', cost:180, rec:0, train:0, rep:0},
+        ico:'🪙', cost:0, rec:-0.35, train:-0.06},
+  normal:{n:'Normal', d:'Lo justo: comida, fisio y suplementos.', ico:'⚖️', cost:180, rec:0, train:0},
   pro:{n:'Profesional', d:'Nutricionista, fisio semanal y descanso real. Caro y se nota.',
-        ico:'💠', cost:620, rec:0.5, train:0.07, rep:0.04},
+        ico:'💠', cost:620, rec:0.5, train:0.07},
   allin:{n:'Todo adentro', d:'Equipo completo alrededor tuyo. Rinde como nada y te funde la caja.',
-        ico:'🔥', cost:1500, rec:0.9, train:0.13, rep:0.08, inj:-0.35}
+        ico:'🔥', cost:1500, rec:0.9, train:0.13}
+};
+CL.spendFx = function(k){
+  var S=CL.SPEND[k]; if(!S) return '';
+  var num=function(v){ return (Math.round(v*10)/10).toString().replace('.',','); };
+  if(!S.rec && !S.train) return 'sin extras: la recuperación y el entrenamiento de base';
+  var out=[];
+  if(S.rec) out.push('recuperás '+num(Math.abs(S.rec*6))+' de fatiga y '+num(Math.abs(S.rec*3))+' de daño '+(S.rec>0? 'más' : 'menos')+' por semana');
+  if(S.train) out.push('entrenamiento '+(S.train>0? '+' : '−')+Math.round(Math.abs(S.train)*100)+' %');
+  return out.join(' · ');
 };
 CL.spend = function(){ var s=CL.S(); return CL.SPEND[s.spend]? s.spend : 'normal'; };
 function clSetSpend(k){
@@ -20134,8 +20173,7 @@ CL.on('week','economia', function(){
   /* descuento por reputación en tu gimnasio: se devuelve lo cobrado de más */
   var g=gymById(p.gym);
   if(g){
-    var rep=CL.gymRep(g.id);
-    var disc = rep>=75? 0.30 : (rep>=55? 0.15 : (rep<25? -0.20 : 0));
+    var disc = CL.gymFeeMod(CL.gymRep(g.id));
     if(disc) G.cash += Math.round(safeNum(g.cost,0)/4*disc);
   }
   if(G.cash < -6000 && CL.once('broke')){
@@ -20151,10 +20189,16 @@ CL.handler('cl_broke', function(idx){
   if(idx===0){ CL.S().spend='lean'; return 'Modo supervivencia. El cuerpo lo va a sentir.'; }
   if(idx===1){ G.flags.clTakeAny=1; makeOffers();
     return 'Tu manager acepta lo primero que aparezca. No preguntes por el rival.'; }
+  /* FASE 12: «se descuenta de tu próxima bolsa y queda anotado» — antes sumaba
+     la plata y la anotaba en G.flags.clAdvance, que no leía nadie: era gratis.
+     Ahora es un adelanto como los otros dos del juego (CL.debtAdd): entra a la
+     deuda, se ve en Contratos y sale de la próxima bolsa. */
   var adv = Math.round((G.orgs[p.org]? G.orgs[p.org].pay[0] : 2000)*1.2);
-  G.cash += adv; G.flags.clAdvance = (G.flags.clAdvance||0)+adv;
+  var d0 = CL.debtTotal(), why = CL.debtAdd(adv, 'La organización', 'adelanto por quedarte sin plata');
+  /* los adelantos tienen reglas (CL.canAdvance): si no te lo dan, no hay plata ni costo */
+  if(CL.debtTotal() <= d0) return 'La organización no te adelanta nada: '+why;
   p.rep = clamp(p.rep-3,1,100);
-  return 'Te adelantan '+money(adv)+'. Se descuenta de tu próxima bolsa y queda anotado.';
+  return 'Te adelantan '+money(adv)+'. Se descuenta de tu próxima bolsa y queda anotado en tu deuda.';
 }, 30);
 
 /* --- reputación por gimnasio --------------------------------------------- */
@@ -20180,15 +20224,22 @@ CL.gymRepLabel = function(id){
   return {n:'no sos bienvenido', c:'red'};
 };
 /* lo que la reputación abre y cierra */
+/* FASE 12: la cuota por reputación, una sola regla para cobrarla y para
+   decirla (antes la lista mostraba 15 % y 30 % juntos, y el recargo del 20 %
+   con reputación baja se cobraba sin figurar en ningún lado). */
+CL.gymFeeMod = function(r){ return r>=75? 0.30 : (r>=55? 0.15 : (r<25? -0.20 : 0)); };
+/* lectura pura: no crea la entrada de un gimnasio que nunca te conoció */
+CL.gymRepOf = function(id){ var s=CL.S(); return (s.gymRep && s.gymRep[id]!==undefined)? s.gymRep[id] : 45; };
+var GYM_REJECT = 18;
 CL.gymPerks = function(id){
-  var r=CL.gymRep(id), out=[];
+  var r=CL.gymRep(id), out=[], fm=CL.gymFeeMod(r);
   if(r>=80) out.push('acceso a cualquier coach de la casa');
   if(r>=65) out.push('sparrings con los peleadores principales');
-  if(r>=55) out.push('cuota 15% más barata');
-  if(r>=75) out.push('cuota 30% más barata');
+  if(fm>0)  out.push('cuota '+Math.round(fm*100)+'% más barata');
+  if(fm<0)  out.push('cuota '+Math.round(-fm*100)+'% más cara');
   if(r>=70) out.push('invitaciones a camps cerrados');
   if(r<25)  out.push('no te dan buenos sparrings');
-  if(r<18)  out.push('pueden rechazarte la mudanza');
+  if(r<GYM_REJECT) out.push('no te aceptan si querés mudarte acá');
   return out;
 };
 CL.on('week','gymrep', function(){
@@ -20653,7 +20704,7 @@ CL.hubCard('decisiones', function(){
   ['lean','normal','pro','allin'].forEach(function(k){
     var x=CL.SPEND[k];
     h+='<button class="btn'+(k===sk?' pri':'')+' sm" onclick="clSetSpend(\''+k+'\')">'+x.ico+' '+esc(x.n)+
-       '<small>'+money(x.cost)+' · '+esc(x.d.split('.')[0])+'</small></button>';
+       '<small>'+money(x.cost)+'/sem · '+esc(CL.spendFx(k))+'</small></button>';
   });
   h+='</div></div>';
   return h;
@@ -20931,6 +20982,23 @@ CL.debtAdd = function(amount, from, why, rate){
   CL.thread('economia','Pediste '+money(amount)+' por adelantado.');
   return 'Te adelanta '+money(amount)+'. Sale de tu próxima bolsa, con intereses si tardás.';
 };
+/* FASE 12 — UN SOLO PAGO. La bolsa, el «vender y pagar de golpe» del evento y
+   el «pagar ahora» de Contratos tenían tres copias del mismo recorrido, y sólo
+   la última levantaba la marca de cobranzas (debtFrozen) al saldar: saldada
+   por la bolsa, la próxima vez que la deuda pasara el techo no había aviso ni
+   austeridad. Ahora las tres pagan por acá. Devuelve lo que se pagó. */
+CL.debtApply = function(amount){
+  var left=Math.max(0, clN(amount)), s=CL.S();
+  CL.debts().forEach(function(d){
+    if(left<=0) return;
+    var rest=Math.max(0, clN(d.amt)-clN(d.paid));
+    var q=Math.min(rest,left);
+    d.paid=clN(d.paid)+q; left-=q;
+  });
+  s.debt=CL.debts().filter(function(d){ return clN(d.amt)-clN(d.paid) > 1; });
+  if(!CL.debtTotal() && s.debtFrozen) s.debtFrozen=0;
+  return Math.max(0, clN(amount))-left;
+};
 /* Cuánto de una bolsa se puede llevar la deuda. Nunca todo: nadie pelea gratis. */
 CL.debtBite = function(net){
   var lev=negoLeverage();                       /* si valés más, negociás mejor */
@@ -20950,14 +21018,7 @@ CL.payout = function(q, f, won, res){
     var room=Math.round(q.net*CL.debtBite(q.net));
     var take=Math.min(room, owed);
     if(take>0){
-      var left=take;
-      CL.debts().forEach(function(d){
-        if(left<=0) return;
-        var rest=Math.max(0, clN(d.amt)-clN(d.paid));
-        var pay=Math.min(rest, left);
-        d.paid=clN(d.paid)+pay; left-=pay;
-      });
-      s.debt=CL.debts().filter(function(d){ return clN(d.amt)-clN(d.paid) > 1; });
+      CL.debtApply(take);
       q.lines.push(['Descuento de deuda', -take]);
       q.net=Math.max(0, q.net-take);
       q.debtPaid=take; q.debtLeft=CL.debtTotal();
@@ -21002,6 +21063,9 @@ CL.handler('cl_debt', function(idx,d){
   if(idx===0){ G.flags.clTakeAny=1; makeOffers();
     return 'Tu manager mueve el teléfono. Va a aparecer algo, y no va a ser una buena pelea.'; }
   if(idx===1){
+    /* FASE 12: «tu deuda pasó a cobranzas: dejó de crecer, pero ya no se
+       negocia» (CL.debtCeiling). Se renegociaba igual. */
+    if(s.debtFrozen) return 'Cobranzas no negocia: la deuda ya no crece, pero tampoco se renegocia. Sale de tus bolsas.';
     /* v2.4 — con techo. Antes cada renegociación multiplicaba el interés por
        1,9 SIN LÍMITE: elegir esta opción veinte veces en una carrera larga
        dejaba tasas de 3.700% semanal y deudas de ocho cifras. */
@@ -21011,10 +21075,7 @@ CL.handler('cl_debt', function(idx,d){
   var pay=Math.min(clN(G.cash), clN(d.owed));
   if(pay<=0) return 'Abrís la cuenta, mirás el número y cerrás la aplicación. No hay nada que vender.';
   G.cash-=pay;
-  var left=pay;
-  CL.debts().forEach(function(x){ if(left<=0) return; var rest=Math.max(0,clN(x.amt)-clN(x.paid));
-    var q=Math.min(rest,left); x.paid=clN(x.paid)+q; left-=q; });
-  s.debt=CL.debts().filter(function(x){ return clN(x.amt)-clN(x.paid)>1; });
+  CL.debtApply(pay);
   s.debtLog.unshift({y:clN(G.year), t:'−'+money(pay)+' pagado de tu bolsillo', k:'pay'});
   p.st.discipline=cap(clN(p.st.discipline,50)+2);
   return 'Pagaste '+money(pay)+'. Te quedaste sin nada, pero mirás a la gente a los ojos.';
@@ -23438,17 +23499,11 @@ CL.debtPayNow = function(){
     var pay=Math.min(owed, cash);
     if(pay<=0){ toast('No tenés con qué.'); return; }
     G.cash -= pay;
-    var left=pay, s=CL.S();
-    CL.debts().forEach(function(d){
-      if(left<=0) return;
-      var rest=Math.max(0, clN(d.amt)-clN(d.paid));
-      var q=Math.min(rest,left); d.paid=clN(d.paid)+q; left-=q;
-    });
-    s.debt = CL.debts().filter(function(d){ return clN(d.amt)-clN(d.paid) > 1; });
+    var s=CL.S();
+    CL.debtApply(pay);
     s.debtLog.unshift({y:clN(G.year), t:'−'+money(pay)+' pagado de tu bolsillo', k:'pay'});
     if(s.debtLog.length>24) s.debtLog.pop();
     if(!CL.debtTotal()){
-      CL.S().debtFrozen = 0;
       CL.thread('economia','Saldaste toda tu deuda.');
       G.player.st.discipline = cap(clN(G.player.st.discipline,50)+2);
       toast('Deuda saldada.');
@@ -26697,9 +26752,12 @@ hookOn('year','evolucionDivision', function(c){ evolvePlayerDivisionWorld(c.news
 CL.mod('content','Equipo de contenido con producción, hype y consecuencias');
 CL.contentState=function(){
   if(!G.flags) G.flags={};
-  if(!G.flags.content || typeof G.flags.content!=='object') G.flags.content={level:0,budget:0,hype:0,episodes:0,last:0,backlog:0};
+  /* FASE 12: 'budget' sumaba lo invertido y lo cobrado por campañas en un
+     mismo número que no leía ni mostraba nadie, y 'last' no lo escribía ni
+     lo leía nadie; se dejaron de llevar (en partidas viejas quedan, sin uso). */
+  if(!G.flags.content || typeof G.flags.content!=='object') G.flags.content={level:0,hype:0,episodes:0,backlog:0};
   var c=G.flags.content;
-  ['level','budget','hype','episodes','last','backlog'].forEach(function(k){c[k]=safeNum(c[k],0);});
+  ['level','hype','episodes','backlog'].forEach(function(k){c[k]=safeNum(c[k],0);});
   return c;
 };
 CL.contentProduce=function(news){
@@ -26714,7 +26772,7 @@ CL.contentProduce=function(news){
   if(G.nextFight && G.nextFight.weeks<=6) G.flags.heat=(safeNum(G.flags.heat,0)+quality*.6);
   if(news && c.episodes%6===0) news.push('El equipo de contenido sacó una serie que empieza a mover tu nombre.');
   if(c.hype>80 && chance(.10)){
-    c.budget+=2500; G.cash+=2500; if(news) news.push('Una marca te paga por una campaña nacida de tu contenido: +'+money(2500)+'.');
+    G.cash+=2500; if(news) news.push('Una marca te paga por una campaña nacida de tu contenido: +'+money(2500)+'.');
   }
 };
 CL.on('week','content',function(ctx){
@@ -26729,7 +26787,7 @@ var _cam=SHOP.filter(function(i){return i.id==='camera';})[0];
 if(_cam){
   _cam.p=2400; _cam.d='Estudio de contenido: produce historias y hype cada semana, abre oportunidades comerciales y escala con el tiempo. Podés invertir en upgrades adicionales.';
   _cam.f=function(){
-    var c=CL.contentState(); c.budget+=300; c.hype=clamp(c.hype+6,0,100); G.player.pop=clamp(G.player.pop+2,1,100);
+    var c=CL.contentState(); c.hype=clamp(c.hype+6,0,100); G.player.pop=clamp(G.player.pop+2,1,100);
     return 'El estudio quedó operativo. Desde ahora genera contenido y oportunidades por su cuenta.';
   };
 }
@@ -26740,12 +26798,13 @@ CL.hubCard('content_team',function(){
   var c=CL.contentState();
   return '<div class="card"><div class="hdr"><span class="b">📹 Equipo de contenido</span><span class="tag '+(c.hype>=70?'on':'')+'">Hype '+Math.round(c.hype)+'</span></div>'+
     '<p class="sm dim">Producciones '+Math.round(c.episodes)+' · nivel '+Math.round(c.level)+' · backlog '+Math.round(c.backlog)+'. El contenido alimenta exposición, oportunidades comerciales y ruido alrededor de tus peleas.</p>'+
-    '<div class="grid g2"><button class="btn" onclick="contentBoost()">🎬 Invertir en producción<small>$2.000 · +hype / acelera oportunidades</small></button>'+
+    '<div class="grid g2"><button class="btn" onclick="contentBoost()">🎬 Invertir en producción<small>'+money(CONTENT_BOOST)+' · +9 de hype (con más de 80, llegan campañas pagas)</small></button>'+
     '<button class="btn" onclick="contentDrop()">📡 Sacar una pieza especial<small>consume backlog · riesgo/recompensa</small></button></div></div>';
 },42);
+var CONTENT_BOOST=2000;   /* lo que cuesta reforzar la producción (el botón lo muestra) */
 function contentBoost(){
-  if(safeNum(G.cash,0)<2000){toast('No te alcanza para reforzar la producción.');return;}
-  var c=CL.contentState(); G.cash-=2000; c.budget+=2000; c.hype=clamp(c.hype+9,0,100); toast('El equipo de contenido acelera la producción.'); render();
+  if(safeNum(G.cash,0)<CONTENT_BOOST){toast('No te alcanza para reforzar la producción.');return;}
+  var c=CL.contentState(); G.cash-=CONTENT_BOOST; c.hype=clamp(c.hype+9,0,100); toast('El equipo de contenido acelera la producción: +9 de hype.'); render();
 }
 function contentDrop(){
   var c=CL.contentState(); if(c.backlog<1){toast('No hay material listo.');return;} c.backlog--; c.hype=clamp(c.hype+ (chance(.68)?6:-2),0,100); G.flags.heat=safeNum(G.flags.heat,0)+1; changePopularity(chance(.72)?2.8:-.8,'pieza especial'); toast('Publicaron una pieza especial.'); render();
@@ -26755,6 +26814,7 @@ function contentDrop(){
    F) SHOP — muchos destinos para el dinero, con identidad y tiers
    -------------------------------------------------------------------------- */
 var VAULT_RENT=3200;          /* renta semanal de la bóveda de campeón */
+var CHEF_WEEK=650;            /* lo que cuesta por semana el chef de campamento */
 var SHOP_EXTRA=[
  {id:'recoverylab',c:'Recuperación',n:'Laboratorio de recuperación',p:18000,ico:'🧪',once:true,d:'La fisioterapia entre camps te cuesta la mitad y te recuperás mejor entre rounds.',f:function(){G.flags.recoveryLab=1;G.player.st.recovery=cap(G.player.st.recovery+4);return 'Tu recuperación profesional deja de depender sólo del descanso.';}},
  {id:'elitecamp',c:'Rendimiento',n:'Campamento de élite',p:28000,ico:'🏕️',once:false,d:'Pagás un camp intensivo que cambia el enfoque de las próximas 6 semanas: mejor calidad, más fatiga.',f:function(){G.flags.eliteCampWeek=G.week;G.flags.eliteCampAt=G.year*52+G.week;G.flags.eliteCampBoost=1;G.player.st.fightiq=cap(G.player.st.fightiq+4);G.player.st.discipline=cap(G.player.st.discipline+2);return 'Reservaste un campamento de élite.';}},
@@ -26797,7 +26857,7 @@ hookOn('screen:shop','scrShopPrev', function(h){
 /* Aplicar propiedades endgame que tengan impacto visible pero no sean +5% planos. */
 CL.on('week','luxury',function(){
   if(!G||!G.player)return;
-  if(G.flags&&G.flags.chef) G.cash-=650;
+  if(G.flags&&G.flags.chef) G.cash-=CHEF_WEEK;
   if(G.flags&&G.flags.driver&&G.nextFight&&G.nextFight.weeks<=3) G.player.fatigue=clamp(G.player.fatigue-2,0,100);
   if(G.flags&&G.flags.vault&&CL.once('vaultIncome')) G.cash+=VAULT_RENT;
   if(G.flags&&G.flags.legacyGym&&CL.once('legacyGymTalent')){
@@ -27470,6 +27530,31 @@ CL.weeklyBurn = function(){
   if(CL.SPEND && CL.spend) b += CL.SPEND[CL.spend()].cost;
   return Math.round(b);
 };
+/* FASE 12 — EL FLUJO SEMANAL, LÍNEA POR LÍNEA, con las mismas fuentes que lo
+   cobran: advanceWeekCore (vida, cuota, equipo, plan, patrocinios), 'economia'
+   (ajuste de la cuota por tu reputación en el gimnasio), 'luxury' (chef,
+   bóveda) y 'shopWeekly' (ingreso pasivo). Antes Finanzas decía «gastos
+   semanales» con sólo vida + cuota, y el hub «gimnasio + equipo» sin el chef,
+   el ajuste ni el ingreso pasivo. CL.weeklyBurn (lo que decide el aviso y el
+   descubierto) no cambia. */
+CL.weeklyLines = function(){
+  var p=G&&G.player; if(!p) return [];
+  var g=p.gym? gymById(p.gym) : null, out=[];
+  out.push(['Vida', -120]);
+  if(g){
+    out.push(['Cuota de '+g.name, -g.cost/4]);
+    var fm=CL.gymFeeMod(CL.gymRepOf(g.id));
+    if(fm) out.push([fm>0? 'Descuento por tu reputación en el gimnasio' : 'Recargo por tu reputación en el gimnasio', Math.round(safeNum(g.cost,0)/4*fm)]);
+  }
+  var tc=(typeof teamCost==='function')? teamCost() : 0; if(tc) out.push(['Equipo técnico', -tc]);
+  var S=CL.SPEND[CL.spend()]; if(S.cost) out.push(['Plan de gasto '+S.n.toLowerCase(), -S.cost]);
+  if(G.flags && G.flags.chef) out.push(['Chef de campamento', -CHEF_WEEK]);
+  var sp=CL.weeklySponsor(); if(sp) out.push(['Patrocinios', sp]);
+  var pas=safeInt(G.flags&&G.flags.bizIncome,0)+safeInt(G.flags&&G.flags.sponsorW,0); if(pas) out.push(['Ingreso pasivo', pas]);
+  if(G.flags && G.flags.vault) out.push(['Renta de la bóveda', VAULT_RENT]);
+  return out.map(function(l){ return [l[0], Math.round(l[1])]; });
+};
+CL.weeklyNet = function(){ return CL.weeklyLines().reduce(function(a,l){ return a+l[1]; }, 0); };
 CL.weeklySponsor = function(){
   var t=0; (G.spons||[]).forEach(function(s){ t+=clN(s.week); });
   return Math.round(t);
@@ -27477,7 +27562,7 @@ CL.weeklySponsor = function(){
 /* semanas de aire con la caja de HOY, al ritmo de gasto de esta semana.
    Infinity si los patrocinios ya cubren el gasto fijo solos. */
 CL.runwayWeeks = function(){
-  var net = CL.weeklySponsor() - CL.weeklyBurn();
+  var net = CL.weeklyNet();
   if(net>=0) return Infinity;
   return Math.max(0, Math.floor(clN(G.cash) / -net));
 };
@@ -27485,16 +27570,15 @@ CL.runwayWeeks = function(){
 /* ---- tarjeta del hub: siempre visible, no sólo cuando ya hay deuda ------ */
 CL.hubCard('finanzas', function(){
   if(!G.player) return '';
-  var burn=CL.weeklyBurn(), inc=CL.weeklySponsor(), net=inc-burn, rw=CL.runwayWeeks();
+  var lines=CL.weeklyLines(), net=CL.weeklyNet(), rw=CL.runwayWeeks();
   var col = net>=0 ? 'jade' : (rw>=8 ? 'gold' : (rw>=3 ? 'bad' : 'blood'));
   var netTxt = net>=0 ? ('+'+money(net)) : ('−'+money(-net));
-  var rwTxt = net>=0 ? 'Los patrocinios cubren el gasto fijo.' :
+  var rwTxt = net>=0 ? 'Lo que entra cada semana cubre el gasto fijo.' :
     (isFinite(rw) ? 'Te alcanza para <b class="'+col+'">'+rw+' semana'+(rw===1?'':'s')+'</b> si nada cambia.' :
      'Sin caja de sobra: cualquier bache te manda directo al descubierto.');
   return '<div class="card"><div class="hdr"><span class="b">💰 Gasto semanal</span>'+
     '<span class="tag '+(net<0?'red':'gr')+'">'+netTxt+'/sem</span></div>'+
-    '<div class="row"><span>Gimnasio + equipo técnico</span><span class="mono bad">−'+money(burn)+'</span></div>'+
-    '<div class="row"><span>Patrocinios</span><span class="mono jade">+'+money(inc)+'</span></div>'+
+    lines.map(function(l){ return '<div class="row"><span>'+esc(l[0])+'</span><span class="mono '+(l[1]<0?'bad':'jade')+'">'+(l[1]<0?'−':'+')+money(Math.abs(l[1]))+'</span></div>'; }).join('')+
     '<p class="xs dim2" style="margin-top:4px">'+rwTxt+'</p></div>';
 }, 6);
 
@@ -28488,9 +28572,9 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
       {t:'Volver desde abajo',f:function(){G.player.st.confidence=cap(G.player.st.confidence+2);remember('comeback',{choice:'rebuild'});return 'Preferís volver a ganarte el lugar sin pedir favores.';}},
       {t:'Cambiar de categoría',f:function(){G.flags.considerDivisionChange=true;remember('comeback',{choice:'division'});return 'La derrota abre una puerta que antes no necesitabas mirar.';}}
     ]});
-    add({id:'story_veteran_legacy',category:CAT.LIFE,w:3,c:function(){return ageOf(G.player)>=35&&!G.player.retired;},x:function(){return 'Un periodista te pregunta si todavía querés perseguir cinturones o empezar a construir algo que sobreviva a tus peleas.';},o:[
+    add({id:'story_veteran_legacy',category:CAT.LIFE,w:3,c:function(){return ageOf(G.player)>=35&&!G.player.retired;},x:function(){return 'Un periodista te pregunta si todavía querés perseguir cinturones o empezar a construir algo que sobreviva a tus peleas. Invertir en el gimnasio son '+money(25000)+'.';},o:[
       {t:'Perseguir otro título',f:function(){G.player.st.confidence=cap(G.player.st.confidence+2);remember('veteran_legacy',{choice:'title'});return 'Todavía no estás listo para mirar hacia afuera.';}},
-      {t:'Invertir en el gimnasio',f:function(){G.flags.legacyGym=(G.flags.legacyGym||0)+1;G.cash=Math.max(0,G.cash-25000);remember('veteran_legacy',{choice:'gym'});return 'Ponés dinero donde pasaste la mayor parte de tu vida.';}},
+      {t:'Invertir en el gimnasio',f:function(){G.flags.legacyGym=(G.flags.legacyGym||0)+1;G.cash-=25000;remember('veteran_legacy',{choice:'gym'});return 'Ponés dinero donde pasaste la mayor parte de tu vida.';}},
       {t:'Pensar en el retiro',f:function(){G.flags.planExit=true;remember('veteran_legacy',{choice:'retire'});return 'Por primera vez la palabra retiro deja de sonar abstracta.';}}
     ]});
   }
@@ -31995,7 +32079,7 @@ hookOn('fight:applied','arreglo', function(c){
     if(CL.thread) CL.thread('legado','Una pelea de tu récord no fue una pelea.');
     return;
   }
-  CL.ask('prom_fix', 'Ganaste la pelea que habías vendido. El empresario de la cena te espera en el estacionamiento.',
+  CL.ask('prom_fix', 'Ganaste la pelea que habías vendido. El empresario de la cena te espera en el estacionamiento. Devolverle la plata con intereses son '+money(Math.round(amt*1.3))+'.',
     ['Devolverle la plata con intereses','Denunciarlo ahora','Ignorarlo'], {amt:amt});
 }, 84);
 CL.handler('prom_fix', function(idx, d){

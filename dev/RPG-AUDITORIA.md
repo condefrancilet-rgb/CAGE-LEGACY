@@ -217,10 +217,12 @@ cargar  ── loadGame ─▶ saveShape ▸ saveMigrate(v1..v5) ▸ saveValidat
 | `f.tq.back` toma de espalda (fase 10, del árbol) | posición `TQ.back()`: suelo +6, sumisión del árbol ×1,15, +1 de control por intercambio | `22-fase10.js` |
 | ciclo de rivalidad (fase 10: derivado en cada consulta, sin «medios» ni resolución) | `RPG.rivalFacts` (lector puro) + `RPG.rivalTick` (avance guardado en `bond.rc`, `bondNote`, `CL.remember`, diario); la resolución es `canOfferRematch` | `22-fase10.js` |
 | tienda y patrimonio (fase 11: `apt`, `villa`, `estate`, `jet`, `foundation`, `stylist` y todo lo demás que se vende) | inventario completo en `dev/TIENDA-AUDITORIA.md`: 52 compras, cada una con su consumidor medido o su marca documentada; 8 artículos que no se podían comprar desde el original; 8 promesas conectadas (estilista, villa, jet, fundación, academia de prospectos, restaurante, documental, laboratorio); 4 promesas sin sistema que las sostenga, corregidas en el texto (mansión, jet, academia de prospectos, estudio audiovisual); 1 consumidor falso (centro de alto rendimiento → gimnasio comunitario) y 1 compra duplicada (chofer) reparados | `23-fase11-tienda.js` (contrato de la tienda) · navegador |
+| pagos fuera de la tienda (fase 12: plan de gasto y sus campos `rep`/`inj`, experiencia de carrera, contenido, visitas, mudanzas, viajes, ir a ver una pelea, deudas, eventos que cobran, gastos semanales) | inventario en `dev/ECONOMIA-AUDITORIA.md`; `rep`/`inj` eliminados (nunca leídos, nada los prometía); doble multa del peso, adelanto gratis y cobro parcial corregidos; mudanza, pago de deuda y «te conoce» unificados; un solo desglose semanal; textos de PPV corregidos | `24-fase12-economia.js` · `dev/recorridos-economia.js` · navegador |
 
 **Siguen escritas sin lector** (no prometen una consecuencia futura): `brawler`, `late`,
 `needCheapGym` (su lectura se reemplazó por `CL.cheapGym`), `eliteCampWeek` (la reemplaza
-`eliteCampAt`). Corrección de lo que decía esta sección antes de la fase 11: `eliteCampBoost` SÍ
+`eliteCampAt`), `lockDiv`/`lockGym` (se leen los modificadores). De medios, pendientes: `scouted`,
+`turnedDown`, `viral`, `mgrIgnored` y los tres «hype» (ver `dev/ECONOMIA-AUDITORIA.md` §6). Corrección de lo que decía esta sección antes de la fase 11: `eliteCampBoost` SÍ
 tiene lector (`eliteCampLeft`, por el alias `f=G.flags`); `apt`, `villa`, `estate`, `jet` y
 `foundation` eran espejos de `G.endgame` que nadie leía y se dejaron de escribir (la propiedad vive
 en `G.endgame.owned/projects`, que sí se lee); `stylist` ahora lo lee la prensa. Las marcas

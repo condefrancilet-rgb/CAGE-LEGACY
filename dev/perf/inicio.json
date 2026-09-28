@@ -195,7 +195,7 @@
   "pantallas": 1.1
  },
  {
-  "alto": 1671,
+  "alto": 1686,
   "vh": 640,
   "navAlto": 57,
   "fold": 583,
@@ -245,28 +245,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 835,
-    "bottom": 1083,
-    "px": 248,
+    "bottom": 1098,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1093,
-    "bottom": 1224,
+    "top": 1108,
+    "bottom": 1239,
     "px": 131,
     "visible": false
    },
    {
     "t": "card tight",
-    "top": 1234,
-    "bottom": 1370,
+    "top": 1249,
+    "bottom": 1385,
     "px": 136,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1380,
-    "bottom": 1551,
+    "top": 1395,
+    "bottom": 1566,
     "px": 171,
     "visible": false
    }
@@ -289,14 +289,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 835,
-    "bottom": 1083,
-    "px": 248,
+    "bottom": 1098,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1093,
-    "bottom": 1224,
+    "top": 1108,
+    "bottom": 1239,
     "px": 131,
     "visible": false
    }
@@ -313,10 +313,10 @@
   "desborde": false,
   "estado": "peor",
   "vp": "360x640",
-  "pantallas": 2.61
+  "pantallas": 2.63
  },
  {
-  "alto": 1620,
+  "alto": 1635,
   "vh": 844,
   "navAlto": 57,
   "fold": 787,
@@ -366,28 +366,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1048,
-    "px": 248,
+    "bottom": 1063,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1058,
-    "bottom": 1173,
+    "top": 1073,
+    "bottom": 1188,
     "px": 115,
     "visible": false
    },
    {
     "t": "card tight",
-    "top": 1183,
-    "bottom": 1319,
+    "top": 1198,
+    "bottom": 1334,
     "px": 136,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1329,
-    "bottom": 1500,
+    "top": 1344,
+    "bottom": 1515,
     "px": 171,
     "visible": false
    }
@@ -410,14 +410,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1048,
-    "px": 248,
+    "bottom": 1063,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1058,
-    "bottom": 1173,
+    "top": 1073,
+    "bottom": 1188,
     "px": 115,
     "visible": false
    }
@@ -434,10 +434,10 @@
   "desborde": false,
   "estado": "peor",
   "vp": "390x844",
-  "pantallas": 1.92
+  "pantallas": 1.94
  },
  {
-  "alto": 1585,
+  "alto": 1600,
   "vh": 915,
   "navAlto": 57,
   "fold": 858,
@@ -487,28 +487,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1033,
-    "px": 233,
+    "bottom": 1048,
+    "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1043,
-    "bottom": 1158,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    },
    {
     "t": "card tight",
-    "top": 1168,
-    "bottom": 1304,
+    "top": 1183,
+    "bottom": 1319,
     "px": 136,
     "visible": false
    },
    {
     "t": "El mundo",
-    "top": 1314,
-    "bottom": 1465,
+    "top": 1329,
+    "bottom": 1480,
     "px": 151,
     "visible": false
    }
@@ -531,14 +531,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1033,
-    "px": 233,
+    "bottom": 1048,
+    "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1043,
-    "bottom": 1158,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    }
@@ -555,6 +555,6 @@
   "desborde": false,
   "estado": "peor",
   "vp": "412x915",
-  "pantallas": 1.73
+  "pantallas": 1.75
  }
 ]

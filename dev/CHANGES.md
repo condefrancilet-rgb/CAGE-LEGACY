@@ -10,6 +10,63 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-10 · Fase 12: lo que se paga fuera de la tienda, cumple lo que promete
+**Tipo** auditoría económica + duplicados unificados + cobros corregidos + textos que dicen lo que
+pasa · **Cambio observable:** sí, al pagar servicios, mudarse, endeudarse y en tres eventos.
+**Nulo en el golden** (5 trazas, huellas y estado final idénticos a `081560a`). Archivo de
+partida: `081560a` (sha256 `a854eeb1…cf00`). Inventario, flujo por flujo, en
+`dev/ECONOMIA-AUDITORIA.md`.
+
+**1. Los dos campos del plan de gasto.** `rep` e `inj` no los leía nadie desde el archivo
+original y ningún texto los prometía: eran configuración muerta y se quitaron (conectarlos habría
+sido inventar reputación semanal o menos lesiones). Lo que el plan sí hace —recuperación y
+entrenamiento— ahora lo dice cada botón con sus números.
+
+**2. Cobros incorrectos.**
+- Peso pactado a 24 horas: se cobraba el 25 % de la bolsa en el momento **y** otro 20 % (10 % con
+  nutricionista) en la liquidación. Ahora una sola vez; el hecho de no dar el peso queda registrado.
+- Adelanto «por quedarte sin plata»: sumaba la plata y la anotaba en una marca que nadie leía
+  (gratis). Ahora es deuda como los otros dos adelantos, y respeta sus reglas: si no te lo dan, no
+  hay plata ni costo.
+- Inversión del veterano: con menos de $25.000, cobraba lo que hubiera y daba el efecto entero.
+  Ahora cobra entero, como todo evento (el rojo va al descubierto).
+- Campamento abierto: se cobraban centavos (media cuota sin redondear).
+
+**3. Duplicados unificados.**
+- Mudarse de gimnasio tenía dos caminos (Equipo: una cuota, subía techos, dejaba mudarse en
+  campamento; Gimnasios: dos cuotas, cuidaba compañeros y entrenador). Ahora uno solo, con la
+  unión de los efectos y un precio que se ve en los dos catálogos; y la regla escrita «no te
+  aceptan si querés mudarte acá» (reputación < 18) se cumple sin cobrar.
+- Pagar deuda: tres copias del mismo recorrido; sólo una levantaba cobranzas al saldar. Ahora un
+  solo pago (`CL.debtApply`), y cobranzas («ya no se negocia») no renegocia.
+- «Te conoce»: dos registros (`coachSeen` y `p.coaches`), ninguno leído. Queda uno, y el catálogo
+  de entrenadores lo muestra.
+
+**4. Lo que se ve es lo que se cobra.** Finanzas y el hub mostraban un gasto semanal incompleto;
+ahora un solo desglose (`CL.weeklyLines`) con las mismas fuentes que cobran: una semana real mueve
+exactamente lo que dice. El recargo del 20 % de la cuota con reputación baja se cobraba sin
+figurar; la lista mostraba 15 % y 30 % a la vez. «Ir a ver una pelea» y «viajar juntos» mostraban
+el precio sólo si no alcanzaba. Los eventos que cobran dicen el precio antes de elegir (en la
+descripción, no en la opción: la opción se guarda como la decisión tomada).
+
+**5. Textos que prometían lo que no existe.** Tres textos prometían más bolsa de PPV (no existe
+ningún ingreso por PPV): ahora dicen lo que pasa (más popularidad al terminar la pelea). La
+mudanza de urgencia prometía «dos semanas de concentración» y hacía −2 de temple. La experiencia
+de carrera no decía qué se compraba (+1 adaptabilidad y +1 Fight IQ por nivel). El equipo de
+contenido llevaba dos campos que nadie leía (`budget`, `last`).
+
+**Evidencia.** `dev/tests/24-fase12-economia.js` (17 pruebas): el contrato cobra cada pago y
+exige precio visible = cobro, semana si la promete, efecto medido y que repetir no cobre de
+nuevo; los gastos de una semana real = el desglose; el plan sin campos sin lector; barrido
+automático de marcas escritas sin leer; guardar y cargar **en un juego recién abierto** (lo que
+vive sólo en memoria no sobrevive). Recorrido real: `dev/recorridos-economia.js` usa los 10
+servicios en 104 semanas por la vía del jugador, con invariantes y recarga a mitad: cada cobro
+coincidió con lo que mostraba la pantalla (y encontró que un botón deshabilitado también muestra el
+precio: el juego, bien, no cobra). **Mutantes de la fase 45/45** (la primera corrida dejó vivo uno
+—volver a llevar el presupuesto del contenido— porque la prueba miraba un estado recién creado; se
+reforzó). Suite 338/338, navegador 85/85 (una prueba nueva por pantalla: mudarse desde Equipo
+pulsando cobra lo que muestra), golden idéntico, 3/3 carreras completas usando los servicios.
+
 ## RPG-09 · Fase 11: lo que se compra, cumple lo que promete
 **Tipo** auditoría de la tienda + contenido muerto reparado + promesas conectadas o corregidas ·
 **Cambio observable:** sí, sólo si comprás. **Nulo en el golden** (5 trazas, huellas y estado final
