@@ -73,7 +73,13 @@ porque el mundo ya no se muere: fase de rendimiento); ningún balance.
 
 **Golden:** trazas regeneradas (`--solo-trazas`). Todas divergen desde la creación del mundo por
 construcción (§4, §5 y §7 cambian quién existe, sus nombres y su inactividad). Atribución contra
-`a16dc16`: GOLDEN_ATRIB
+`a16dc16`: el archivo final diverge en la entrada 0–3 (2016 s2–s5: el
+rango del jugador y la fatiga ya difieren porque el mundo nace distinto). Revirtiendo sólo lo que
+cambia el mundo al nacer (clones, nombres, inactividad inicial), las cinco trazas coinciden hasta
+2016 s22–s25, la primera pelea firmada del jugador (entra el rival comprometido, §3); revirtiendo
+también eso, coinciden el primer año entero y divergen en 2017 s1–s3, el primer cambio de año
+(rosters, rankings y reposición, §1 y §4). Los arreglos de empate, conferencia y ex entrenador no
+tocan ninguna de las cinco trazas.
 
 **Evidencia.** `dev/tests/26-fase14-mundo.js` (EVID_26). Invariantes nuevos del sistema `mundo`
 (campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. EVID_RESTO

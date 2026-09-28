@@ -148,7 +148,21 @@ muestra tuvo su primer reemplazo (declarada).
 retiros, progresión por edad, calendario, cambio de división del campeón (vacía el cinturón),
 legalidad del emparejamiento del jugador (fases anteriores).
 
-## 5. Pruebas
+## 5. Golden
+
+Trazas regeneradas con `dev/make-baseline.js --solo-trazas` (huellas 73a7d259, e7ba43fc, 08f3271b,
+9b731ebd, 3cddd4a6). Atribución con `dev/rpg-neutralidad.js` contra las trazas de `a16dc16`:
+
+| Variante del archivo final | Primera divergencia (5 trazas) | Causa |
+|---|---|---|
+| tal cual | entradas 0–3 (2016 s2–s5) | el mundo nace distinto: sin clones, nombres libres, inactividad escalonada |
+| sin los cambios de creación | entradas 21–23 (2016 s22–s25) | la primera pelea firmada: el rival comprometido ya no pelea otra cartelera |
+| sin creación ni compromiso | entradas 52–53 (2017 s1–s3) | el primer cambio de año: rosters y rankings rehechos, reposición de divisiones |
+
+Los arreglos de empate, conferencia y ex entrenador no cambian ninguna de las cinco trazas (la
+huella es la misma con y sin ellos).
+
+## 6. Pruebas
 
 - `dev/tests/26-fase14-mundo.js` — 10 pruebas: 150 y 600 semanas sin jugador con invariantes
   semanales, determinismo, guardar/cargar del mundo, rival comprometido, agente libre de punta a
