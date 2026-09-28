@@ -182,7 +182,7 @@ huella es la misma con y sin ellos).
   archivo real), así que no sirve para mutantes; y `npcYear-sin-rosters` sobrevivió cuando la
   reposición anual (que también rehace rosters) lo tapaba en la corrida de 150 semanas: se agregó la
   prueba dirigida.
-- Regresión sobre el archivo final (`e3bfce85…`): suite SUITE_FINAL, navegador 89/89,
+- Regresión sobre el archivo final (`e3bfce85…`): suite 375/375, navegador 89/89,
   `dev/estado-carreras.js` 3/3 (754–816 semanas, recarga en arranque nuevo cada 150),
   `dev/rpg-carrera-completa.js` 3/3 (764–795 semanas, 23 sistemas de invariantes cada semana),
   `dev/recorridos-economia.js` sin diferencias entre lo mostrado y lo cobrado, `dev/tq-inventario.js

@@ -86,7 +86,7 @@ semana, determinismo, guardar/cargar del mundo, rival comprometido, agente libre
 reemplazo, retiro, ascensos y cambios de organización coherentes, identidad, y los tres hallazgos de
 la regresión con el resultado forzado). Invariantes nuevos del sistema `mundo`
 (campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. Mutantes de la fase 20/20 (uno sobrevivió
-la primera vez porque la reposición anual lo tapaba: se agregó la prueba dirigida). Suite SUITE_FINAL,
+la primera vez porque la reposición anual lo tapaba: se agregó la prueba dirigida). Suite 375/375,
 navegador 89/89, `estado-carreras` 3/3 y `rpg-carrera-completa` 3/3 (754–816 semanas),
 `recorridos-economia` y `tq-inventario --check` al día.
 
