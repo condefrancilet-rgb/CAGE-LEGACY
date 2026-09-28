@@ -81,8 +81,14 @@ también eso, coinciden el primer año entero y divergen en 2017 s1–s3, el pri
 (rosters, rankings y reposición, §1 y §4). Los arreglos de empate, conferencia y ex entrenador no
 tocan ninguna de las cinco trazas.
 
-**Evidencia.** `dev/tests/26-fase14-mundo.js` (EVID_26). Invariantes nuevos del sistema `mundo`
-(campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. EVID_RESTO
+**Evidencia.** `dev/tests/26-fase14-mundo.js` (15 pruebas: el mundo 150 y 600 semanas con invariantes cada
+semana, determinismo, guardar/cargar del mundo, rival comprometido, agente libre de punta a punta,
+reemplazo, retiro, ascensos y cambios de organización coherentes, identidad, y los tres hallazgos de
+la regresión con el resultado forzado). Invariantes nuevos del sistema `mundo`
+(campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. Mutantes de la fase 20/20 (uno sobrevivió
+la primera vez porque la reposición anual lo tapaba: se agregó la prueba dirigida). Suite SUITE_FINAL,
+navegador 89/89, `estado-carreras` 3/3 y `rpg-carrera-completa` 3/3 (754–816 semanas),
+`recorridos-economia` y `tq-inventario --check` al día.
 
 ## RPG-11 · Fase 13: cada estado sabe por qué existe, y lo que está en pantalla sobrevive a recargar
 **Tipo** auditoría global de estado + persistencia corregida + duplicado unificado + dos promesas

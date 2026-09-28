@@ -174,6 +174,27 @@ suite('MUNDO-14 · ascensos entre organizaciones', () => {
     eq(fallos, [], 'al entrar a la poda el ranking todavía no reflejaba el ascenso');
     ok(c.rankOf(f), 'el que ascendió no quedó rankeado en su organización nueva');
   });
+  test('un NPC seguido que cambia de organización en CL.npcYear sale de su roster y su ranking viejos en el acto', () => {
+    /* la reposición de fin de año (spawnLocals) también rehace los rosters, pero sólo si alguna
+       división quedó corta: la coherencia no puede depender de eso. Se mira al salir del gancho
+       'year' (CL.year → CL.npcYear), antes de la reposición. */
+    const h = H.boot({ seed: 1717, file: ARCHIVO }); H.startCareer(h, { metaSeed: 171702, style: 'mma', div: 'LW', age: 22 }); const c = h.ctx;
+    const f = Object.values(c.G.fighters).find(x => x && !x.isPlayer && x.org === 'TFC' && x.active && !x.retired && c.rankOf(x) && c.rankOf(x) !== 'C');
+    ok(f, 'no hay un rankeado de TFC para la prueba');
+    c.CL.track(f, 'prueba');                               /* seguido por la capa CL */
+    ok(c.CL.tracked().some(x => x.id === f.id), 'no quedó seguido');
+    const npcYear = c.CL.npcYear, repone = c.worldReplenish, fallos = [];
+    c.CL.npcYear = function(x){ const r = npcYear.apply(this, arguments); if(x && x.id === f.id){ f.org = 'WMA'; f.orgEntry = c.G.year; } return r; };
+    c.worldReplenish = function(){
+      for(const x of (INV.checkInvariants(c.G, c.UI, {}) || [])) if(/^mundo\.(rankings|rosters)$/.test(x.id)) fallos.push(x.causa);
+      return repone.apply(this, arguments);
+    };
+    f.born = c.G.year - 25; f.retireAge = 60;               /* que no se retire justo este año */
+    c.yearTick([]);
+    c.CL.npcYear = npcYear; c.worldReplenish = repone;
+    eq(f.org, 'WMA', 'el cambio de organización no ocurrió');
+    eq(fallos, [], 'después de CL.npcYear el roster o el ranking todavía lo tenían en la organización vieja');
+  });
 });
 
 suite('MUNDO-14 · identidad', () => {

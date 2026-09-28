@@ -164,9 +164,26 @@ huella es la misma con y sin ellos).
 
 ## 6. Pruebas
 
-- `dev/tests/26-fase14-mundo.js` — 10 pruebas: 150 y 600 semanas sin jugador con invariantes
+- `dev/tests/26-fase14-mundo.js` — 15 pruebas: 150 y 600 semanas sin jugador con invariantes
   semanales, determinismo, guardar/cargar del mundo, rival comprometido, agente libre de punta a
-  punta, reemplazo, retiro, ascenso de organización (coherente al entrar a la poda) y clones.
+  punta, reemplazo, retiro, ascenso de organización (coherente al entrar a la poda), cambio de
+  organización en `CL.npcYear` (coherente al salir del gancho `year`), plantel real sin clones, nombres
+  sin repetir, y los tres hallazgos de la regresión (empate y contrato, tono `charisma`, bono del ex
+  entrenador) con el resultado forzado.
 - Invariantes nuevos en `dev/invariants.js`: `mundo.campeones`, `mundo.rankings`, `mundo.rosters`,
-  `mundo.peleadores`, `mundo.identidad`, `mundo.agenda`. Los corren todas las carreras del arnés.
-- Mutantes de la fase: 16/16 (§ informe).
+  `mundo.peleadores`, `mundo.identidad` (global: nombre + año), `mundo.agenda`. Los corren todas las
+  carreras del arnés, después de cada semana.
+- Mutantes de la fase: **20/20 detectados**, cada uno por la prueba de su sistema (ranking sin tope,
+  campeón de otra organización, título doble, nadie se corona, contrato que no descuenta, empate que no
+  descuenta, clon del plantel real, lesionado programado, retirado activo, rival comprometido programado,
+  `CL.npcYear` sin rosters, ascenso sin ranking, agente libre sin pelea, reemplazo de otra división,
+  reemplazo sin memoria, mundo sin reposición, mundo que arranca parado, nombre repetido, tono sin fila,
+  bono redondeado). Dos lecciones: la prueba F2 · A-001 no respeta `CAGE_FILE` (siempre carga el
+  archivo real), así que no sirve para mutantes; y `npcYear-sin-rosters` sobrevivió cuando la
+  reposición anual (que también rehace rosters) lo tapaba en la corrida de 150 semanas: se agregó la
+  prueba dirigida.
+- Regresión sobre el archivo final (`e3bfce85…`): suite SUITE_FINAL, navegador 89/89,
+  `dev/estado-carreras.js` 3/3 (754–816 semanas, recarga en arranque nuevo cada 150),
+  `dev/rpg-carrera-completa.js` 3/3 (764–795 semanas, 23 sistemas de invariantes cada semana),
+  `dev/recorridos-economia.js` sin diferencias entre lo mostrado y lo cobrado, `dev/tq-inventario.js
+  --check` al día.
