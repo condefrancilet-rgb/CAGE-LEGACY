@@ -107,9 +107,18 @@ para la fase 16.
 
 ## 4. Decisiones falsas (Parte 4)
 
-- **Banco de eventos: 0.** Forzando cada una de las 173 opciones de los 66 eventos desde dos partidas
-  fijas (con campamento y plan, y libre), ninguna deja el mismo estado que otra opción del mismo evento.
-  Tampoco si se ignora la memoria narrativa. En su contexto real (barrido), 0 pares falsos.
+- **Banco de eventos: 0.**
+  - **Forzado:** cada opción de cada evento se resolvió desde dos partidas fijas (con campamento y plan,
+    y libre), juzgando cada evento sólo donde se cumple su condición. Resultado: 39 eventos juzgados, 0
+    pares que dejen el mismo estado (textos y memoria narrativa aparte). Los 26 que no aplican en
+    ninguna de las dos partidas se cubren con el barrido. Una primera versión de esta medición resolvía
+    por error la objeción del entrenador que quedaba en cola al confirmar el plan, no el evento medido:
+    se corrigió y ahora la prueba verifica que resuelve el evento que corresponde.
+  - **En contexto real (barrido):** 52 decisiones, 0 pares falsos.
+- **La posición del botón decidía (corregido).** La primera opción de CUALQUIER evento sumaba +1,5 de
+  confianza del entrenador y el resto +0,5, fuera cual fuera su contenido: la misma respuesta en otra
+  posición dejaba otro estado. En campamento, ese +1 de más hacía cruzar un umbral y el entrenador
+  imponía su plan. Ahora todas suman +0,5.
 - **Conferencia de prensa: 6 respuestas falsas (corregido).** Las respuestas de tono `charisma` no
   tenían fila en las tablas: primero daban `NaN` (fase 14) y después 0. Ahora rinden como el tono gracioso
   (ver Cambios).
@@ -258,6 +267,8 @@ Dos partidas base × 60 peleas por celda, mismo azar, rival ajustado a dos perfi
   adaptación inicial del rival, como el ex entrenador +12) pero es combate: se deja para la fase 16 con
   esta evidencia.
 - **Sin consecuencia:** ninguna opción del banco (0 falsas).
+- **La elección cambiaba por su posición:** la primera opción sumaba +1 de confianza del entrenador sobre
+  el resto (corregido, ver §4).
 
 ## 14. Progresión (Parte 14)
 

@@ -28818,7 +28818,13 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
       remember('event_resolution',{id:def.id,category:eventCategory(def),choice:label,result:String(G.lastEventOut||before||'').slice(0,180)});
       if(def.id==='story_rival_escalation'&&G.tmpOpp){G.flags.storyRivalReplyOpp=G.tmpOpp;G.tmpOpp=null;}
       if(def.id==='story_rival_reply')G.flags.storyRivalReplyOpp=null;
-      var c=coachById(G.player.coach);if(c&&label){c.rel=c.rel||{friend:50,respect:50,trust:50};c.rel.trust=clamp(c.rel.trust+(idx===0?1.5:.5),0,100);c.mem=c.mem||[];c.mem.unshift({t:'vivió contigo la decisión: '+label,y:G.year,w:G.week});if(c.mem.length>12)c.mem.pop();}
+      /* FASE 15: la primera opción de CUALQUIER evento sumaba +1,5 de confianza del
+         entrenador y el resto +0,5: decidía la posición del botón, no lo que se
+         elegía (en x5_cancel la primera es «publicar el video»; en coach_talk, la
+         misma respuesta en otra posición dejaba otro estado). Tu esquina vive
+         igual cualquier decisión; lo que cada opción le hace a la relación lo
+         dice la opción. */
+      var c=coachById(G.player.coach);if(c&&label){c.rel=c.rel||{friend:50,respect:50,trust:50};c.rel.trust=clamp(c.rel.trust+.5,0,100);c.mem=c.mem||[];c.mem.unshift({t:'vivió contigo la decisión: '+label,y:G.year,w:G.week});if(c.mem.length>12)c.mem.pop();}
     }
   }, 30);
 

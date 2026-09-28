@@ -11,10 +11,11 @@ evidencia (sim antes/después o test que lo reproduce).
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
 ## RPG-13 · Fase 15: las decisiones deciden algo
-**Tipo:** auditoría de decisiones y agencia, más cuatro correcciones de información o repetición
+**Tipo:** auditoría de decisiones y agencia, más cinco correcciones de información, repetición o sesgo
 · **Cambio observable:** sí. El entrenamiento informa lo que realmente cambió; las respuestas
 carismáticas de la prensa rinden; la ficha de personalidad ya no muestra una barra de mánager que no
-hace nada; la investigación del patrocinador turbio sale una vez y no cada semana y media. Archivo de
+hace nada; la investigación del patrocinador turbio sale una vez y no cada semana y media; la primera
+opción de un evento ya no le suma a tu entrenador más que las otras. Archivo de
 partida: `5c4396b` (sha256 `e3bfce85…5391d3a`). Auditoría en `dev/DECISIONES-AUDITORIA.md`;
 herramienta en `dev/decisiones.js`.
 
@@ -44,7 +45,13 @@ leía ninguna regla y se quitó. Las otras tres (esquina, conflicto, prensa) act
 
 **4. La investigación del patrocinador turbio sale una vez.** La guarda escribía `done` y la condición no
 lo miraba: en una carrera de 10 años que aceptó ese patrocinador, la misma pregunta salió 282 veces
-(una cada semana y media), cada una restando reputación o popularidad.
+(una cada semana y media), cada una restando reputación o popularidad. En el build de medios, la
+reputación final pasó de 3 a 95.
+
+**5. La posición del botón no decide.** La primera opción de cualquier evento sumaba +1,5 de confianza
+del entrenador y el resto +0,5, fuera cual fuera su contenido (en `x5_cancel` la primera es «publicar
+el video»). La misma respuesta en otra posición dejaba otro estado, y en campamento ese punto de más
+hacía que el entrenador impusiera su plan. Ahora todas suman +0,5.
 
 **Lo que NO se tocó (documentado con su medición, para su fase):**
 - la curva de progresión por el redondeo (fases 21 y 27);

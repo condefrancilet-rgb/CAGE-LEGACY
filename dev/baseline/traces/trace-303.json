@@ -9,7 +9,7 @@
   "pers": "quiet"
  },
  "semanas": 160,
- "fingerprint": "08f3271b",
+ "fingerprint": "66e17c8f",
  "final": {
   "rec": {
    "w": 10,
@@ -247,7 +247,7 @@
    "metodo": "dec",
    "gano": false,
    "hp": 61.29,
-   "ohp": 89.93,
+   "ohp": 89.98,
    "rec": "1-0-0",
    "cash": 1586,
    "rank": 0

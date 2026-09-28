@@ -9,7 +9,7 @@
   "pers": "humble"
  },
  "semanas": 160,
- "fingerprint": "e7ba43fc",
+ "fingerprint": "c9c4d661",
  "final": {
   "rec": {
    "w": 11,
@@ -1099,7 +1099,7 @@
    "metodo": "dec",
    "gano": true,
    "hp": 94.88,
-   "ohp": 44.99,
+   "ohp": 45.11,
    "rec": "5-1-1",
    "cash": 2162,
    "rank": -1
@@ -1137,7 +1137,7 @@
    "metodo": "dec",
    "gano": false,
    "hp": 94.8,
-   "ohp": 94.07,
+   "ohp": 94.09,
    "rec": "6-1-1",
    "cash": 5699,
    "rank": -1
@@ -1295,7 +1295,7 @@
    "metodo": "dec",
    "gano": false,
    "hp": 97.66,
-   "ohp": 64.88,
+   "ohp": 64.97,
    "rec": "6-1-2",
    "cash": 5760,
    "rank": -1
@@ -1551,7 +1551,7 @@
    "metodo": "dec",
    "gano": true,
    "hp": 89.37,
-   "ohp": 11.08,
+   "ohp": 11.29,
    "rec": "7-2-2",
    "cash": 7518,
    "rank": 0
@@ -1685,7 +1685,7 @@
    "metodo": "dec",
    "gano": true,
    "hp": 83.33,
-   "ohp": 31.83,
+   "ohp": 32,
    "rec": "8-2-2",
    "cash": 8212,
    "rank": 0
@@ -1783,7 +1783,7 @@
    "metodo": "dec",
    "gano": true,
    "hp": 93.77,
-   "ohp": 61.72,
+   "ohp": 61.82,
    "rec": "9-2-2",
    "cash": 329518,
    "rank": 0
@@ -1881,7 +1881,7 @@
    "metodo": "dec",
    "gano": true,
    "hp": 100,
-   "ohp": 70.35,
+   "ohp": 70.42,
    "rec": "10-2-2",
    "cash": 334826,
    "rank": 0

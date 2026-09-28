@@ -53,6 +53,9 @@ suite('DECISIONES-15 · ninguna decisión del banco es falsa', () => {
         if(listo) break;
       }
       if(conCamp){ ok(c.G.camp, 'no se llegó a un campamento'); c.gpStart(); c.gpSet('prio', 'striking'); c.gpSet('dist', 'media'); c.gpSet('pace', 'medio'); c.gpSet('def', 'cabeza'); c.gpConfirm(); c.G.mg = null; }
+      /* confirmar el plan puede dejar en cola la objeción del entrenador (camp_split): la
+         partida se guarda con la cola vacía, o se resolvería ese evento en vez del que se mide */
+      c.G.pending.length = 0;
       c.G.player.pop = Math.max(c.G.player.pop, 50); c.G.cash = Math.max(c.G.cash, 50000);
       return guardar(h);
     }
@@ -61,29 +64,31 @@ suite('DECISIONES-15 · ninguna decisión del banco es falsa', () => {
       let aplica = true; try{ aplica = !ev.c || !!ev.c(); } catch(e){ aplica = false; }
       c.G.rs = (snap.rs + 7919) | 0;
       let txt; try{ txt = ev.x(); } catch(e){ return null; }
+      eq(c.G.pending.length, 0, id + ': la partida base tiene un evento en cola');
       const antes = D.aplanar(D.persistible(c), 'G');
       c.G.pending.push({ id: ev.id, txt, opts: ev.o, important: ev.important });
       c.G.rs = (snap.rs + 7919) | 0; c.resolveEvent(i);
+      eq(c.G.pending.filter(e => e.id === ev.id).length, 0, id + ': no se resolvió el evento que se mide');
       const out = {};
       for(const [k, v] of D.aplanar(D.persistible(c), 'G')) if(D.tipo(k) !== 'texto' && D.tipo(k) !== 'memoria' && (!antes.has(k) || antes.get(k) !== v)) out[k] = v;
       return { out: JSON.stringify(out), aplica };
     }
     const bases = { camp: base(true), libre: base(false) };
-    const c0 = carrera(1).ctx, falsas = []; let casos = 0;
+    const c0 = carrera(1).ctx, falsas = []; let casos = 0, fuera = 0;
     for(const ev of c0.EVENTS){
       if(ev.id === 'cl_dyn' || !(ev.o || []).length) continue;
-      let mejor = null;
+      /* se juzga sólo donde el evento puede salir (su condición se cumple); si se cumple en
+         las dos partidas, basta que dos opciones empaten en una para marcarlas */
+      let visto = false;
       for(const [nb, sn] of Object.entries(bases)){
-        const ds = ev.o.map((_, i) => efecto(sn, ev.id, i)); if(ds.some(d => !d)) continue;
-        const pares = []; for(let i = 0; i < ds.length; i++) for(let j = i + 1; j < ds.length; j++) if(ds[i].out === ds[j].out) pares.push(i + '=' + j);
-        const r = { nb, pares, aplica: ds[0].aplica };
-        if(!mejor || (r.aplica && !mejor.aplica) || (r.aplica === mejor.aplica && r.pares.length < mejor.pares.length)) mejor = r;
+        const ds = ev.o.map((_, i) => efecto(sn, ev.id, i)); if(ds.some(d => !d) || !ds[0].aplica) continue;
+        visto = true;
+        for(let i = 0; i < ds.length; i++) for(let j = i + 1; j < ds.length; j++) if(ds[i].out === ds[j].out) falsas.push(ev.id + ' [' + nb + '] ' + i + '=' + j);
       }
-      if(!mejor) continue;
-      casos++;
-      if(mejor.pares.length) falsas.push(ev.id + ' [' + mejor.nb + '] ' + mejor.pares.join(' '));
+      if(visto) casos++; else fuera++;
     }
-    ok(casos >= 60, 'muy pocos eventos ejercitados: ' + casos);
+    if(process.env.DEC15_VERBOSE) console.log('   eventos juzgados en su condición: ' + casos + ' · fuera de condición en las dos partidas: ' + fuera + ' · pares falsos: ' + falsas.length);
+    ok(casos >= 35, 'muy pocos eventos ejercitados en su condición: ' + casos + ' (fuera de condición en las dos partidas: ' + fuera + ')');
     eq(falsas, [], 'opciones de un mismo evento que dejan exactamente el mismo estado');
   });
 });
@@ -261,5 +266,23 @@ suite('DECISIONES-15 · repetición', () => {
       if(c.G.pending.some(e => e.h === 'prom_invest')){ veces++; c.resolveEvent(1); }
     }
     eq(veces, 1, 'la nota sobre el patrocinador salió ' + veces + ' veces en 12 semanas');
+  });
+});
+
+/* ================================================================== */
+suite('DECISIONES-15 · la posición del botón no decide', () => {
+  test('la misma respuesta deja el mismo estado en la primera posición que en la tercera', () => {
+    /* antes: la primera opción de cualquier evento sumaba +1,5 de confianza del entrenador y el
+       resto +0,5, fuera cual fuera su contenido */
+    const snap = guardar(carrera(1515));
+    const correr = (pos) => {
+      const c = D.abrir(snap).ctx, ev = c.EVENTS.find(e => e.id === 'coach_talk');
+      const neutra = ev.o[2]; ev.o[pos] = { t: neutra.t, f: neutra.f };
+      c.G.pending.length = 0; c.G.rs = (snap.rs + 3) | 0;
+      c.G.pending.push({ id: ev.id, txt: ev.x(), opts: ev.o });
+      c.resolveEvent(pos);
+      const co = c.coachById(c.G.player.coach); return [co.rel.trust, co.rel.respect, co.rel.friend];
+    };
+    eq(correr(0), correr(2), 'la misma respuesta cambia la relación según su posición');
   });
 });
