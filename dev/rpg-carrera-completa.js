@@ -65,6 +65,47 @@ function semanaDeJugador(c, rnd){
   c.UI.screen = 'hub'; c.UI.tmp.tqNew = null;
 }
 
+/* fase 11: comprar y usar lo comprado, por la vía del jugador. Una compra por
+   semana como mucho: la primera de la lista que todavía no tiene y para la que
+   le sobra el doble del precio; la lista es fija (sin azar del juego). Y de vez en cuando lo que la compra promete cambiar: la
+   conferencia de prensa, visitar otro gimnasio, invitar a entrenar. */
+const DESEOS = ['nutri','cutman','stylist','masseur','pr','camera','lawyer','analyst','recoverylab','lightboard',
+  'eg:apt','eg:villa','restaurant','eg:jet','mediahouse','documentary','eg:fund','ownGym','vault','eg:gym_upgrade','eg:estate','eg:academy'];
+const EG11 = { apt: 'props', villa: 'props', estate: 'props', jet: 'vehicles', gym_upgrade: 'projects', academy: 'projects', fund: 'projects' };
+function comprasDeJugador(c, rnd, k11){
+  if(c.G.fight || c.G.mg || c.G.pending.length) return;
+  const cash = c.G.cash;
+  for(const w of DESEOS){
+    if(w.startsWith('eg:')){
+      const id = w.slice(3); if(c.egOwns(id)) continue;
+      const precio = { apt: 150000, villa: 500000, estate: 1500000, jet: 750000, gym_upgrade: 350000, academy: 900000, fund: 250000 }[id];
+      if(cash < 2 * precio) continue;
+      if(c.egBuy(EG11[id], id) !== false) k11.compras.push(id);
+      break;
+    }
+    const it = c.SHOP.find(x => x.id === w);
+    if(c.shopOwned(w)) continue;                       /* una de cada una, también las repetibles */
+    if(w === 'documentary' && !c.shopOwned('camera')) continue;
+    if(cash < 2 * it.p) continue;
+    if(c.shopCan(it)) continue;
+    c.buyItem(w); k11.compras.push(w); c.G.socOut = null;
+    break;
+  }
+  /* la conferencia de prensa del campamento */
+  if(c.G.camp && !c.G.camp.pressDone && c.G.camp.i >= 2 && !c.G.mg && rnd() < 0.3){
+    c.pressStart();
+    for(let k = 0; k < 6 && c.G.mg && c.G.mg.type === 'press' && !c.G.mg.done; k++) c.pressPick(Math.floor(rnd() * 4));
+    if(c.G.mg) c.mgClose(false);
+  }
+  /* fuera del campamento: una visita a otro gimnasio o una invitación a entrenar */
+  if(!c.G.camp && !c.G.nextFight && !c.G.mg && !c.G.pending.length){
+    const x = rnd();
+    if(x < 0.06){ const g = c.G.gyms.find(y => y.id !== c.G.player.gym && c.G.cash > 3 * c.travelCost(y).money); if(g){ c.gymVisit(g.id); k11.visitas++; if(c.egOwns('jet')) k11.jet++; } }
+    else if(x < 0.18){ const f = Object.values(c.G.fighters).find(y => y && !y.isPlayer && y.active && !y.retired && !y.inj && y.div === c.G.player.div && !c.socWhyBlocked('train:' + y.id, { weight: c.SOC_W.MAYOR, actor: y.id, cat: 'gym' })); if(f){ c.socInvite(f.id); k11.invit++; if(/Vino a tu villa/.test((c.G.socOut || {}).t || '')) k11.villa++; } }
+    c.G.socOut = null; c.UI.screen = 'hub';
+  }
+}
+
 const t0 = Date.now();
 let rotas = 0;
 for(let i = 0; i < N; i++){
@@ -75,6 +116,11 @@ for(let i = 0; i < N; i++){
   let semanas = 0, fallo = null;
   /* fase 10: ¿se llega a lo nuevo por la vía del jugador? (sólo cuenta) */
   const k10 = { espalda: 0, defensa: 0, heatOf: 0, heatFirmadas: 0, sparMem: 0, sparPlan: 0, heatMax: 0 };
+  const k11 = { compras: [], estilista: 0, visitas: 0, jet: 0, invit: 0, villa: 0, docOf: 0, docFirm: 0, resto: 0 };
+  c.hookOn('media:done', 'dev11', () => { if(c.G.mg && c.G.mg.styl) k11.estilista++; }, 99);
+  c.hookOn('offers:made', 'dev11', () => { if((c.G.offers || []).some(o => o && o.docMade)) k11.docOf++; }, 101);
+  c.hookOn('fight:accepted', 'dev11', (x) => { if(x && x.offer && x.offer.docMade) k11.docFirm++; }, 99);
+  c.hookOn('camp:week:post', 'dev11', () => { if(c.G.camp && /restaurante/.test((c.G.camp.log || [])[0] || '')) k11.resto++; }, 99);
   c.hookOn('week', 'dev10', () => { k10.heatMax = Math.max(k10.heatMax, c.HEAT.v()); }, 99);
   c.hookOn('exchange:post', 'dev10', () => { if(c.TQ.back()) k10.espalda++; }, 1);
   c.hookOn('exchange:pre', 'dev10', (cx) => { const f = c.G.fight, X = c.GP_DEF_X; if(f && X && f.gp && f.gp.def && c.gpDefCovers(f.gp.def, X.pos, X.oa, X.pa)) k10.defensa++; }, 6);
@@ -87,6 +133,7 @@ for(let i = 0; i < N; i++){
     try {
       A.correrCarrera(h, { maxWeeks: 1, politica: 'rpg', seedPolitica: seed * 1000 + semanas });
       semanaDeJugador(c, rnd);
+      comprasDeJugador(c, rnd, k11);
     } catch(e){ fallo = 'excepción en la semana ' + semanas + ': ' + e.message; break; }
     semanas++;
     const malas = INV.checkInvariants(c.G, c.UI, {}) || [];
@@ -128,6 +175,8 @@ for(let i = 0; i < N; i++){
   console.log('   fase 10 · intercambios con la espalda tomada ' + k10.espalda + ' · intercambios cubiertos por la defensa del plan ' + k10.defensa +
               ' · ruido máximo ' + k10.heatMax.toFixed(1) + ' · ofertas cobradas con ruido ' + k10.heatOf + ' (firmadas ' + k10.heatFirmadas + ') · sparring con memoria ' + k10.sparMem +
               ' · sparring que ofreció ajustar el plan ' + k10.sparPlan + ' · etapas de rivalidad ' + (JSON.stringify(etapas)) + ' · sellos ' + (sellos || '—'));
+  console.log('   fase 11 · compras ' + k11.compras.length + ' (' + k11.compras.join(',') + ') · apariciones con estilista ' + k11.estilista + ' · visitas a otro gimnasio ' + k11.visitas + ' (con jet ' + k11.jet + ')' +
+              ' · invitaciones a entrenar ' + k11.invit + ' (vinieron a la villa ' + k11.villa + ')' + ' · coestelares del documental ' + k11.docOf + ' (firmadas ' + k11.docFirm + ') · semanas de camp con el restaurante ' + k11.resto);
 }
 console.log('\n' + (N - rotas) + '/' + N + ' carreras completas sin fallos · invariantes cada semana (' + Object.keys(INV.SISTEMAS).length + ' sistemas) · ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 process.exit(rotas ? 1 : 0);

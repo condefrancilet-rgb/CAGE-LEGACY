@@ -10,6 +10,88 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-09 · Fase 11: lo que se compra, cumple lo que promete
+**Tipo** auditoría de la tienda + contenido muerto reparado + promesas conectadas o corregidas ·
+**Cambio observable:** sí, sólo si comprás. **Nulo en el golden** (5 trazas, huellas y estado final
+idénticos a `fbece34`: las carreras del golden no compran). Archivo de partida: `fbece34`
+(sha256 `a40dc3fa…5458`, verificado contra el repositorio). Inventario completo, con el flujo de
+cada compra, en `dev/TIENDA-AUDITORIA.md`.
+
+**1. Ocho artículos no se podían comprar desde el archivo original.** `scrShopPrev` rehacía la
+tienda con cinco categorías fijas y tiraba lo que había agregado el filtro anterior: Tecnología,
+Negocios, las actividades desbloqueadas y el ingreso pasivo. Muro de reacción, simulador VR,
+plataforma de fuerza, carpa de altura, mesa de inversiones, gimnasio propio, restaurante y
+academia para chicos existían, con efecto programado, y ningún botón los vendía (tres de ellos
+desbloquean actividades jugables). Ahora la tienda dibuja todas las categorías de `SHOP` y el
+filtro de actividades corre después.
+
+**2. Las seis marcas de la auditoría.** Decisión por marca, con la primera ruptura del flujo:
+- `apt`: el consumidor existía (`G.endgame.owned`, −1 fatiga/sem); `G.flags.apt` era un espejo
+  que nadie leía → se dejó de escribir; la descripción dice el efecto.
+- `villa`: recuperaba lo mismo que el departamento aunque su ficha decía «superior» (y su `v`
+  era el doble) → −2 por semana, del `v`. «Recibir gente» → en «Invitar a entrenar», la reticencia
+  de quien no abre su gimnasio deja de pesar: viene a tu casa, y el resultado lo dice.
+- `estate`: +1 de reputación por temporada existía; «abre eventos y proyectos de largo plazo» no
+  tiene ningún sistema detrás (no hay un solo evento de lujo en el juego; `eventsSeen` está vacío
+  desde el original) → el texto dice lo que hace, y ahora se ve en «Impacto actual».
+- `jet`: su efecto era un −0,25 de daño semanal genérico, y los viajes que existen no lo leían →
+  visitar otro gimnasio y viajar con un compañero cansan la mitad (la plata y la semana no
+  cambian); la pantalla de gimnasios muestra la fatiga del viaje. «Eventos de lujo»: texto
+  corregido, como la mansión. El −0,25 se conserva y se muestra.
+- `foundation`: «contribuye al legado» no llegaba al legado → cuenta como obra en el perfil de
+  legado («El Constructor»), con el mismo peso que ya tenía el gimnasio comunitario.
+- `stylist`: «mejores respuestas en prensa» → cada conferencia o podcast rinde +1,5 de popularidad
+  y la aparición lo dice.
+
+**3. Otras compras rotas que la auditoría anterior no había visto.**
+- Restaurante: «te distrae un poco» → −0,5 de filo por semana de camp, con su línea en el camp.
+- Documental: «puede abrir una pelea estelar» → abre la coestelar de PPV que ya existía (antes
+  salía al azar), en las 16 semanas siguientes y con las mismas condiciones (liga grande,
+  popularidad > 35, rival que vende), una vez por documental, sin azar.
+- Laboratorio de recuperación: la mitad de su promesa (fisio entre camps más barata) no existía →
+  cuesta la mitad, y la pantalla de recuperación (que no mostraba ningún precio) lo dice.
+- Academia de prospectos: «formás talentos» → perfil de legado «El Maestro»; «aparecen después en
+  el mundo» no tiene mecanismo y no se inventa uno: texto corregido.
+- Estudio audiovisual: «habilita piezas de alto impacto» (no habilitaba nada) → texto corregido a
+  lo que hace (dos niveles de producción).
+- Centro de alto rendimiento: encendía la marca del GIMNASIO COMUNITARIO (reputación semanal,
+  legado y noticias de «tu gimnasio comunitario») → cruce eliminado; su efecto prometido queda.
+- Chofer (tienda) y transporte privado (patrimonio) escriben la misma marca: el chofer ya no se
+  cobra a quien tiene transporte privado.
+- Bóveda: el patrimonio guardado (`vaultCash`) era invisible → se muestra, y la renta entra en el
+  ingreso pasivo. Queda como marca contable, documentada.
+
+**4. Qué cambia en una carrera que compra, y por qué exactamente.** A/B contra `fbece34`, misma
+semilla y política, 60 semanas, 3 semillas: comprar el departamento, la mansión, el jet, la
+fundación, el estilista, el laboratorio, el documental, la academia de prospectos o la bóveda deja
+la traza **idéntica** (el autopiloto no da conferencias, no viaja, no juega en una liga grande y el
+legado no entra en la traza). Cambian tres, y ninguna otra cosa: la **villa** (primera divergencia:
+la fatiga de esa semana, un punto más baja — INTENCIONAL), el **restaurante** (primera divergencia:
+la vida de la pelea siguiente, por el filo del camp — INTENCIONAL) y el **centro de alto
+rendimiento** (BUGFIX: el gimnasio comunitario que encendía tiraba un dado por semana; sin él el
+azar de la carrera se corre desde la primera semana). Prueba de la atribución: con esos tres
+cambios deshechos, la carrera que compra las 13 cosas es idéntica a `fbece34` en las 3 semillas.
+
+**Evidencia.** `dev/tests/23-fase11-tienda.js` (17 pruebas): el **contrato de la tienda** compra
+cada una de las 52 compras (41 de la tienda, 8 del patrimonio, 3 inversiones), exige el precio
+exacto, que todo lo que escribe tenga dueño (consumidor con lector en el código y efecto medido,
+o marca con su razón) y mide la consecuencia prometida con el consumidor real; el propio auditor
+se prueba con una compra rota inyectada (sin clasificar, sin lector, escritura sin dueño, marca
+sin razón: las cuatro fallan). Además: flujos reales (conferencia, invitación, viaje, semana de
+recuperación, semana de camp, ofertas), guardar/cargar con 15 compras (siguen siendo tuyas, no se
+recompran, los consumidores siguen activos) y ningún consumidor nuevo tira el dado. Navegador:
+una prueba nueva por pantalla (41/41 botones, compra pulsando, patrimonio visible); contra
+`fbece34` falla con «33/41». Carreras completas: el corredor ahora compra (una por semana, de una
+lista fija) y usa lo comprado (conferencias, visitas, invitaciones): 3/3 sin fallos, con 16, 18 y 19
+compras; la villa recibió una invitación en juego real, el estilista rindió en 38 apariciones y el
+restaurante distrajo 951 semanas de camp; el jet no llegó a usarse en un viaje y el documental no
+abrió coestelar (ninguna de las tres jugó en una liga grande con un documental vigente): esos dos
+quedan cubiertos por las pruebas de flujo, no por las carreras. **Mutantes de la fase 45/45**
+(quitar el consumidor, cambiar la bandera, impedir la activación, perder la persistencia, desviar
+el flujo de compra, no cobrar, efecto de más, azar, observabilidad): la primera corrida dejó vivos
+dos del documental —el decorado tenía un solo rival que vende y la liga chica no tenía ninguno—, y
+se reforzaron las pruebas. Suite 321/321, navegador 81/81, golden idéntico, 3/3 carreras.
+
 ## RPG-08 · Fase 10, segunda pasada: la defensa del plan es un compromiso; el HUD sabe dónde está la pelea
 **Tipo** ajuste de diseño + presentación · **Cambio observable:** sí, en la pelea (si armás plan)
 y en el HUD fuera de la pelea de pie. **Nulo en la decisión del rival** y en el golden (las 5

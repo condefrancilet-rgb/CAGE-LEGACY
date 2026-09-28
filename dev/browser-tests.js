@@ -377,6 +377,29 @@ async function main(){
       salto.err || ('scroll ' + salto.antes + '->' + salto.despues + ' · tarjeta en ' + salto.top +
                     ' · cabecera hasta ' + salto.cabecera + ' · tapada=' + salto.tapada));
 
+    /* --- fase 11: la tienda vende TODO lo que tiene, y se compra pulsando --- */
+    {
+      await page.evaluate(() => { G.mg = null; G.pending = []; G.cash = 6000000; go('vida'); });
+      await page.waitForTimeout(200);
+      await page.click('button:has-text("Tienda")'); await page.waitForTimeout(220);
+      const t0 = await page.evaluate(() => ({
+        pantalla: UI.screen, total: SHOP.length,
+        botones: [...document.querySelectorAll('#app button.shop-buy')].map(b => (b.getAttribute('onclick') || '').replace(/^buyItem\('|'\)$/g, '')),
+        desborde: document.documentElement.scrollWidth > window.innerWidth + 1 }));
+      /* se pulsa sólo lo que existe: si falta un botón, la prueba lo dice en vez de colgarse */
+      const pulsar = async (sel) => { const b = await page.$(sel); if(b){ await b.click(); await page.waitForTimeout(180); } return !!b; };
+      await pulsar(`button[onclick="buyItem('forceplate')"]`);
+      await pulsar('button:has-text("Abrir patrimonio y legado")');
+      await pulsar(`button[onclick="egBuy('props','villa')"]`);
+      const t1 = await page.evaluate(() => ({ forceplate: shopOwned('forceplate'), villa: !!(G.endgame && G.endgame.owned && G.endgame.owned.villa),
+        impacto: (document.getElementById('app').innerText.split('Impacto actual')[1] || '').slice(0, 160),
+        desborde: document.documentElement.scrollWidth > window.innerWidth + 1 }));
+      const faltan = t0.total - new Set(t0.botones).size;
+      anota(vp.n + ' · tienda: los ' + t0.total + ' artículos tienen botón y se compra pulsando; el patrimonio muestra lo comprado (fase 11)',
+        t0.pantalla === 'shop' && faltan === 0 && t1.forceplate === 1 && t1.villa && /Villa de lujo/.test(t1.impacto) && /−2 de fatiga/.test(t1.impacto) && !t0.desborde && !t1.desborde,
+        'botones ' + new Set(t0.botones).size + '/' + t0.total + ' · plataforma ' + t1.forceplate + ' · villa ' + t1.villa + ' · desborde ' + (t0.desborde || t1.desborde));
+    }
+
     anota(vp.n + ' · sin errores de JavaScript', errores.length === 0, errores.slice(0, 2).join(' | '));
     await ctx.close();
   }

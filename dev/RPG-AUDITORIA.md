@@ -216,10 +216,15 @@ cargar  ── loadGame ─▶ saveShape ▸ saveMigrate(v1..v5) ▸ saveValidat
 | `gp.def` «Defensa principal» (fase 10: sólo sumaba al puntaje del plan) | cuenta en el intercambio en que el rival hace eso, de suma cero (`gpDefShift` por `combat:eff`: +3 a lo que cubre la elegida, −1,5 a lo que cubren las otras dos) | `22-fase10.js` · A/B de 400 peleas por defensa (RPG-08) |
 | `f.tq.back` toma de espalda (fase 10, del árbol) | posición `TQ.back()`: suelo +6, sumisión del árbol ×1,15, +1 de control por intercambio | `22-fase10.js` |
 | ciclo de rivalidad (fase 10: derivado en cada consulta, sin «medios» ni resolución) | `RPG.rivalFacts` (lector puro) + `RPG.rivalTick` (avance guardado en `bond.rc`, `bondNote`, `CL.remember`, diario); la resolución es `canOfferRematch` | `22-fase10.js` |
+| tienda y patrimonio (fase 11: `apt`, `villa`, `estate`, `jet`, `foundation`, `stylist` y todo lo demás que se vende) | inventario completo en `dev/TIENDA-AUDITORIA.md`: 52 compras, cada una con su consumidor medido o su marca documentada; 8 artículos que no se podían comprar desde el original; 8 promesas conectadas (estilista, villa, jet, fundación, academia de prospectos, restaurante, documental, laboratorio); 4 promesas sin sistema que las sostenga, corregidas en el texto (mansión, jet, academia de prospectos, estudio audiovisual); 1 consumidor falso (centro de alto rendimiento → gimnasio comunitario) y 1 compra duplicada (chofer) reparados | `23-fase11-tienda.js` (contrato de la tienda) · navegador |
 
-**Siguen escritas sin lector** (no prometen una consecuencia futura: son marcas de compra o de
-tipo de carrera): `apt`, `villa`, `estate`, `jet`, `foundation`, `stylist`, `brawler`, `late`,
-`needCheapGym` (su lectura se reemplazó por `CL.cheapGym`), `eliteCampWeek`, `eliteCampBoost`.
+**Siguen escritas sin lector** (no prometen una consecuencia futura): `brawler`, `late`,
+`needCheapGym` (su lectura se reemplazó por `CL.cheapGym`), `eliteCampWeek` (la reemplaza
+`eliteCampAt`). Corrección de lo que decía esta sección antes de la fase 11: `eliteCampBoost` SÍ
+tiene lector (`eliteCampLeft`, por el alias `f=G.flags`); `apt`, `villa`, `estate`, `jet` y
+`foundation` eran espejos de `G.endgame` que nadie leía y se dejaron de escribir (la propiedad vive
+en `G.endgame.owned/projects`, que sí se lee); `stylist` ahora lo lee la prensa. Las marcas
+contables de la tienda que quedan, con su razón, están en `dev/TIENDA-AUDITORIA.md` §5.
 
 **Bugs del juego encontrados durante la etapa** (además de B-1…B-7): el rival elegía acciones
 que no existen en la posición (RPG-03); peleadores nacidos a mitad de carrera sin `f.cl` (guardar

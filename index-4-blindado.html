@@ -2965,12 +2965,16 @@ function recStart(){
   G.mg={type:'rec',step:0,weeks:0,done:false,log:[],picked:[]};
   mgOpen();
 }
+/* El laboratorio de recuperación promete «reducir el coste de recuperar
+   fatiga/daño entre camps»: la fisioterapia de la semana de recuperación
+   cuesta la mitad (fase 11). La mejora entre rounds ya la leía el combate. */
+function recPhysioCost(){ return (G && G.flags && G.flags.recoveryLab) ? 600 : 1200; }
 function recPick(k){
   var mg=G.mg,p=G.player;
   var o={
     rest:{f:-30,d:-25,pop:-1,st:{},t:'Descanso total. El cuerpo se apaga y repara.'},
     light:{f:-16,d:-12,pop:0,st:{recovery:.5,cardio:.4},t:'Movimiento ligero, natación y movilidad.'},
-    physio:{f:-22,d:-30,pop:0,cost:1200,st:{recovery:.8},t:'Fisioterapia y trabajo de recuperación pago.'},
+    physio:{f:-22,d:-30,pop:0,cost:recPhysioCost(),st:{recovery:.8},t:'Fisioterapia y trabajo de recuperación pago.'},
     promo:{f:-6,d:-6,pop:4,st:{confidence:.3},t:'Entrevistas, redes y eventos. La cara se vende sola.'},
     tech:{f:-4,d:-6,pop:0,st:{accuracy:.5,timing:.5,fightiq:.4},t:'Video, análisis y drills suaves.'}
   }[k];
@@ -5490,7 +5494,7 @@ function scrMG(){
       h+='<div class="card"><h3>Semana '+(mg.step+1)+' de 3</h3><p class="sm dim">Fatiga '+Math.round(G.player.fatigue)+' · Daño '+Math.round(G.player.dmg)+'</p>'+
        '<button class="btn" onclick="recPick(\'rest\')">Descanso total<small>Máxima recuperación, cero progreso</small></button>'+
        '<button class="btn" onclick="recPick(\'light\')">Entrenamiento ligero<small>Recuperás y mantenés el motor</small></button>'+
-       '<button class="btn" onclick="recPick(\'physio\')">Fisioterapia ('+money(1200)+')<small>La mejor recuperación de daño</small></button>'+
+       '<button class="btn" onclick="recPick(\'physio\')">Fisioterapia ('+money(recPhysioCost())+')<small>La mejor recuperación de daño'+(G.flags&&G.flags.recoveryLab?' · tu laboratorio la abarata':'')+'</small></button>'+
        '<button class="btn" onclick="recPick(\'promo\')">Promoción y prensa<small>Popularidad, poca recuperación</small></button>'+
        '<button class="btn" onclick="recPick(\'tech\')">Video y técnica<small>Precisión, timing y fight IQ</small></button></div>';
     } else {
@@ -7446,7 +7450,9 @@ function requestGameplayUpgrade(){
   var cost=GAMEPLAY_COST[lv+1];
   if(G.cash<cost){ toast('Necesitás '+money(cost)+' para esta mejora.'); return; }
   G.cash-=cost; G.gameplayLevel=lv+1;
-  // Mejora real: pequeños multiplicadores a todos los minijuegos a medida que sube.
+  // Mejora real: +1,2 de adaptabilidad y +1,2 de Fight IQ por nivel. El nivel
+  // en sí sólo fija el próximo costo y la etiqueta (fase 11: el comentario
+  // hablaba de multiplicadores en los minijuegos que no existen).
   G.player.st.adaptability=cap(G.player.st.adaptability+1.2);
   G.player.st.fightiq=cap(G.player.st.fightiq+1.2);
   pushNews('Tu equipo invirtió en mejorar la experiencia de carrera: nivel '+GAMEPLAY_LEVELS[G.gameplayLevel]+'.');
@@ -7703,7 +7709,7 @@ function scrMGArcade(){
     if(!mg.done){var q=mg.qs[mg.step];h+='<div class="arcade-board">'+miniHud('PRENSA','RESPONDÉ', (mg.step+1)+'/'+mg.qs.length)+'<div class="evt">'+esc(q.q)+'</div><div class="arcade-grid two">';q.o.forEach(function(o,i){h+=miniTile(['move-blue','move-yellow','move-red','move-green'][i],o[0],PERS[o[1]].n,"pressArcadePick("+i+")");});h+='</div></div>';}else h+='<div class="card"><p class="sm">'+esc(mg.result)+'</p><button class="btn pri" onclick="mgClose(false)">CONTINUAR</button></div>';return h+mgLog(mg);
   }
   if(mg.type==='rec'){
-    if(!mg.done){h+='<div class="arcade-board">'+miniHud('RECUPERACIÓN','ELEGÍ EL RECOVERY','SEM '+(mg.step+1)+'/3')+'<div class="arcade-grid two">';[['rest','DESCANSO','máximo'],['light','LIGERO','motor'],['physio','FISIO','daño'],['promo','PRENSA','popularidad'],['tech','TÉCNICA','precisión']].forEach(function(x,i){h+=miniTile(['move-blue','move-green','move-yellow','move-purple','move-red'][i],x[1],x[2],"recPick('"+x[0]+"')");});h+='</div><div class="arcade-note">FATIGA '+Math.round(safeNum(p.fatigue,0))+' · DAÑO '+Math.round(safeNum(p.dmg,0))+'</div></div>';}else h+='<div class="card"><p class="sm">'+esc(mg.result)+'</p><button class="btn pri" onclick="mgClose(false)">VOLVER</button></div>';return h+mgLog(mg);
+    if(!mg.done){h+='<div class="arcade-board">'+miniHud('RECUPERACIÓN','ELEGÍ EL RECOVERY','SEM '+(mg.step+1)+'/3')+'<div class="arcade-grid two">';[['rest','DESCANSO','máximo'],['light','LIGERO','motor'],['physio','FISIO','daño · '+money(recPhysioCost())+(G.flags&&G.flags.recoveryLab?' (lab)':'')],['promo','PRENSA','popularidad'],['tech','TÉCNICA','precisión']].forEach(function(x,i){h+=miniTile(['move-blue','move-green','move-yellow','move-purple','move-red'][i],x[1],x[2],"recPick('"+x[0]+"')");});h+='</div><div class="arcade-note">FATIGA '+Math.round(safeNum(p.fatigue,0))+' · DAÑO '+Math.round(safeNum(p.dmg,0))+'</div></div>';}else h+='<div class="card"><p class="sm">'+esc(mg.result)+'</p><button class="btn pri" onclick="mgClose(false)">VOLVER</button></div>';return h+mgLog(mg);
   }
   if(mg.type==='nego'){
     if(!mg.done){h+='<div class="arcade-board">'+miniHud('NEGOCIACIÓN','MANTENÉ LA PACIENCIA',Math.round(safeNum(mg.mood,0))+'%')+'<div class="kv"><span>Bolsa</span><span class="mono">'+money(mg.ask.purse)+'</span></div><div class="kv"><span>Bonus</span><span class="mono">'+money(mg.ask.bonus)+'</span></div><div class="arcade-grid two">'+
@@ -12233,6 +12239,7 @@ function persW(f,key){
 }
 
 /* ---------- ¿ACEPTA ENTRENAR CON VOS? ----------------------------------- */
+function villaHosts(f){ return egOwns('villa') && persW(f,'accept')<1; }
 function inviteChance(f){
   var p=G.player, r=relV(f), b=bondOf(f);
   if(f.retired||!f.active) return 0;
@@ -12248,7 +12255,9 @@ function inviteChance(f){
   base -= (b.rival?0.30:0);
   var lvlGap=(ovr(f)-ovr(p))/240;            /* si sos mucho peor, cuesta más */
   base -= clamp(lvlGap,-0.10,0.22);
-  base *= persW(f,'accept');
+  /* la villa «recibe gente»: a entrenar vienen a tu casa, así que el que no
+     abre su gimnasio a cualquiera (persW<1) ya no pesa en contra (fase 11) */
+  base *= villaHosts(f) ? 1 : persW(f,'accept');
   if(f.weeksIdle>6) base*=1.12;              /* disponibilidad */
   return clamp(base,0.03,0.95);
 }
@@ -12477,7 +12486,7 @@ function socInvite(id){
       var why = b.rival? 'No quiere saber nada con vos.'
               : (r.rivalry>45? 'Te contesta seco: hay demasiada tensión.'
               : (f.inj? 'Está lesionado y no puede.'
-              : (persW(f,'accept')<0.9? 'No es de abrir su gimnasio a cualquiera.'
+              : (persW(f,'accept')<0.9 && !egOwns('villa')? 'No es de abrir su gimnasio a cualquiera.'
               : 'Tiene la semana cerrada.')));
       addMemF(f,'rechazó entrenar con vos',-1);
       bondNote(f,'Rechazó una invitación a entrenar');
@@ -12525,7 +12534,7 @@ function socInvite(id){
       b.partner=true; extra+=' 🤝 Ahora son TRAINING PARTNERS.';
       bondNote(f,'Se volvieron training partners');
     }
-    G.socOut={t:'✅ Entrenaste '+FO.n.toLowerCase()+' con '+fname(f)+'. '+gainText(gains)+extra};
+    G.socOut={t:'✅ Entrenaste '+FO.n.toLowerCase()+' con '+fname(f)+'. '+gainText(gains)+extra+(villaHosts(f)?' 🏡 Vino a tu villa: no es de abrir su gimnasio, pero a tu casa sí viene.':'')};
     saveGame(true); render();
   });
 }
@@ -14364,9 +14373,14 @@ function gymCoaches(id){
   var g=gymById(id); if(!g) return [];
   return ((G&&G.coaches)||[]).filter(function(c){ return c.gym===id; });
 }
+/* El jet compartido promete «reducir penalizaciones de viaje»: los dos viajes
+   que existen (visitar otro gimnasio, viajar con un compañero) cansan la mitad.
+   La plata y la semana no cambian: el jet es compartido, no es gratis. */
+var JET_TRAVEL = 0.5;
+function travelFatigue(base){ return egOwns('jet') ? Math.round(base*JET_TRAVEL) : base; }
 function travelCost(g){
   var base=safeNum(g&&g.cost,900);
-  return { money: Math.round(base*1.8+600), weeks: 1, fatigue: 10 };
+  return { money: Math.round(base*1.8+600), weeks: 1, fatigue: travelFatigue(10), jet: egOwns('jet') };
 }
 /* Visita temporal: entrenás una semana en su especialidad y conocés gente. */
 function gymVisit(id){
@@ -14413,7 +14427,7 @@ function gymVisit(id){
       extra=' 🤜 '+shortName(met)+' te propuso seguir cruzándose.';
     }
     G.socOut={t:'✈️ Entrenaste una semana en '+g.name+' ('+g.specName+'). '+gainText(r.gain||[])+
-      (met?' Conociste a '+fname(met)+'.':'')+extra+' Costo: '+money(c.money)+'.'};
+      (met?' Conociste a '+fname(met)+'.':'')+extra+' Costo: '+money(c.money)+'.'+(c.jet?' ✈️ Con el jet, el viaje te cansó la mitad (+'+c.fatigue+' de fatiga).':'')};
     advanceWeek(); closeWeek(); render();
   });
 }
@@ -14481,7 +14495,7 @@ function scrGyms(){
       if(!mine){
         var c=travelCost(g);
         h+='<div class="grid g2">'+
-          '<button class="btn" onclick="gymVisit(\''+g.id+'\')">✈️ Visitar 1 semana<small>'+money(c.money)+'</small></button>'+
+          '<button class="btn" onclick="gymVisit(\''+g.id+'\')">✈️ Visitar 1 semana<small>'+money(c.money)+' · +'+c.fatigue+' de fatiga'+(c.jet?' (jet)':'')+'</small></button>'+
           '<button class="btn" onclick="gymJoin(\''+g.id+'\')">🏠 Mudarme acá<small>'+money(Math.round(safeNum(g.cost,900)*2))+'</small></button></div>';
       } else h+='<p class="sm jade">Entrenás acá. Tus sesiones usan sus fortalezas.</p>';
     }
@@ -14724,7 +14738,8 @@ function travelWith(id){
     if(safeNum(G.cash,0)<cost){ toast('El viaje sale '+money(cost)); return; }
     if(!socSpend('travel:'+f.id,'travel',so)) return;
     G.cash=safeNum(G.cash,0)-cost;
-    p.fatigue=clamp(safeNum(p.fatigue,0)+8,0,100);
+    var tFat=travelFatigue(8);
+    p.fatigue=clamp(safeNum(p.fatigue,0)+tFat,0,100);
     r.friend=clamp(r.friend+10,0,100); r.trust=clamp(r.trust+9,0,100);
     b.chat+=2;
     var bits=[];
@@ -14741,7 +14756,7 @@ function travelWith(id){
     else { if(!b.ally){ b.ally=true; bits.push('volvieron siendo equipo'); } else bits.push('el viaje los unió más'); }
     bondNote(f,'Viajaron juntos');
     addMemF(f,'viajaron juntos a un evento',7);
-    G.socOut={t:'✈️ Viajaste con '+fname(f)+': '+(bits[0]||'fue un viaje tranquilo')+'. Costo '+money(cost)+'.'};
+    G.socOut={t:'✈️ Viajaste con '+fname(f)+': '+(bits[0]||'fue un viaje tranquilo')+'. Costo '+money(cost)+'.'+(egOwns('jet')?' Fueron en el jet: +'+tFat+' de fatiga en vez de 8.':'')};
     advanceWeek(); closeWeek(); render();
   });
 }
@@ -14879,6 +14894,9 @@ var SHOP=[
   f:function(){ G.flags.cutman=1; return 'Entre rounds vas a estar en buenas manos.'; }}
 ];
 function shopOwned(id){ G.flags=G.flags||{}; G.flags.shop=G.flags.shop||{}; return safeInt(G.flags.shop[id],0); }
+/* Lo comprado en «Patrimonio y legado» (G.endgame): propiedades, transporte y
+   proyectos. Una sola fuente de verdad para quien tenga que leerlo (fase 11). */
+function egOwns(id){ var e=G && G.endgame; return !!(e && ((e.owned && e.owned[id]) || (e.projects && e.projects[id]))); }
 function shopCan(it){
   if(it.once && shopOwned(it.id)) return 'ya lo tenés';
   if(it.ok && !safeRun('shopOk',function(){ return it.ok(); },function(){return true;},true)) return 'no lo necesitás ahora';
@@ -16334,22 +16352,16 @@ fxFinish=function(){
   add.forEach(function(it){ SHOP.push(it); });
 })();
 
-/* Categorías nuevas visibles en la tienda. */
+/* Actividades desbloqueadas e ingreso pasivo, al pie de la tienda.
+   FASE 11: este filtro dibujaba también las categorías Tecnología y Negocios,
+   pero corría ANTES de 'scrShopPrev' (orden 20), que rehace la pantalla
+   entera: las dos categorías, esta tarjeta y la línea de ingreso se perdían,
+   y ocho artículos de la tienda (tres de ellos, actividades jugables) no se
+   podían comprar desde el día uno. Ahora las categorías las dibuja
+   'scrShopPrev' con todas las que existan en SHOP, y esto corre después. */
 hookOn('screen:shop','shopScrShopPrev', function(h){
   return safeRun('shopExtra', function(){
     var extra='';
-    ['Tecnología','Negocios'].forEach(function(cat){
-      var items=SHOP.filter(function(i){ return i.c===cat; });
-      if(!items.length) return;
-      extra+='<div class="card"><h3>'+cat+'</h3>';
-      items.forEach(function(it){
-        var why=shopCan(it), owned=shopOwned(it.id);
-        extra+='<button class="btn'+(why?' ghost':'')+'" onclick="buyItem(\''+it.id+'\')">'+
-          it.ico+' '+esc(it.n)+(owned&&it.once?' ✓':'')+
-          '<small>'+esc(it.d)+' · '+(it.p?money(it.p):'gratis')+(why?' — '+why:'')+'</small></button>';
-      });
-      extra+='</div>';
-    });
     /* actividades desbloqueadas */
     var un=SHOP.filter(function(i){ return i.mg && shopOwned(i.id); });
     if(un.length){
@@ -16358,13 +16370,13 @@ hookOn('screen:shop','shopScrShopPrev', function(h){
         un.map(function(i){ return '<button class="btn" onclick="fameStart(\''+i.mg+'\')">'+i.ico+' '+esc(FAME_INFO[i.mg].n)+'</button>'; }).join('')+
         '</div></div>';
     }
-    var inc=safeInt(G.flags&&G.flags.bizIncome,0)+safeInt(G.flags&&G.flags.sponsorW,0);
+    var inc=safeInt(G.flags&&G.flags.bizIncome,0)+safeInt(G.flags&&G.flags.sponsorW,0)+(G.flags&&G.flags.vault?VAULT_RENT:0);
     if(inc>0) extra+='<div class="card"><p class="sm jade">💰 Ingreso pasivo actual: <b>'+money(inc)+' por semana</b>.</p></div>';
     var anchor='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';
     if(h.indexOf(anchor)>=0) return h.replace(anchor, extra+anchor);
     return h+extra;
   }, function(){ return h; }, true);
-}, 10);
+}, 25);
 
 /* ---------- efectos semanales de lo comprado ---------- */
 hookOn('week','shopWeekly', function(){
@@ -26742,25 +26754,31 @@ function contentDrop(){
 /* --------------------------------------------------------------------------
    F) SHOP — muchos destinos para el dinero, con identidad y tiers
    -------------------------------------------------------------------------- */
+var VAULT_RENT=3200;          /* renta semanal de la bóveda de campeón */
 var SHOP_EXTRA=[
- {id:'recoverylab',c:'Recuperación',n:'Laboratorio de recuperación',p:18000,ico:'🧪',once:true,d:'Reduce el coste de recuperar fatiga/daño entre camps y mejora la recuperación entre rounds.',f:function(){G.flags.recoveryLab=1;G.player.st.recovery=cap(G.player.st.recovery+4);return 'Tu recuperación profesional deja de depender sólo del descanso.';}},
+ {id:'recoverylab',c:'Recuperación',n:'Laboratorio de recuperación',p:18000,ico:'🧪',once:true,d:'La fisioterapia entre camps te cuesta la mitad y te recuperás mejor entre rounds.',f:function(){G.flags.recoveryLab=1;G.player.st.recovery=cap(G.player.st.recovery+4);return 'Tu recuperación profesional deja de depender sólo del descanso.';}},
  {id:'elitecamp',c:'Rendimiento',n:'Campamento de élite',p:28000,ico:'🏕️',once:false,d:'Pagás un camp intensivo que cambia el enfoque de las próximas 6 semanas: mejor calidad, más fatiga.',f:function(){G.flags.eliteCampWeek=G.week;G.flags.eliteCampAt=G.year*52+G.week;G.flags.eliteCampBoost=1;G.player.st.fightiq=cap(G.player.st.fightiq+4);G.player.st.discipline=cap(G.player.st.discipline+2);return 'Reservaste un campamento de élite.';}},
  {id:'nutritionchef',c:'Rendimiento',n:'Chef de campamento',p:9500,ico:'🍱',once:true,d:'El gasto semanal sube, pero llegás mejor alimentado: menor caída de energía y mejor corte.',f:function(){G.flags.chef=1;return 'Tu dieta dejó de depender de improvisar entre sesiones.';}},
- {id:'mediahouse',c:'Imagen',n:'Estudio audiovisual profesional',p:24000,ico:'🎥',once:true,d:'Sube el nivel del equipo de contenido y habilita piezas de alto impacto.',ok:function(){return !!shopOwned('camera');},f:function(){var c=CL.contentState();c.level=clamp(c.level+2,0,5);c.hype=clamp(c.hype+15,0,100);return 'El equipo dejó de parecer un canal amateur.';}},
- {id:'documentary',c:'Imagen',n:'Documental de temporada',p:65000,ico:'🎞️',once:false,d:'Una inversión grande que convierte una racha fuerte en una historia pública y puede abrir una pelea estelar.',ok:function(){return !!shopOwned('camera')&&G.player.rec.w>=6;},f:function(){G.player.pop=clamp(G.player.pop+7,1,100);G.player.rep=clamp(G.player.rep+3,1,100);CL.contentState().hype=clamp(CL.contentState().hype+25,0,100);return 'Tu temporada ahora tiene una historia que vender.';}},
+ {id:'mediahouse',c:'Imagen',n:'Estudio audiovisual profesional',p:24000,ico:'🎥',once:true,d:'Sube dos niveles el equipo de contenido: cada producción semanal rinde más hype y popularidad.',ok:function(){return !!shopOwned('camera');},f:function(){var c=CL.contentState();c.level=clamp(c.level+2,0,5);c.hype=clamp(c.hype+15,0,100);return 'El equipo dejó de parecer un canal amateur.';}},
+ {id:'documentary',c:'Imagen',n:'Documental de temporada',p:65000,ico:'🎞️',once:false,d:'Una inversión grande que convierte una racha fuerte en una historia pública y, en una liga grande, puede abrir una pelea coestelar de PPV.',ok:function(){return !!shopOwned('camera')&&G.player.rec.w>=6;},f:function(){G.flags.docAt=G.year*52+G.week;G.flags.docUsed=0;G.player.pop=clamp(G.player.pop+7,1,100);G.player.rep=clamp(G.player.rep+3,1,100);CL.contentState().hype=clamp(CL.contentState().hype+25,0,100);return 'Tu temporada ahora tiene una historia que vender.';}},
  {id:'coachcamp',c:'Equipo',n:'Camp de equipo privado',p:42000,ico:'🥋',once:true,d:'Todos los entrenadores activos trabajan sobre un único plan durante el próximo camp.',f:function(){G.flags.teamCamp=1;G.player.st.fightiq=cap(G.player.st.fightiq+5);return 'Los entrenadores dejan de trabajar como islas durante el camp.';}},
  {id:'videoWall',c:'Equipo',n:'Sala de análisis',p:78000,ico:'🖥️',once:true,d:'Mejora scouting, lectura de rivales y calidad de gameplan. No es un bono plano: hace que la información sea más útil.',f:function(){G.flags.videoWall=1;G.player.st.fightiq=cap(G.player.st.fightiq+3);return 'Ahora estudiás rivales con una biblioteca propia.';}},
- {id:'driver',c:'Vida',n:'Chofer para semanas de pelea',p:36000,ico:'🚙',once:true,d:'Cuando faltan 3 semanas para pelear, baja una parte de la fatiga logística.',f:function(){G.flags.driver=1;return 'Las semanas de pelea se vuelven mucho más limpias.';}},
+ {id:'driver',c:'Vida',n:'Chofer para semanas de pelea',p:36000,ico:'🚙',once:true,d:'Cuando faltan 3 semanas para pelear, baja una parte de la fatiga logística.',ok:function(){return !(G.flags&&G.flags.driver);},f:function(){G.flags.driver=1;return 'Las semanas de pelea se vuelven mucho más limpias.';}},
  {id:'penthouse',c:'Vida',n:'Casa de campeón',p:300000,ico:'🏙️',once:true,d:'Gran gasto de endgame. Sube comodidad, prestigio y descanso sin convertir el dinero en un simple +%.',f:function(){G.flags.penthouse=1;G.player.st.composure=cap(G.player.st.composure+7);G.player.pop=clamp(G.player.pop+4,1,100);return 'Compraste una propiedad que sólo tiene sentido cuando el dinero dejó de ser problema.';}},
  {id:'legacygym',c:'Vida',n:'Gimnasio comunitario',p:180000,ico:'🏟️',once:true,d:'Financiás un gimnasio que puede producir talentos y oportunidades en temporadas futuras.',f:function(){G.flags.legacyGym=1;G.player.rep=clamp(G.player.rep+8,1,100);return 'Ahora tu dinero también deja huella fuera de tu carrera.'}},
- {id:'vault',c:'Vida',n:'Bóveda de campeón',p:750000,ico:'🏦',once:true,d:'Gran sumidero de dinero del endgame. Guarda patrimonio separado y genera una renta estable.',f:function(){G.flags.vault=1;G.flags.vaultCash=Math.max(0,safeNum(G.flags.vaultCash,0))+375000;return 'Convertiste parte de tu fortuna en patrimonio permanente.'}}
+ {id:'vault',c:'Vida',n:'Bóveda de campeón',p:750000,ico:'🏦',once:true,d:'Gran sumidero de dinero del endgame: la mitad queda guardada como patrimonio (se ve en Patrimonio y legado) y rinde una renta fija cada semana.',f:function(){G.flags.vault=1;G.flags.vaultCash=Math.max(0,safeNum(G.flags.vaultCash,0))+375000;return 'Convertiste parte de tu fortuna en patrimonio permanente.'}}
 ];
 SHOP_EXTRA.forEach(function(it){if(!SHOP.some(function(x){return x.id===it.id;}))SHOP.push(it);});
 var SHOP_TIER={
-  physio:'BARATO',cryro:'MEDIO',surgery:'CARO',nutri:'MEDIO',strength:'MEDIO',psych:'MEDIO',analyst:'CARO',pr:'MEDIO',camera:'MEDIO',lawyer:'CARO',car:'CARO',house:'MUY CARO',family:'CARO',privgym:'CARO',sparteam:'CARO',cutman:'MEDIO',recoverylab:'CARO',elitecamp:'CARO',nutritionchef:'MEDIO',mediahouse:'CARO',documentary:'MUY CARO',coachcamp:'MUY CARO',videoWall:'MUY CARO',driver:'CARO',penthouse:'ENDGAME',legacygym:'ENDGAME',vault:'ENDGAME'
+  physio:'BARATO',cryo:'MEDIO',surgery:'CARO',nutri:'MEDIO',strength:'MEDIO',psych:'MEDIO',analyst:'CARO',pr:'MEDIO',camera:'MEDIO',lawyer:'CARO',car:'CARO',house:'MUY CARO',family:'CARO',privgym:'CARO',sparteam:'CARO',cutman:'MEDIO',recoverylab:'CARO',elitecamp:'CARO',nutritionchef:'MEDIO',mediahouse:'CARO',documentary:'MUY CARO',coachcamp:'MUY CARO',videoWall:'MUY CARO',driver:'CARO',penthouse:'ENDGAME',legacygym:'ENDGAME',vault:'ENDGAME',
+  /* fase 11: las ocho que no se veían */
+  lightboard:'CARO',vrrig:'CARO',forceplate:'CARO',altitude:'CARO',investdesk:'CARO',ownGym:'MUY CARO',restaurant:'MUY CARO',academy:'MUY CARO'
 };
 hookOn('screen:shop','scrShopPrev', function(h){
-  var cats=['Recuperación','Rendimiento','Imagen','Equipo','Vida'];
+  /* todas las categorías que existan en SHOP (fase 11: Tecnología y Negocios
+     quedaban afuera y ocho artículos no se podían comprar) */
+  var cats=['Recuperación','Rendimiento','Tecnología','Imagen','Equipo','Vida','Negocios'];
+  SHOP.forEach(function(i){ if(cats.indexOf(i.c)<0) cats.push(i.c); });
   var h='<div class="topbar"><div class="r1"><h2>Invertir en tu carrera</h2><span class="sm gold mono">'+money(G.cash)+'</span></div></div>';
   if(G.socOut) h+='<div class="card hi"><p class="sm">'+esc(G.socOut.t)+'</p><button class="btn ghost" onclick="G.socOut=null;render()">Entendido</button></div>';
   cats.forEach(function(c){
@@ -26781,7 +26799,7 @@ CL.on('week','luxury',function(){
   if(!G||!G.player)return;
   if(G.flags&&G.flags.chef) G.cash-=650;
   if(G.flags&&G.flags.driver&&G.nextFight&&G.nextFight.weeks<=3) G.player.fatigue=clamp(G.player.fatigue-2,0,100);
-  if(G.flags&&G.flags.vault&&CL.once('vaultIncome')) G.cash+=3200;
+  if(G.flags&&G.flags.vault&&CL.once('vaultIncome')) G.cash+=VAULT_RENT;
   if(G.flags&&G.flags.legacyGym&&CL.once('legacyGymTalent')){
     G.player.rep=clamp(G.player.rep+0.5,1,100);
     if(chance(.18)) pushNews('Un peleador que entrenó en tu gimnasio comunitario gana un regional. Tu nombre aparece en los créditos.');
@@ -26836,6 +26854,80 @@ hookOn('gp:confirm','campDeEquipo', function(){
   G.camp.sharp=clamp(safeNum(G.camp.sharp,35)+3,0,100);
   if(G.mg && G.mg.type==='gp'){ G.mg.score=G.camp.gameplan.score; (G.mg.notes=G.mg.notes||[]).unshift('Camp de equipo: los entrenadores dejan de ser islas.'); }
 }, 30);
+
+/* --------------------------------------------------------------------------
+   FASE 11 — tres promesas de la tienda que terminaban en una bandera o en nada
+   -------------------------------------------------------------------------- */
+var SHOPX = {STYLIST_POP:1.5, REST_SHARP:0.5, DOC_WEEKS:16};
+
+/* Estilista y vestuario: «+8 de popularidad y mejores respuestas en prensa».
+   Los +8 los daba la compra; lo de la prensa escribía G.flags.stylist y nadie
+   lo leía. Ahora cada aparición en medios (conferencia o podcast: las dos vías
+   que cierran con 'media:done') rinde un poco más de popularidad, porque la
+   foto es la tuya, y el propio registro de la aparición lo dice. */
+hookOn('media:done','estilista', function(c){
+  if(!G || !G.player || !G.flags || !G.flags.stylist || !c) return;
+  if(c.kind!=='press' && c.kind!=='pod') return;
+  var p=G.player;
+  p.pop=clamp(safeNum(p.pop,10)+SHOPX.STYLIST_POP,1,100);
+  if(G.mg && (G.mg.type==='press' || G.mg.type==='pod')){
+    G.mg.styl=SHOPX.STYLIST_POP;
+    (G.mg.log=G.mg.log||[]).unshift('🕶️ Estilista: salís bien en todas las fotos (+'+String(SHOPX.STYLIST_POP).replace('.',',')+' de popularidad).');
+  }
+}, 60);
+
+/* Restaurante con tu nombre: «Ingreso semanal y +6 de popularidad. También te
+   distrae un poco». Lo primero se cumplía; la distracción no existía. Cada
+   semana de campamento el restaurante te saca un poco de foco (medio punto de
+   filo), y el registro del camp lo dice. */
+hookOn('camp:week:post','restaurante', function(){
+  var c=G.camp; if(!c || !shopOwned('restaurant')) return;
+  c.sharp=clamp(safeNum(c.sharp,35)-SHOPX.REST_SHARP,0,100);
+  (c.log=c.log||[]).unshift('   🍽️ El restaurante te llama en medio del camp: un poco menos de foco.');
+}, 32);
+
+/* Documental de temporada: «convierte una racha fuerte en una historia pública
+   y puede abrir una pelea estelar». La historia pública (popularidad,
+   reputación, hype) la daba la compra; la pelea no la abría nada. La
+   organización ya tenía esa pelea —«PPV — pelea coestelar», la del rival
+   vendedor, en una liga grande (CL.extraOffers)— pero al azar. Con un
+   documental reciente (hasta 16 semanas) y las mismas condiciones, la ofrece:
+   una vez por documental, contra el nombre más vendedor de tu división, sin
+   azar. Si ya hay una coestelar en la mesa, el documental espera. */
+SHOPX.docLeft = function(){
+  var f=G && G.flags; if(!f || !f.docAt || f.docUsed) return 0;
+  return Math.max(0, SHOPX.DOC_WEEKS - ((G.year*52+G.week) - safeInt(f.docAt,0)));
+};
+SHOPX.docStar = function(){
+  var p=G.player, org=p && G.orgs[p.org];
+  if(!org || safeInt(org.tier,0)<3 || clN(p.pop)<=35) return null;
+  var best=null;
+  (org.roster||[]).forEach(function(id){
+    var f=F(id); if(!f || f.isPlayer || f.div!==p.div || f.inj || f.retired || !f.active || clN(f.pop)<=50) return;
+    if(fightSpecProblem({oppId:f.id, org:p.org})) return;
+    var fought=(p.career||[]).some(function(x){ return x.oppId===f.id; });
+    if(fought && !(typeof canOfferRematch==='function' && canOfferRematch(p,f))) return;
+    if(!best || clN(f.pop)>clN(best.pop) || (clN(f.pop)===clN(best.pop) && String(f.id)<String(best.id))) best=f;
+  });
+  return best;
+};
+hookOn('offers:made','documental', function(){
+  if(!G || !G.player || G.player.retired || G.nextFight || !Array.isArray(G.offers)) return;
+  if(!SHOPX.docLeft()) return;
+  if(G.offers.some(function(o){ return o && o.type==='fight' && o.clTag==='show'; })) return;
+  var st=SHOPX.docStar(), p=G.player, org=G.orgs[p.org]; if(!st) return;
+  G.offers.unshift({type:'fight', oppId:st.id, org:p.org, weeks:11, title:false,
+    purse:Math.round(org.pay[1]*1.1),
+    event:'PPV — pelea coestelar',
+    txt:'EL DOCUMENTAL LA VENDIÓ: '+fname(st)+' ('+recStr(st)+'). Tu temporada ya es una historia y la organización quiere el show.',
+    clTag:'show', docMade:true});
+}, 36);
+/* se gasta sólo si la oferta sobrevive a los filtros posteriores (repetición,
+   puerta final): un documental no se quema en una oferta que nadie ve */
+hookOn('offers:made','documentalGasto', function(){
+  if(!G || !G.flags || G.flags.docUsed || !Array.isArray(G.offers)) return;
+  if(G.offers.some(function(o){ return o && o.docMade; })) G.flags.docUsed=G.year*52+G.week;
+}, 100);
 
 /* ==========================================================================
    MÓDULO 37 — EL MÁNAGER COMO DIRECTOR DE CARRERA
@@ -28055,18 +28147,18 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
      ------------------------------------------------------------------------ */
   var ENDGAME = {
     props:[
-      {id:'apt',n:'Departamento premium',p:150000,d:'Base permanente en una ciudad clave.',eff:'recovery',v:3},
-      {id:'villa',n:'Villa de lujo',p:500000,d:'Espacio enorme para descansar, recibir gente y mejorar recuperación.',eff:'recovery',v:6},
-      {id:'estate',n:'Mansión / patrimonio',p:1500000,d:'Una propiedad de legado. Abre eventos y proyectos de largo plazo.',eff:'legacy',v:1}
+      {id:'apt',n:'Departamento premium',p:150000,d:'Base permanente en una ciudad clave: cada semana te recuperás un poco más (−1 de fatiga).',eff:'recovery',v:3},
+      {id:'villa',n:'Villa de lujo',p:500000,d:'Espacio enorme para descansar (−2 de fatiga por semana) y recibir gente: a entrenar vienen a tu casa, así que no depende de que te abran su gimnasio.',eff:'recovery',v:6},
+      {id:'estate',n:'Mansión / patrimonio',p:1500000,d:'Una propiedad de legado: tu nombre pesa un poco más cada temporada (+1 de reputación por año).',eff:'legacy',v:1}
     ],
     vehicles:[
-      {id:'driver',n:'Transporte privado',p:90000,d:'Reduce desgaste logístico y mejora viajes de pelea.'},
-      {id:'jet',n:'Jet compartido',p:750000,d:'Reduce penalizaciones de viaje y abre eventos de lujo.'}
+      {id:'driver',n:'Transporte privado',p:90000,d:'Reduce desgaste logístico (−1 de fatiga por semana) y mejora las semanas de pelea (incluye el chofer).'},
+      {id:'jet',n:'Jet compartido',p:750000,d:'Reduce penalizaciones de viaje: visitar otro gimnasio o viajar con un compañero te cansa la mitad, y el cuerpo carga menos desgaste (−0,25 de daño por semana).'}
     ],
     projects:[
       {id:'gym_upgrade',n:'Centro de alto rendimiento',p:350000,d:'Mejora el gimnasio actual y los resultados del campamento.'},
-      {id:'academy',n:'Academia de prospectos',p:900000,d:'Formás talentos; algunos pueden aparecer después en el mundo.'},
-      {id:'fund',n:'Fundación / becas',p:250000,d:'Contribuye al legado y genera historias de nuevos talentos.'}
+      {id:'academy',n:'Academia de prospectos',p:900000,d:'Formás talentos: tu legado pasa a ser el de un maestro y la academia te pone en las noticias.'},
+      {id:'fund',n:'Fundación / becas',p:250000,d:'Contribuye al legado (cuenta como obra que queda después de vos) y genera historias de nuevos talentos cada año.'}
     ],
     investments:[
       {id:'media',n:'Participación en medio deportivo',p:250000,term:26,min:1.08,max:1.32,risk:.15,d:'Proyecto de contenido deportivo: puede crecer fuerte o perder parte del capital.'},
@@ -28075,15 +28167,35 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     ]
   };
   function eg(){G.endgame=G.endgame||{owned:{},projects:{},investments:[],eventsSeen:{}};return G.endgame;}
+  /* lo que hace cada cosa que tenés, en palabras del juego (fase 11) */
+  function egImpact(e){
+    var out=[], f=G.flags||{};
+    if(e.owned.apt)    out.push(['Departamento premium','−'+(egItem('apt').v/3)+' de fatiga por semana']);
+    if(e.owned.villa)  out.push(['Villa de lujo','−'+(egItem('villa').v/3)+' de fatiga por semana · a entrenar vienen a tu casa']);
+    if(e.owned.estate) out.push(['Mansión / patrimonio','+'+egItem('estate').v+' de reputación por temporada']);
+    if(e.owned.driver) out.push(['Transporte privado','−1 de fatiga por semana · −2 más en las 3 semanas antes de pelear']);
+    if(e.owned.jet)    out.push(['Jet compartido','viajes a mitad de desgaste · −0,25 de daño por semana']);
+    if(e.projects.gym_upgrade) out.push(['Centro de alto rendimiento','campamentos mejorados (+0,35 de filo por semana de camp)']);
+    if(e.projects.academy) out.push(['Academia','legado de maestro · genera noticias de prospectos']);
+    if(e.projects.fund)    out.push(['Fundación','cuenta en tu legado · una historia de becados por año']);
+    if(f.vault) out.push(['Bóveda de campeón (tienda)', money(safeNum(f.vaultCash,0))+' guardados como patrimonio · renta de '+money(VAULT_RENT)+' por semana']);
+    return out;
+  }
+  function egItem(id){ return ENDGAME.props.concat(ENDGAME.vehicles, ENDGAME.projects).filter(function(x){ return x.id===id; })[0]; }
   function egBuy(kind,id){
     var e=eg();G.flags=G.flags||{};var list=ENDGAME[kind],it=list.filter(function(x){return x.id===id;})[0];if(!it||e.owned[id]||G.cash<it.p)return false;G.cash-=it.p;e.owned[id]=1;
     if(kind==='projects')e.projects[id]={level:1,stamp:G.year*52+G.week};
     if(kind==='vehicles'&&id==='driver')G.flags.driver=true;
-    if(kind==='vehicles'&&id==='jet')G.flags.jet=true;
-    if(id==='gym_upgrade')G.flags.legacyGym=true;
+    /* FASE 11: la propiedad vive en e.owned / e.projects (una sola fuente).
+       Se escribían además G.flags.apt/villa/estate/jet/foundation, espejos que
+       nadie leía, y una rama para 'vault' que no existe en ENDGAME. Y el
+       centro de alto rendimiento encendía G.flags.legacyGym, que es la marca
+       del GIMNASIO COMUNITARIO (tienda / evento de veterano): quien mejoraba su
+       gimnasio recibía noticias de «tu gimnasio comunitario» que nunca compró.
+       Lo que sí cruza, cruza a propósito: el transporte privado incluye al
+       chofer (G.flags.driver) y la academia suma un alumno a la cuenta de
+       mentor que lee el cierre de carrera (G.flags.mentor). */
     if(id==='academy')G.flags.mentor=clN(G.flags.mentor,0)+1;
-    if(id==='fund')G.flags.foundation=true;
-    if(id==='apt')G.flags.apt=true;if(id==='villa')G.flags.villa=true;if(id==='estate')G.flags.estate=true;if(id==='vault')G.flags.vault=true;
     saveGame(true);render();return true;
   }
   function egInvest(id){
@@ -28115,12 +28227,14 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
       G.careerEarn=safeNum(G.careerEarn,0)+Math.max(0,inv.returned-inv.principal);
     });
     var p=G.player;
-    if(e.owned.apt)p.fatigue=clamp(safeNum(p.fatigue,0)-1,0,100);
-    if(e.owned.villa)p.fatigue=clamp(safeNum(p.fatigue,0)-1,0,100);
+    /* recuperación por propiedad: v/3 por semana (departamento −1, villa −2).
+       La villa rendía lo mismo que el departamento y su ficha decía «recuperación
+       superior»; su v (6 contra 3) ya lo decía y nadie lo leía. */
+    ENDGAME.props.forEach(function(it){ if(it.eff==='recovery'&&e.owned[it.id]) p.fatigue=clamp(safeNum(p.fatigue,0)-it.v/3,0,100); });
     if(e.owned.driver)p.fatigue=clamp(safeNum(p.fatigue,0)-1,0,100);
     if(e.owned.jet)p.dmg=clamp(safeNum(p.dmg,0)-.25,0,100);
     if(e.projects.gym_upgrade&&G.camp)G.camp.sharp=clamp(safeNum(G.camp.sharp,0)+.35,0,100);
-    if(e.owned.estate&&CL.onceYear('estateLegacy'))p.rep=clamp(safeNum(p.rep,45)+1,1,100);
+    if(e.owned.estate&&CL.onceYear('estateLegacy'))p.rep=clamp(safeNum(p.rep,45)+egItem('estate').v,1,100);
     if(e.projects.fund&&CL.onceYear('foundationYear'))pushNews('La fundación que creaste financia nuevos talentos y vuelve a aparecer tu nombre fuera del octágono.');
     if(e.projects.academy&&CL.once('academyStory')&&chance(.35))pushNews('La academia descubre a un prospecto prometedor. Todavía no llega a la liga, pero ya empieza a circular su nombre.');
   }
@@ -28132,7 +28246,10 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
     h+='<div class="card"><div class="hdr"><h3>📈 Inversiones</h3><span class="tag">riesgo / retorno</span></div><p class="xs dim2">Son proyectos ficticios del modo carrera: comprometen capital durante un plazo y pueden terminar con ganancia o pérdida.</p>';
     ENDGAME.investments.forEach(function(it){var open=e.investments.some(function(x){return x.id===it.id&&x.status==='open';});var last=e.investments.slice().reverse().filter(function(x){return x.id===it.id;})[0];h+='<div class="shop-it"><span class="shop-ico">📊</span><div style="flex:1"><b>'+esc(it.n)+'</b><small>'+esc(it.d)+' · plazo '+it.term+' sem. · riesgo '+Math.round(it.risk*100)+'%</small></div><button class="btn shop-buy" '+(open||G.cash<it.p?'disabled':'')+' onclick="egInvest(\''+it.id+'\')">'+(open?'EN CURSO':money(it.p))+'</button></div>';if(last)h+='<div class="xs dim2" style="margin:-5px 0 7px 36px">Último resultado: '+esc(last.status||'')+(last.returned?' · '+money(last.returned):'')+'</div>';});
     h+='</div>';
-    h+='<div class="card"><h3>Impacto actual</h3>'+(e.owned.apt?'<div class="row"><span>Departamento premium</span><span class="jade">+recuperación logística</span></div>':'')+(e.owned.villa?'<div class="row"><span>Villa</span><span class="jade">+recuperación superior</span></div>':'')+(e.projects.gym_upgrade?'<div class="row"><span>Centro de alto rendimiento</span><span class="jade">campamentos mejorados</span></div>':'')+(e.projects.academy?'<div class="row"><span>Academia</span><span class="jade">genera talentos y legado</span></div>':'')+(e.projects.fund?'<div class="row"><span>Fundación</span><span class="jade">eventos de legado</span></div>':'')+'</div>';
+    /* FASE 11: el impacto de TODO lo que tenés, con su efecto real (antes
+       faltaban la mansión, el transporte, el jet y la bóveda) */
+    var imp=egImpact(e);
+    h+='<div class="card"><h3>Impacto actual</h3>'+(imp.length? imp.map(function(r){ return '<div class="row"><span>'+esc(r[0])+'</span><span class="jade">'+esc(r[1])+'</span></div>'; }).join('') : '<p class="xs dim2">Todavía no tenés nada acá.</p>')+'</div>';
     h+='<button class="btn ghost" onclick="go(\'hub\')">Volver</button>';return h;
   }
   window.egBuy=egBuy; window.egInvest=egInvest;
@@ -30285,16 +30402,20 @@ hookOn('screen:social','rpgLider', function(h){
 /* --------------------------------------------------------------------------
    11. DIARIO DE CARRERA — se escribe solo, con lo que pasó
    -------------------------------------------------------------------------- */
+/* lo que pesa en el perfil de legado una obra que queda después de vos: el
+   gimnasio comunitario ya valía 30; la fundación (constructor) y la academia
+   de prospectos (maestro) valen lo mismo (fase 11) */
+RPG.LEGADO_OBRA = 30;
 RPG.legacyProfile = function(){
   var p=G.player, r=RPG.R(), t=r.cnt||{}, ax=RPG.axes(), id=RPG.identity(), cl=RPG.careerLean();
   var P=[
     {k:'campeon', n:'El Campeón', d:'Llegó arriba y se quedó.', s: clN(p.titles,0)*30 + clN(p.defenses,0)*12},
-    {k:'maestro', n:'El Maestro', d:'Dejó alumnos y una forma de pelear.', s:RPG.disciples().length*14 + (r.traits.lider?25:0) + Math.max(0,ax.estrategia)*0.3},
+    {k:'maestro', n:'El Maestro', d:'Dejó alumnos y una forma de pelear.', s:RPG.disciples().length*14 + (r.traits.lider?25:0) + Math.max(0,ax.estrategia)*0.3 + (egOwns('academy')?RPG.LEGADO_OBRA:0)},
     {k:'leyenda', n:'La Leyenda', d:'Su nombre ya se usa para medir a otros.', s:(clN(p.titles,0)>=2&&clN(p.defenses,0)>=4)? 80+clN(p.pop,0)*0.3 : 0},
     {k:'showman', n:'El Showman', d:'Nadie vendió peleas como él.', s:Math.max(0,ax.espectaculo)*0.6 + Math.max(0,clN(p.pop,0)-55)*0.6 + (r.traits.provocador?20:0)},
     {k:'guerrero', n:'El Guerrero', d:'Cada noche suya fue una batalla.', s:safeInt(t.war,0)*14 + (r.traits.guerra?20:0) + (r.traits.remontada?15:0)},
     {k:'estratega', n:'El Estratega', d:'Ganó en la pizarra antes que en la jaula.', s:safeInt(t.gpW,0)*8 + safeInt(t.iqW,0)*8 + Math.max(0,ax.estrategia)*0.4},
-    {k:'constructor', n:'El Constructor', d:'Peleó para que quedara algo.', s:clN(r.cp&&r.cp.legado,0)*6 + (G.flags&&G.flags.legacyGym?30:0)},
+    {k:'constructor', n:'El Constructor', d:'Peleó para que quedara algo.', s:clN(r.cp&&r.cp.legado,0)*6 + (G.flags&&G.flags.legacyGym?RPG.LEGADO_OBRA:0) + (egOwns('fund')?RPG.LEGADO_OBRA:0)},
     {k:'errante', n:'El Errante', d:'Pasó por todos lados y aprendió en todos.', s:safeInt(r.gymMoves,0)>=2? safeInt(r.gymMoves,0)*16 + Math.max(0,-ax.lealtad)*0.4 : 0}
   ];
   P.sort(function(a,b){ return b.s-a.s; });
