@@ -134,7 +134,8 @@ function makeStub(opts){
   };
 
   /* localStorage real en memoria, con cuota opcional */
-  const storeMap = new Map();
+  /* opts.storage: localStorage previo (una recarga real de la página arranca con él) */
+  const storeMap = new Map(opts.storage || []);
   const localStorage = {
     get length(){ return storeMap.size; },
     key(i){ return [...storeMap.keys()][i] ?? null; },
@@ -194,7 +195,7 @@ function extractJS(archivo){
 function boot(o){
   o = o || {};
   const seed = (o.seed === undefined) ? 1 : o.seed;
-  const stub = makeStub({ quota: o.quota, idsDelDocumento: idsDelDocumento(o.file) });
+  const stub = makeStub({ quota: o.quota, storage: o.storage, idsDelDocumento: idsDelDocumento(o.file) });
   const rng = mulberry32(seed);
   const errores = [];
 

@@ -20,9 +20,18 @@ for(const d of [BASE, TRACES, FIXTURES]) fs.mkdirSync(d, { recursive: true });
 function arg(n, def){ const i = process.argv.indexOf('--' + n); return i >= 0 ? process.argv[i+1] : def; }
 const log = (...a) => process.stderr.write(a.join(' ') + '\n');
 
+/* --solo-trazas regenera SOLO las golden traces. Existe porque las fixtures
+   de save (paso 3) son la prueba de compatibilidad hacia atras (I3): se
+   generaron con versiones anteriores del juego y regenerarlas con la actual
+   borraria justamente lo que prueban. Cuando el juego cambia a proposito, lo
+   que se regenera son las trazas, y el cambio se justifica en CHANGES.md. */
+const SOLO_TRAZAS = process.argv.includes('--solo-trazas');
+
 /* ---------- 1. metricas ---------- */
+if(!SOLO_TRAZAS){
 log('[1/4] metricas…');
 fs.writeFileSync(path.join(BASE, 'metrics.json'), JSON.stringify(M.analyze(), null, 2));
+}
 
 /* ---------- 2. golden traces ---------- */
 /* Semillas fijas. La traza guarda, por semana y por pelea, lo que el jugador
@@ -54,6 +63,8 @@ for(const s of SEMILLAS){
   resumenTrazas.push({ seed: s.seed, fp: salida.fingerprint, peleas: r.peleas, rec: p.rec });
   log('   seed ' + s.seed + ' · fp ' + salida.fingerprint + ' · ' + r.peleas + ' peleas');
 }
+
+if(SOLO_TRAZAS){ log('solo trazas: fixtures, metricas y simulacion no se tocan'); process.exit(0); }
 
 /* ---------- 3. fixtures de save ---------- */
 /* Saves reales, producidos por el propio saveSerialize del juego, en los

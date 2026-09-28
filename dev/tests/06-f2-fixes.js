@@ -122,7 +122,8 @@ suite('F2 · D-003 no se puede re-jugar una pelea sin cobrarla', () => {
     H.startCareer(h, { metaSeed: 5150, style: 'mma', div: 'LW', age: 22 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'Test' };
     c.startCamp(c.G.nextFight);
     c.G.camp.i = c.G.camp.weeks;
@@ -155,7 +156,9 @@ suite('F2 · D-003 no se puede re-jugar una pelea sin cobrarla', () => {
     const c = h.ctx;
     const nav = () => c.document.getElementById('nav').style.display;
 
-    for(const s of ['hub', 'train', 'rank', 'people', 'menu']){
+    /* la barra de los cinco pilares (modulo 38) + rank, que sigue siendo
+       una pantalla con barra aunque ya no este en ella */
+    for(const s of ['hub', 'train', 'people', 'vida', 'mundo', 'menu', 'rank']){
       c.go(s);
       eq(nav(), 'grid', 'la barra deberia verse en ' + s);
     }
@@ -186,7 +189,8 @@ suite('F2 · D-001 cobrar una pelea es idempotente', () => {
     H.startCareer(h, { metaSeed: 2468, style: 'mma', div: 'LW', age: 22 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: !!cfg.title, purse: 8000, event: 'Test' };
     c.startCamp(c.G.nextFight);
     c.G.camp.i = c.G.camp.weeks;
@@ -245,7 +249,8 @@ suite('F2 · D-001 cobrar una pelea es idempotente', () => {
     ok(c.G.paid, 'la primera pelea no quedo cobrada');
 
     const opp2 = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired && f.id !== c.G.fight.opp);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired && f.id !== c.G.fight.opp
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.fight = null;
     c.G.nextFight = { oppId: opp2.id, weeks: 0, org: p.org, title: false, purse: 9000, event: 'Test2' };
     /* arranque por la funcion canonica, no por goFight */
@@ -266,7 +271,8 @@ suite('F2 · A-001 el contrato se descuenta una vez por pelea', () => {
     ok(co, 'no hubo oferta de contrato para la prueba');
     c.negoStart(co); c.negoClose(); c.G.mg = null; c.UI.screen = 'hub';
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     const org = orgPelea || p.org;
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: org, title: false, purse: 5000, event: 'T' };
     c.startCamp(c.G.nextFight);
@@ -299,7 +305,13 @@ suite('F2 · A-001 el contrato se descuenta una vez por pelea', () => {
     const { c, p } = conContrato(56);
     const otra = Object.keys(c.G.orgs).find(o => o !== p.org);
     ok(otra, 'no hay otra organizacion para la prueba');
-    c.G.nextFight.org = otra;
+    /* Desde la capa de integridad de carrera una pelea SIEMPRE es de la
+       organización del jugador (validateScheduledFight), así que ya no se puede
+       firmar una pelea "de otra organización". El caso que sigue existiendo es
+       el simétrico: un contrato que quedó con otra organización (por ejemplo
+       tras un ascenso). La regla que se protege es la misma: sólo consume el
+       contrato una pelea de SU organización. */
+    c.G.contract.org = otra;
     const antes = c.G.contract.left;
     pelearYCobrar(c);
     eq(c.G.contract.left, antes,
@@ -433,7 +445,8 @@ suite('F2 · C-001 el avance en bloque aplica el campamento', () => {
     H.startCareer(h, { metaSeed: 1470, style: 'mma', div: 'LW', age: 23 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 10, org: p.org, title: false, purse: 5000, event: 'T' };
     c.startCamp(c.G.nextFight);
     return { h, c, p };
@@ -481,7 +494,8 @@ suite('F2 · B-001 dibujar no consume el RNG del mundo', () => {
     H.startCareer(h, { metaSeed: 9630, style: 'mma', div: 'LW', age: 23 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 5000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks;
     c.goFight();
@@ -556,7 +570,8 @@ suite('F2 · D-002 aplicar el resultado es todo-o-nada', () => {
     H.startCareer(h, { metaSeed: 3579, style: 'mma', div: 'LW', age: 22 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 0, org: p.org, title: false, purse: 8000, event: 'T' };
     c.startCamp(c.G.nextFight); c.G.camp.i = c.G.camp.weeks;
     c.goFight();
@@ -632,7 +647,8 @@ suite('F2 · G-002 la puerta de drama vuelve a aplicarse', () => {
     H.startCareer(h, { metaSeed: 2580, style: 'mma', div: 'LW', age: 22 });
     const c = h.ctx, p = c.G.player;
     const opp = Object.values(c.G.fighters)
-      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired);
+      .find(f => f && f.div === p.div && f.id !== p.id && !f.retired
+        && !c.fightSpecProblem({ oppId: f.id, org: p.org }));
     c.G.nextFight = { oppId: opp.id, weeks: 8, org: p.org, title: false, purse: 4000, event: 'T' };
     c.startCamp(c.G.nextFight);
     c.G.camp.i = 3;            /* tercera semana de campamento: sg_counterplan pide i>=2 */
@@ -719,9 +735,13 @@ suite('F2 · F-002 la copia de respaldo pre-migracion existe', () => {
   });
 
   test('cargar un save ya al dia no deja copia', () => {
-    /* No tiene sentido duplicar cada partida en cada carga. */
-    const { c, id, ok } = cargaVersion(102, 4);
-    ok2(ok, 'no se pudo cargar la fixture v4');
+    /* No tiene sentido duplicar cada partida en cada carga. La version "al
+       dia" es la que declare el juego: estaba escrita a mano como 4 y el save
+       paso a v5 con la capa de integridad de carrera, asi que la prueba
+       cargaba un save ANTIGUO y fallaba por hacer lo correcto. */
+    const actual = H.boot({ seed: 102 }).ctx.SAVE_VERSION;
+    const { c, id, ok } = cargaVersion(102, actual);
+    ok2(ok, 'no se pudo cargar la fixture v' + actual);
     eq(c.localStorage.getItem(c.SAVE_BAK + id), null,
        'se escribio una copia de respaldo sin haber migrado nada');
   });

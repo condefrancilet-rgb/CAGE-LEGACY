@@ -377,6 +377,92 @@ async function main(){
       salto.err || ('scroll ' + salto.antes + '->' + salto.despues + ' · tarjeta en ' + salto.top +
                     ' · cabecera hasta ' + salto.cabecera + ' · tapada=' + salto.tapada));
 
+    /* --- fase 11: la tienda vende TODO lo que tiene, y se compra pulsando --- */
+    {
+      await page.evaluate(() => { G.mg = null; G.pending = []; G.cash = 6000000; go('vida'); });
+      await page.waitForTimeout(200);
+      await page.click('button:has-text("Tienda")'); await page.waitForTimeout(220);
+      const t0 = await page.evaluate(() => ({
+        pantalla: UI.screen, total: SHOP.length,
+        botones: [...document.querySelectorAll('#app button.shop-buy')].map(b => (b.getAttribute('onclick') || '').replace(/^buyItem\('|'\)$/g, '')),
+        desborde: document.documentElement.scrollWidth > window.innerWidth + 1 }));
+      /* se pulsa sólo lo que existe: si falta un botón, la prueba lo dice en vez de colgarse */
+      const pulsar = async (sel) => { const b = await page.$(sel); if(b){ await b.click(); await page.waitForTimeout(180); } return !!b; };
+      await pulsar(`button[onclick="buyItem('forceplate')"]`);
+      await pulsar('button:has-text("Abrir patrimonio y legado")');
+      await pulsar(`button[onclick="egBuy('props','villa')"]`);
+      const t1 = await page.evaluate(() => ({ forceplate: shopOwned('forceplate'), villa: !!(G.endgame && G.endgame.owned && G.endgame.owned.villa),
+        impacto: (document.getElementById('app').innerText.split('Impacto actual')[1] || '').slice(0, 160),
+        desborde: document.documentElement.scrollWidth > window.innerWidth + 1 }));
+      const faltan = t0.total - new Set(t0.botones).size;
+      anota(vp.n + ' · tienda: los ' + t0.total + ' artículos tienen botón y se compra pulsando; el patrimonio muestra lo comprado (fase 11)',
+        t0.pantalla === 'shop' && faltan === 0 && t1.forceplate === 1 && t1.villa && /Villa de lujo/.test(t1.impacto) && /−2 de fatiga/.test(t1.impacto) && !t0.desborde && !t1.desborde,
+        'botones ' + new Set(t0.botones).size + '/' + t0.total + ' · plataforma ' + t1.forceplate + ' · villa ' + t1.villa + ' · desborde ' + (t0.desborde || t1.desborde));
+    }
+
+    /* --- fase 12: lo que se paga fuera de la tienda muestra su precio antes y cobra eso --- */
+    {
+      await page.evaluate(() => { G.mg = null; G.pending = []; if(G.camp){ G.camp = null; G.nextFight = null; } G.cash = 500000; go('gym'); });
+      await page.waitForTimeout(220);
+      const pulsar = async (sel) => { const b = await page.$(sel); if(b){ await b.click(); await page.waitForTimeout(180); } return !!b; };
+      await pulsar('#sec-catGimnasios > summary');
+      const m0 = await page.evaluate(() => {
+        /* una casa que te acepte: las pruebas anteriores de esta pantalla ya se mudaron y
+           pueden haber bajado la reputación de alguna por debajo del umbral (y ahí te rechaza) */
+        const bs = [...document.querySelectorAll('#sec-catGimnasios button')];
+        const b = bs.find(x => /mudarte \$/.test(x.innerText) && CL.gymRepOf((x.getAttribute('onclick') || '').replace(/^changeGym\('|'\)$/g, '')) >= GYM_REJECT);
+        if(!b) return null;
+        const id = (b.getAttribute('onclick') || '').replace(/^changeGym\('|'\)$/g, '');
+        const precio = Number((b.innerText.match(/mudarte \$([0-9,]+)/) || [])[1].replace(/,/g, ''));
+        return { id, precio, cash: G.cash, gym: G.player.gym };
+      });
+      if(m0) await pulsar(`#sec-catGimnasios button[onclick="changeGym('${m0.id}')"]`);
+      const m1 = await page.evaluate(() => ({ cash: G.cash, gym: G.player.gym }));
+      await page.evaluate(() => { go('train'); }); await page.waitForTimeout(200);
+      /* las tarjetas de gasto viven en desplegables: se abren pulsando */
+      for(const sum of await page.$$('#app details:not([open]) > summary')){ await sum.click(); await page.waitForTimeout(80); }
+      const tr = await page.evaluate(() => document.getElementById('app').innerText);
+      await page.evaluate(() => { go('contracts'); }); await page.waitForTimeout(200);
+      const ct = await page.evaluate(() => document.getElementById('app').innerText);
+      const mudo = !!m0 && m1.gym === m0.id && m0.cash - m1.cash === m0.precio;
+      const plan = /recuperás 3 de fatiga y 1,5 de daño más por semana · entrenamiento \+7 %/.test(tr);
+      const semana = /Vida/.test(tr) && /Cuota de /.test(tr);
+      const exp = /\+1 adaptabilidad y \+1 Fight IQ/.test(ct) && /Gastos semanales/.test(ct);
+      anota(vp.n + ' · pagos fuera de la tienda: mudarse desde Equipo cobra el precio que muestra; el plan, el gasto semanal y la experiencia dicen lo que hacen (fase 12)',
+        mudo && plan && semana && exp,
+        'mudanza ' + (m0 ? m0.precio + ' → cobró ' + (m0.cash - m1.cash) + (m1.gym === m0.id ? ' (se mudó)' : ' (NO se mudó)') : 'sin botón') + ' · plan ' + plan + ' · semana ' + semana + ' · experiencia ' + exp);
+    }
+
+    /* --- fase 13: cerrar la página con una pelea a medias y volver: se retoma la pelea --- */
+    {
+      const prep = await page.evaluate(() => {
+        G.mg = null; G.pending = []; G.camp = null; G.nextFight = null; G.fight = null;
+        if(!G.player.org){ const co = (G.offers || []).find(o => o.type === 'contract') || { type:'contract', org:'RFL', purse:G.orgs.RFL.pay[0], bonus:0, fights:4 }; negoStart(co); negoClose(); G.mg = null; }
+        G.player.inj = null; G.player.injWeeks = 0; G.offers = []; makeOffers();
+        const i = G.offers.findIndex(o => o.type === 'fight'); if(i < 0 || !acceptFight(i)) return { ok:false, why:'sin pelea firmada' };
+        G.camp.i = G.camp.weeks; goFight();
+        for(let k = 0; k < 6 && G.fight && !G.fight.over; k++) fightAct(fightOptions()[0].k);
+        finishMiniStart('ko', 'fight', 0.6);
+        if(FX.S){ fxEnd(FX.S, 0.3); fxFinish(); }
+        const disco = JSON.parse(localStorage.getItem('cagelegacy_slot_' + G.saveId) || '{}');
+        return { ok:true, viva: !!(G.fight && !G.fight.over), guardadaViva: !!(disco.fight && !disco.fight.over) };
+      });
+      let r = { pantalla: '—' };
+      if(prep.ok && prep.viva && prep.guardadaViva){
+        await page.reload(); await page.waitForTimeout(400);
+        const cargar = await page.$('button:has-text("Cargar partida")');
+        if(cargar){ await cargar.click(); await page.waitForTimeout(250); }
+        const slot = await page.$('button[onclick^="loadGame("]');
+        if(slot){ await slot.click(); await page.waitForTimeout(400); }
+        r = await page.evaluate(() => ({ pantalla: UI.screen, viva: !!(G && G.fight && !G.fight.over),
+          acciones: document.querySelectorAll('#app [onclick^="fightAct("]').length,
+          barra: getComputedStyle(document.getElementById('nav')).display }));
+      }
+      anota(vp.n + ' · cerrar la página con la pelea a medias y cargar la partida vuelve a la pelea, con sus botones (fase 13)',
+        prep.ok && prep.viva && prep.guardadaViva && r.pantalla === 'fight' && r.viva && r.acciones > 0 && r.barra === 'none',
+        JSON.stringify(prep) + ' → ' + JSON.stringify(r));
+    }
+
     anota(vp.n + ' · sin errores de JavaScript', errores.length === 0, errores.slice(0, 2).join(' | '));
     await ctx.close();
   }

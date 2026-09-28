@@ -1,6 +1,6 @@
 [
  {
-  "alto": 898,
+  "alto": 1044,
   "vh": 640,
   "navAlto": 57,
   "fold": 583,
@@ -34,9 +34,16 @@
     "visible": false
    },
    {
-    "t": "El mundo",
+    "t": "card tight",
     "top": 608,
-    "bottom": 778,
+    "bottom": 744,
+    "px": 136,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 754,
+    "bottom": 924,
     "px": 171,
     "visible": false
    }
@@ -50,15 +57,15 @@
   },
   "avisos": [],
   "strip": null,
-  "tactiles": 12,
+  "tactiles": 17,
   "chicos": [],
   "desborde": false,
   "estado": "normal",
   "vp": "360x640",
-  "pantallas": 1.4
+  "pantallas": 1.63
  },
  {
-  "alto": 881,
+  "alto": 1027,
   "vh": 844,
   "navAlto": 57,
   "fold": 787,
@@ -92,11 +99,18 @@
     "visible": true
    },
    {
-    "t": "El mundo",
+    "t": "card tight",
     "top": 590,
-    "bottom": 761,
-    "px": 171,
+    "bottom": 726,
+    "px": 136,
     "visible": true
+   },
+   {
+    "t": "El mundo",
+    "top": 736,
+    "bottom": 907,
+    "px": 171,
+    "visible": false
    }
   ],
   "avanzar": {
@@ -108,15 +122,15 @@
   },
   "avisos": [],
   "strip": null,
-  "tactiles": 12,
+  "tactiles": 17,
   "chicos": [],
   "desborde": false,
   "estado": "normal",
   "vp": "390x844",
-  "pantallas": 1.04
+  "pantallas": 1.22
  },
  {
-  "alto": 915,
+  "alto": 1007,
   "vh": 915,
   "navAlto": 57,
   "fold": 858,
@@ -150,11 +164,18 @@
     "visible": true
    },
    {
-    "t": "El mundo",
+    "t": "card tight",
     "top": 590,
-    "bottom": 741,
-    "px": 151,
+    "bottom": 726,
+    "px": 136,
     "visible": true
+   },
+   {
+    "t": "El mundo",
+    "top": 736,
+    "bottom": 887,
+    "px": 151,
+    "visible": false
    }
   ],
   "avanzar": {
@@ -166,15 +187,15 @@
   },
   "avisos": [],
   "strip": null,
-  "tactiles": 12,
+  "tactiles": 17,
   "chicos": [],
   "desborde": false,
   "estado": "normal",
   "vp": "412x915",
-  "pantallas": 1
+  "pantallas": 1.1
  },
  {
-  "alto": 1525,
+  "alto": 1686,
   "vh": 640,
   "navAlto": 57,
   "fold": 583,
@@ -224,21 +245,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 835,
-    "bottom": 1083,
-    "px": 248,
+    "bottom": 1098,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1093,
-    "bottom": 1224,
+    "top": 1108,
+    "bottom": 1239,
     "px": 131,
     "visible": false
    },
    {
+    "t": "card tight",
+    "top": 1249,
+    "bottom": 1385,
+    "px": 136,
+    "visible": false
+   },
+   {
     "t": "El mundo",
-    "top": 1234,
-    "bottom": 1405,
+    "top": 1395,
+    "bottom": 1566,
     "px": 171,
     "visible": false
    }
@@ -261,14 +289,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 835,
-    "bottom": 1083,
-    "px": 248,
+    "bottom": 1098,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1093,
-    "bottom": 1224,
+    "top": 1108,
+    "bottom": 1239,
     "px": 131,
     "visible": false
    }
@@ -280,15 +308,15 @@
    "px": 48,
    "visible": true
   },
-  "tactiles": 16,
+  "tactiles": 21,
   "chicos": [],
   "desborde": false,
   "estado": "peor",
   "vp": "360x640",
-  "pantallas": 2.38
+  "pantallas": 2.63
  },
  {
-  "alto": 1474,
+  "alto": 1635,
   "vh": 844,
   "navAlto": 57,
   "fold": 787,
@@ -338,21 +366,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1048,
-    "px": 248,
+    "bottom": 1063,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1058,
-    "bottom": 1173,
+    "top": 1073,
+    "bottom": 1188,
     "px": 115,
     "visible": false
    },
    {
+    "t": "card tight",
+    "top": 1198,
+    "bottom": 1334,
+    "px": 136,
+    "visible": false
+   },
+   {
     "t": "El mundo",
-    "top": 1183,
-    "bottom": 1354,
+    "top": 1344,
+    "bottom": 1515,
     "px": 171,
     "visible": false
    }
@@ -375,14 +410,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1048,
-    "px": 248,
+    "bottom": 1063,
+    "px": 263,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1058,
-    "bottom": 1173,
+    "top": 1073,
+    "bottom": 1188,
     "px": 115,
     "visible": false
    }
@@ -394,15 +429,15 @@
    "px": 48,
    "visible": true
   },
-  "tactiles": 16,
+  "tactiles": 21,
   "chicos": [],
   "desborde": false,
   "estado": "peor",
   "vp": "390x844",
-  "pantallas": 1.75
+  "pantallas": 1.94
  },
  {
-  "alto": 1439,
+  "alto": 1600,
   "vh": 915,
   "navAlto": 57,
   "fold": 858,
@@ -452,21 +487,28 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1033,
-    "px": 233,
+    "bottom": 1048,
+    "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1043,
-    "bottom": 1158,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    },
    {
-    "t": "El mundo",
-    "top": 1168,
+    "t": "card tight",
+    "top": 1183,
     "bottom": 1319,
+    "px": 136,
+    "visible": false
+   },
+   {
+    "t": "El mundo",
+    "top": 1329,
+    "bottom": 1480,
     "px": 151,
     "visible": false
    }
@@ -489,14 +531,14 @@
    {
     "t": "📹 Equipo de contenido",
     "top": 800,
-    "bottom": 1033,
-    "px": 233,
+    "bottom": 1048,
+    "px": 248,
     "visible": false
    },
    {
     "t": "⚡ Tus instalaciones",
-    "top": 1043,
-    "bottom": 1158,
+    "top": 1058,
+    "bottom": 1173,
     "px": 115,
     "visible": false
    }
@@ -508,11 +550,11 @@
    "px": 48,
    "visible": true
   },
-  "tactiles": 16,
+  "tactiles": 21,
   "chicos": [],
   "desborde": false,
   "estado": "peor",
   "vp": "412x915",
-  "pantallas": 1.57
+  "pantallas": 1.75
  }
 ]

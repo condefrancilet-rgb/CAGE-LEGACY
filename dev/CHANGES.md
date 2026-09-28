@@ -5,6 +5,795 @@ evidencia (sim antes/después o test que lo reproduce).
 
 ---
 
+# ETAPA RPG — consolidación e integración sistémica
+
+> Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
+> las motivó está en `dev/RPG-AUDITORIA.md`.
+
+## RPG-13 · Fase 15: las decisiones deciden algo
+**Tipo:** auditoría de decisiones y agencia, más cinco correcciones de información, repetición o sesgo
+· **Cambio observable:** sí. El entrenamiento informa lo que realmente cambió; las respuestas
+carismáticas de la prensa rinden; la ficha de personalidad ya no muestra una barra de mánager que no
+hace nada; la investigación del patrocinador turbio sale una vez y no cada semana y media; la primera
+opción de un evento ya no le suma a tu entrenador más que las otras. Archivo de
+partida: `5c4396b` (sha256 `e3bfce85…5391d3a`). Auditoría en `dev/DECISIONES-AUDITORIA.md`;
+herramienta en `dev/decisiones.js`.
+
+**Medido:** cada decisión donde el jugador la encuentra, con el mismo azar para todas las opciones
+(4 carreras × 400 semanas, 52 decisiones en contexto; 173 opciones del banco forzadas en dos partidas;
+trabajo de la semana en 6 contextos × 24 muestras; plan del camp en 2 partidas × 60 peleas por celda;
+personalidad, entrenador y mánager en carreras idénticas salvo esa elección; 5 builds de 10 años).
+- **0 decisiones falsas** en el banco de eventos.
+- **15 eventos con una opción dominada:** 7 neutras gratis, 6 malas a propósito, 1 que depende del
+  mánager, 1 con premisa sin consecuencia.
+- **«Semana tranquila» dominada por la recuperación fuera del campamento** (en campamento no).
+- **El plan óptimo cambia con el rival:** lucha contra striking, +42/+37 puntos contra un fajador y
+  +1/+13 contra un luchador.
+
+**1. El entrenamiento informa lo que pasó.** Las stats son enteras y `cap` redondea: una ganancia de 0,3
+no mueve nada y una de 0,6 mueve un punto. La pantalla anunciaba la fracción calculada; medido en 10
+años, +769 anunciado y +429 real, con el 82 % de las líneas «+0,x» sin efecto. Ahora cada línea es el
+cambio real. **La regla de progreso no se tocó:** con un acumulador de fracciones la misma carrera
+terminaba con OVR 79 en vez de 71. Es la curva de poder y queda para su fase.
+
+**2. El tono carismático rinde.** Seis respuestas del banco de prensa tenían tono `charisma`, que las
+tablas no tenían (fase 14: `NaN`, después 0). Ahora rinden como el tono gracioso, la misma equivalencia
+que el eco de prensa de la capa RPG ya hacía.
+
+**3. La ficha de personalidad no muestra lo que no pasa.** La barra «Con tu manager» (`PERSX.mgr`) no la
+leía ninguna regla y se quitó. Las otras tres (esquina, conflicto, prensa) actúan cada semana.
+
+**4. La investigación del patrocinador turbio sale una vez.** La guarda escribía `done` y la condición no
+lo miraba: en una carrera de 10 años que aceptó ese patrocinador, la misma pregunta salió 282 veces
+(una cada semana y media), cada una restando reputación o popularidad. En el build de medios, la
+reputación final pasó de 3 a 95.
+
+**5. La posición del botón no decide.** La primera opción de cualquier evento sumaba +1,5 de confianza
+del entrenador y el resto +0,5, fuera cual fuera su contenido (en `x5_cancel` la primera es «publicar
+el video»). La misma respuesta en otra posición dejaba otro estado, y en campamento ese punto de más
+hacía que el entrenador impusiera su plan. Ahora todas suman +0,5.
+
+**Lo que NO se tocó (documentado con su medición, para su fase):**
+- la curva de progresión por el redondeo (fases 21 y 27);
+- «counter» rinde alto contra los dos perfiles de rival (fase 16);
+- tres premisas de campamento sin consecuencia en la pelea: video filtrado, entrenador nuevo del rival
+  y `counterPlan` (fase 16);
+- la relación con el mánager no pesa en ninguna regla y el contrato no vence (fases 17 y 18);
+- cambiar de entrenador o de mánager es un toque sin confirmación (fases 23 y 28);
+- la respuesta pública del rival depende del sorteo general (fase 25);
+- las opciones neutras dominadas: son rol, no se inventaron costes.
+
+**Evidencia.** EVID_15
+
+## RPG-12 · Fase 14: el mundo existe sin el jugador
+**Tipo** auditoría del mundo dinámico + nueve bugs del mundo corregidos + tres bugs viejos que la
+regresión sacó a la luz · **Cambio observable:** sí — el mundo pelea desde la primera semana, no se
+vacía, Vanguard no desaparece, los títulos no quedan vacantes años, el rival firmado no pelea otra
+cartelera durante el campamento, el agente libre puede pelear, nadie existe dos veces (ni el
+plantel real ni los nombres generados), el empate consume el contrato y una respuesta «carismática»
+en la conferencia ya no borra la popularidad. Archivo de partida: `a16dc16` (sha256 `04c9983a…72fa4`).
+Auditoría completa en `dev/MUNDO-AUDITORIA.md`; simulador en `dev/mundo-sim.js`.
+
+**Medido antes** (el mundo con un jugador que no hace nada, 600 semanas, invariantes cada semana):
+2–10 peleas entre organizaciones distintas por corrida; rankings y rosters con gente de otra
+organización hasta 208 semanas; campeones que pertenecían a otra organización; 1–4 títulos contados
+dos veces; en 36 de 100 firmas el rival peleaba otra antes; a los 20 años 353 → 138 activos,
+Vanguard 112 → 1 y títulos vacantes 937 semanas; con inicio 2016, 9 clones del plantel real (5
+activos en dos divisiones); 25–31 nombres repetidos; las primeras 17 semanas sin una sola pelea; la
+oferta amateur del agente libre no llegaba nunca.
+
+**1. Cambios de organización coherentes.** `CL.npcYear` (y el regreso o retiro de un NPC seguido)
+cambiaba la organización sin rehacer rosters ni rankings; los ascensos de `yearTick` se hacían
+después del recálculo. Ahora los dos rehacen rosters y rankings en el acto.
+
+**2. El título vacante suma un título.** El bloque de vacantes lo sumaba y `applyResultCore`
+también.
+
+**3. El rival firmado está comprometido.** `worldTick` (carteleras y título vacante) ya no programa
+al rival de `G.nextFight`: 36/100 → 0/106.
+
+**4. El mundo se repone.** `worldReplenish()` (al final del cambio de año, después de `CL.npcYear`)
+repone con `spawnLocals` —la regla que ya existía para la división del jugador— cada división que
+cae por debajo del tamaño con que nació (5 en RFL/AXN, 6 en TFC/WMA, 6 en Vanguard). A 600 semanas:
+320–332 activos, 0 títulos vacantes en ligas nacionales o mayores, 0 fallos.
+
+**5. Una persona, un peleador.** El plantel real respeta la división de la época sin crear otro
+igual en la división de 2026; los que llegan después tampoco. Y el generador de nombres vuelve a
+sortear si el nombre ya existe (`freshName`): 0 repetidos (antes 25–31; el invariante nuevo
+`mundo.identidad` encontró dos «Mei Ferrer» del mismo año activas en Vanguard).
+
+**6. El agente libre pelea.** La pelea amateur de «acepto lo que sea» vivía en el evento `offers`,
+que la rama del agente libre de `makeOffers` nunca alcanzaba. `CL.takeAny` es la misma función
+para las dos.
+
+**7. El mundo arranca andando.** Todos nacían con 0 semanas de inactividad y el mundo sólo programa
+a quien lleva 16–30: la inactividad inicial se escalona en el último medio año.
+
+**8. El empate consume el contrato** (existía antes; la regresión lo sacó a la luz):
+`applyDrawResult` no pasaba por el único escritor de `contract.left`. Ahora las dos salidas llaman a
+`consumeContractFight`.
+
+**9. La conferencia no borra la popularidad** (existía antes): seis respuestas tienen tono
+`charisma`, que las tablas de `pressPick` no tienen → `NaN` → el saneador devolvía popularidad,
+reputación y hype a sus valores por defecto (40 → 8). Un tono sin fila no suma, que es lo que la
+pantalla ya decía («Respuesta sin ruido»). Cuánto debería rendir es decisión de diseño pendiente.
+
+**10. El ex entrenador enfrente lee +12, no +12,5** (existía antes): el bono se sumaba sobre la
+adaptación redondeada (`safeInt`); ahora sobre el número (`safeNum`). Ninguna traza golden cambia.
+
+**Lo que NO se tocó:** los contratos no vencen al llegar a 0 (132 de 145 peleas se hicieron con un
+contrato vencido; cerrarlo exige decidir la renovación: fase de economía); `G.retiredList` y
+`G.story.memories[].person` y `G.nextFight.replacementReason` quedan declaradas huérfanas; el tamaño del guardado a 20 años (1.284 KB,
+porque el mundo ya no se muere: fase de rendimiento); ningún balance.
+
+**Golden:** trazas regeneradas (`--solo-trazas`). Todas divergen desde la creación del mundo por
+construcción (§4, §5 y §7 cambian quién existe, sus nombres y su inactividad). Atribución contra
+`a16dc16`: el archivo final diverge en la entrada 0–3 (2016 s2–s5: el
+rango del jugador y la fatiga ya difieren porque el mundo nace distinto). Revirtiendo sólo lo que
+cambia el mundo al nacer (clones, nombres, inactividad inicial), las cinco trazas coinciden hasta
+2016 s22–s25, la primera pelea firmada del jugador (entra el rival comprometido, §3); revirtiendo
+también eso, coinciden el primer año entero y divergen en 2017 s1–s3, el primer cambio de año
+(rosters, rankings y reposición, §1 y §4). Los arreglos de empate, conferencia y ex entrenador no
+tocan ninguna de las cinco trazas.
+
+**Evidencia.** `dev/tests/26-fase14-mundo.js` (15 pruebas: el mundo 150 y 600 semanas con invariantes cada
+semana, determinismo, guardar/cargar del mundo, rival comprometido, agente libre de punta a punta,
+reemplazo, retiro, ascensos y cambios de organización coherentes, identidad, y los tres hallazgos de
+la regresión con el resultado forzado). Invariantes nuevos del sistema `mundo`
+(campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. Mutantes de la fase 20/20 (uno sobrevivió
+la primera vez porque la reposición anual lo tapaba: se agregó la prueba dirigida). Suite 375/375,
+navegador 89/89, `estado-carreras` 3/3 y `rpg-carrera-completa` 3/3 (754–816 semanas),
+`recorridos-economia` y `tq-inventario --check` al día.
+
+## RPG-11 · Fase 13: cada estado sabe por qué existe, y lo que está en pantalla sobrevive a recargar
+**Tipo** auditoría global de estado + persistencia corregida + duplicado unificado + dos promesas
+que el sistema no cumplía · **Cambio observable:** sí — al recargar con un evento o una pelea en
+pantalla, al subir de categoría por el pesaje, al contestarle en público a un rival y en el final
+«CAMPEÓN EN DOS DIVISIONES». Archivo de partida: `c6f1e23` (sha256 `286328b5…0b74`). Inventario
+completo en `dev/ESTADO-AUDITORIA.md`; por qué existe cada clave, en `dev/estado-inventario.js`.
+
+**1. Recargar con un evento en pantalla ya no cambia la decisión.** `G.tmpOpp` —el rival que nombra
+el evento que está en pantalla— era la única de las once `tmp*` que no se guardaba, y
+`CL.evSanitize` la validaba al cargar como si se guardara. Barrido de los 66 eventos y sus 170
+opciones, resolviendo con y sin recargar la página en el medio: 12 daban otro resultado (la pelea
+de aviso corto y la de cinco días «se caían», «Pedirle la pelea a la organización» no pedía nada,
+el rival no recordaba lo que le dijiste). Ahora persiste: 0 de 170.
+
+**2. Cerrar la app en medio de una pelea congelaba la carrera.** El autoguardado de
+`fxResolveMini` corre dentro de la pelea, así que un «Buscar KO/Sumisión» que no la termina deja
+guardada una pelea viva. Al cargar se iba al inicio, que no tiene cómo volver a una pelea abierta:
+20 semanas después seguía abierta, sin peleas nuevas. Y un intento que sí la terminaba la dejaba
+guardada sin cobrar, y el inicio la descartaba (récord y bolsa perdidos, la misma pelea otra vez).
+Ahora `loadGame` vuelve a la pelea o al resultado; continuarla da el mismo final que sin recargar.
+
+**3. Subir de categoría por el peso es una sola cosa.** Había tres copias (planificada, forzada y
+la de emergencia del pesaje); la del pesaje sólo reescribía la división: el campeón seguía dueño
+del cinturón que dejaba, no entraba al ranking nuevo hasta la semana siguiente y no pagaba la
+adaptación. Ahora las tres son `divMoveUp`.
+
+**4. «CAMPEÓN EN DOS DIVISIONES» dice la verdad.** Comparaba una división con un estilo (siempre
+distintos) y leía una marca que ponía sólo el pesaje: lo recibía quien ganó un título y después no
+dio el peso, y no el campeón que cambió de categoría por la vía propia y volvió a ganar. Ahora cada
+cinturón anota su división (`p.beltDivs`) y el final exige dos.
+
+**5. La respuesta del rival llega.** «Responder públicamente» deja en camino la respuesta del rival
+(`story_rival_reply`) como una cadena sin `id`; el saneo semanal filtraba las cadenas por `id` y la
+borraba antes de que se leyera. No salía nunca. Ahora una cadena vale si tiene tipo.
+
+**6. Cargar ya no borra publicaciones.** El feed tenía dos topes (80 al publicar, 60 en el saneo y
+en la carga): la semana cerraba con 61–62 y cargar borraba las últimas. Un tope, 60.
+
+**Lo que NO se tocó:** ninguna huérfana se borró (37 clasificadas, con su decisión: se eliminan en
+una limpieza con migración propia); el combate (8 claves sin lector de juego, documentadas); el
+texto «Empezás casi de cero en el ranking» (es texto, no sistema); y el pedido de pelea que la
+regla anti-repetición descarta en silencio (decisión de diseño: queda en «investigar»).
+
+**Golden:** trazas regeneradas (`--solo-trazas`), con cada divergencia atribuida contra
+`c6f1e23`: 101 y 404 con traza idéntica (sólo aparece `tmpOpp: null` y el feed se corta en 60);
+202 cambia en 2017 s6 porque el autopiloto elige en 2017 s5 «Cancelar la pelea y subir de
+división» (ahora entra al ranking nuevo en el acto); 303 (2018 s29) y 505 (2016 s35) porque el
+autopiloto elige «Responder públicamente» y ahora la respuesta del rival entra al sorteo de eventos.
+
+**Evidencia.** `dev/tests/25-fase13-estado.js` (22 pruebas: inventario contra el análisis en las
+dos direcciones, recargas, subidas, dos divisiones, carrera nueva sin herencia y nueve cadenas con
+una recarga en el medio). `dev/estado-carreras.js`: 3/3 carreras enteras (751–825 semanas) con
+cambios de mánager y de división, 15 recargas en arranque nuevo (10 con un evento en pantalla),
+dos terminan «CAMPEÓN EN DOS DIVISIONES» con cinturones reales y la carrera siguiente sale limpia
+en las tres. Las tres encontraron, en su primera recarga, el tope doble del feed (§6). Mutantes de
+la fase 19/19 (el de la condición invertida de la subida sobrevivió la primera vez: la prueba sólo
+subía campeones; se agregó el que no lo es). Suite 360/360, navegador 89/89 (nueva: cerrar la
+página con la pelea a medias y cargar vuelve a la pelea), `rpg-carrera-completa` 3/3,
+`recorridos-economia` y `tq-inventario --check` al día.
+
+## RPG-10 · Fase 12: lo que se paga fuera de la tienda, cumple lo que promete
+**Tipo** auditoría económica + duplicados unificados + cobros corregidos + textos que dicen lo que
+pasa · **Cambio observable:** sí, al pagar servicios, mudarse, endeudarse y en tres eventos.
+**Nulo en el golden** (5 trazas, huellas y estado final idénticos a `081560a`). Archivo de
+partida: `081560a` (sha256 `a854eeb1…cf00`). Inventario, flujo por flujo, en
+`dev/ECONOMIA-AUDITORIA.md`.
+
+**1. Los dos campos del plan de gasto.** `rep` e `inj` no los leía nadie desde el archivo
+original y ningún texto los prometía: eran configuración muerta y se quitaron (conectarlos habría
+sido inventar reputación semanal o menos lesiones). Lo que el plan sí hace —recuperación y
+entrenamiento— ahora lo dice cada botón con sus números.
+
+**2. Cobros incorrectos.**
+- Peso pactado a 24 horas: se cobraba el 25 % de la bolsa en el momento **y** otro 20 % (10 % con
+  nutricionista) en la liquidación. Ahora una sola vez; el hecho de no dar el peso queda registrado.
+- Adelanto «por quedarte sin plata»: sumaba la plata y la anotaba en una marca que nadie leía
+  (gratis). Ahora es deuda como los otros dos adelantos, y respeta sus reglas: si no te lo dan, no
+  hay plata ni costo.
+- Inversión del veterano: con menos de $25.000, cobraba lo que hubiera y daba el efecto entero.
+  Ahora cobra entero, como todo evento (el rojo va al descubierto).
+- Campamento abierto: se cobraban centavos (media cuota sin redondear).
+
+**3. Duplicados unificados.**
+- Mudarse de gimnasio tenía dos caminos (Equipo: una cuota, subía techos, dejaba mudarse en
+  campamento; Gimnasios: dos cuotas, cuidaba compañeros y entrenador). Ahora uno solo, con la
+  unión de los efectos y un precio que se ve en los dos catálogos; y la regla escrita «no te
+  aceptan si querés mudarte acá» (reputación < 18) se cumple sin cobrar.
+- Pagar deuda: tres copias del mismo recorrido; sólo una levantaba cobranzas al saldar. Ahora un
+  solo pago (`CL.debtApply`), y cobranzas («ya no se negocia») no renegocia.
+- «Te conoce»: dos registros (`coachSeen` y `p.coaches`), ninguno leído. Queda uno, y el catálogo
+  de entrenadores lo muestra.
+
+**4. Lo que se ve es lo que se cobra.** Finanzas y el hub mostraban un gasto semanal incompleto;
+ahora un solo desglose (`CL.weeklyLines`) con las mismas fuentes que cobran: una semana real mueve
+exactamente lo que dice. El recargo del 20 % de la cuota con reputación baja se cobraba sin
+figurar; la lista mostraba 15 % y 30 % a la vez. «Ir a ver una pelea» y «viajar juntos» mostraban
+el precio sólo si no alcanzaba. Los eventos que cobran dicen el precio antes de elegir (en la
+descripción, no en la opción: la opción se guarda como la decisión tomada).
+
+**5. Textos que prometían lo que no existe.** Tres textos prometían más bolsa de PPV (no existe
+ningún ingreso por PPV): ahora dicen lo que pasa (más popularidad al terminar la pelea). La
+mudanza de urgencia prometía «dos semanas de concentración» y hacía −2 de temple. La experiencia
+de carrera no decía qué se compraba (+1 adaptabilidad y +1 Fight IQ por nivel). El equipo de
+contenido llevaba dos campos que nadie leía (`budget`, `last`).
+
+**Evidencia.** `dev/tests/24-fase12-economia.js` (17 pruebas): el contrato cobra cada pago y
+exige precio visible = cobro, semana si la promete, efecto medido y que repetir no cobre de
+nuevo; los gastos de una semana real = el desglose; el plan sin campos sin lector; barrido
+automático de marcas escritas sin leer; guardar y cargar **en un juego recién abierto** (lo que
+vive sólo en memoria no sobrevive). Recorrido real: `dev/recorridos-economia.js` usa los 10
+servicios en 104 semanas por la vía del jugador, con invariantes y recarga a mitad: cada cobro
+coincidió con lo que mostraba la pantalla (y encontró que un botón deshabilitado también muestra el
+precio: el juego, bien, no cobra). **Mutantes de la fase 45/45** (la primera corrida dejó vivo uno
+—volver a llevar el presupuesto del contenido— porque la prueba miraba un estado recién creado; se
+reforzó). Suite 338/338, navegador 85/85 (una prueba nueva por pantalla: mudarse desde Equipo
+pulsando cobra lo que muestra), golden idéntico, 3/3 carreras completas usando los servicios.
+
+## RPG-09 · Fase 11: lo que se compra, cumple lo que promete
+**Tipo** auditoría de la tienda + contenido muerto reparado + promesas conectadas o corregidas ·
+**Cambio observable:** sí, sólo si comprás. **Nulo en el golden** (5 trazas, huellas y estado final
+idénticos a `fbece34`: las carreras del golden no compran). Archivo de partida: `fbece34`
+(sha256 `a40dc3fa…5458`, verificado contra el repositorio). Inventario completo, con el flujo de
+cada compra, en `dev/TIENDA-AUDITORIA.md`.
+
+**1. Ocho artículos no se podían comprar desde el archivo original.** `scrShopPrev` rehacía la
+tienda con cinco categorías fijas y tiraba lo que había agregado el filtro anterior: Tecnología,
+Negocios, las actividades desbloqueadas y el ingreso pasivo. Muro de reacción, simulador VR,
+plataforma de fuerza, carpa de altura, mesa de inversiones, gimnasio propio, restaurante y
+academia para chicos existían, con efecto programado, y ningún botón los vendía (tres de ellos
+desbloquean actividades jugables). Ahora la tienda dibuja todas las categorías de `SHOP` y el
+filtro de actividades corre después.
+
+**2. Las seis marcas de la auditoría.** Decisión por marca, con la primera ruptura del flujo:
+- `apt`: el consumidor existía (`G.endgame.owned`, −1 fatiga/sem); `G.flags.apt` era un espejo
+  que nadie leía → se dejó de escribir; la descripción dice el efecto.
+- `villa`: recuperaba lo mismo que el departamento aunque su ficha decía «superior» (y su `v`
+  era el doble) → −2 por semana, del `v`. «Recibir gente» → en «Invitar a entrenar», la reticencia
+  de quien no abre su gimnasio deja de pesar: viene a tu casa, y el resultado lo dice.
+- `estate`: +1 de reputación por temporada existía; «abre eventos y proyectos de largo plazo» no
+  tiene ningún sistema detrás (no hay un solo evento de lujo en el juego; `eventsSeen` está vacío
+  desde el original) → el texto dice lo que hace, y ahora se ve en «Impacto actual».
+- `jet`: su efecto era un −0,25 de daño semanal genérico, y los viajes que existen no lo leían →
+  visitar otro gimnasio y viajar con un compañero cansan la mitad (la plata y la semana no
+  cambian); la pantalla de gimnasios muestra la fatiga del viaje. «Eventos de lujo»: texto
+  corregido, como la mansión. El −0,25 se conserva y se muestra.
+- `foundation`: «contribuye al legado» no llegaba al legado → cuenta como obra en el perfil de
+  legado («El Constructor»), con el mismo peso que ya tenía el gimnasio comunitario.
+- `stylist`: «mejores respuestas en prensa» → cada conferencia o podcast rinde +1,5 de popularidad
+  y la aparición lo dice.
+
+**3. Otras compras rotas que la auditoría anterior no había visto.**
+- Restaurante: «te distrae un poco» → −0,5 de filo por semana de camp, con su línea en el camp.
+- Documental: «puede abrir una pelea estelar» → abre la coestelar de PPV que ya existía (antes
+  salía al azar), en las 16 semanas siguientes y con las mismas condiciones (liga grande,
+  popularidad > 35, rival que vende), una vez por documental, sin azar.
+- Laboratorio de recuperación: la mitad de su promesa (fisio entre camps más barata) no existía →
+  cuesta la mitad, y la pantalla de recuperación (que no mostraba ningún precio) lo dice.
+- Academia de prospectos: «formás talentos» → perfil de legado «El Maestro»; «aparecen después en
+  el mundo» no tiene mecanismo y no se inventa uno: texto corregido.
+- Estudio audiovisual: «habilita piezas de alto impacto» (no habilitaba nada) → texto corregido a
+  lo que hace (dos niveles de producción).
+- Centro de alto rendimiento: encendía la marca del GIMNASIO COMUNITARIO (reputación semanal,
+  legado y noticias de «tu gimnasio comunitario») → cruce eliminado; su efecto prometido queda.
+- Chofer (tienda) y transporte privado (patrimonio) escriben la misma marca: el chofer ya no se
+  cobra a quien tiene transporte privado.
+- Bóveda: el patrimonio guardado (`vaultCash`) era invisible → se muestra, y la renta entra en el
+  ingreso pasivo. Queda como marca contable, documentada.
+
+**4. Qué cambia en una carrera que compra, y por qué exactamente.** A/B contra `fbece34`, misma
+semilla y política, 60 semanas, 3 semillas: comprar el departamento, la mansión, el jet, la
+fundación, el estilista, el laboratorio, el documental, la academia de prospectos o la bóveda deja
+la traza **idéntica** (el autopiloto no da conferencias, no viaja, no juega en una liga grande y el
+legado no entra en la traza). Cambian tres, y ninguna otra cosa: la **villa** (primera divergencia:
+la fatiga de esa semana, un punto más baja — INTENCIONAL), el **restaurante** (primera divergencia:
+la vida de la pelea siguiente, por el filo del camp — INTENCIONAL) y el **centro de alto
+rendimiento** (BUGFIX: el gimnasio comunitario que encendía tiraba un dado por semana; sin él el
+azar de la carrera se corre desde la primera semana). Prueba de la atribución: con esos tres
+cambios deshechos, la carrera que compra las 13 cosas es idéntica a `fbece34` en las 3 semillas.
+
+**Evidencia.** `dev/tests/23-fase11-tienda.js` (17 pruebas): el **contrato de la tienda** compra
+cada una de las 52 compras (41 de la tienda, 8 del patrimonio, 3 inversiones), exige el precio
+exacto, que todo lo que escribe tenga dueño (consumidor con lector en el código y efecto medido,
+o marca con su razón) y mide la consecuencia prometida con el consumidor real; el propio auditor
+se prueba con una compra rota inyectada (sin clasificar, sin lector, escritura sin dueño, marca
+sin razón: las cuatro fallan). Además: flujos reales (conferencia, invitación, viaje, semana de
+recuperación, semana de camp, ofertas), guardar/cargar con 15 compras (siguen siendo tuyas, no se
+recompran, los consumidores siguen activos) y ningún consumidor nuevo tira el dado. Navegador:
+una prueba nueva por pantalla (41/41 botones, compra pulsando, patrimonio visible); contra
+`fbece34` falla con «33/41». Carreras completas: el corredor ahora compra (una por semana, de una
+lista fija) y usa lo comprado (conferencias, visitas, invitaciones): 3/3 sin fallos, con 16, 18 y 19
+compras; la villa recibió una invitación en juego real, el estilista rindió en 38 apariciones y el
+restaurante distrajo 951 semanas de camp; el jet no llegó a usarse en un viaje y el documental no
+abrió coestelar (ninguna de las tres jugó en una liga grande con un documental vigente): esos dos
+quedan cubiertos por las pruebas de flujo, no por las carreras. **Mutantes de la fase 45/45**
+(quitar el consumidor, cambiar la bandera, impedir la activación, perder la persistencia, desviar
+el flujo de compra, no cobrar, efecto de más, azar, observabilidad): la primera corrida dejó vivos
+dos del documental —el decorado tenía un solo rival que vende y la liga chica no tenía ninguno—, y
+se reforzaron las pruebas. Suite 321/321, navegador 81/81, golden idéntico, 3/3 carreras.
+
+## RPG-08 · Fase 10, segunda pasada: la defensa del plan es un compromiso; el HUD sabe dónde está la pelea
+**Tipo** ajuste de diseño + presentación · **Cambio observable:** sí, en la pelea (si armás plan)
+y en el HUD fuera de la pelea de pie. **Nulo en la decisión del rival** y en el golden (las 5
+trazas y huellas idénticas a RPG-07). Archivo de partida: `a5eeb63`.
+
+**1. «Defensa principal» de suma cero.** En RPG-07 la defensa elegida sumaba +3 cuando él hacía
+eso y nada costaba: medido, era un empuje a favor del jugador en cualquier pelea (+1 a +3 pp de
+victorias) y la parte M pide no mover el balance sin necesidad. Ahora, como `aggrShift`, es un
+compromiso: +3 a lo que cubre la elegida y **−1,5** a lo que cubren las otras dos cuando él hace
+eso (`GP_DEF_COST`). Los dominios no se pisan, así que en cada intercambio cuenta a lo sumo una.
+Lo que decide es elegir la que pide ESE rival: por eso el sparring de la revancha ya ofrecía
+ajustarla (RPG-07).
+
+A/B, 400 peleas por variante, mismos rivales y dados, política básica:
+
+| defensa | victorias | daño recibido | derribos de él | te llevó al clinch |
+|---|---|---|---|---|
+| ninguna | 71,3 % | 24,99 | 1,45 | 1,00 |
+| cabeza | 73,3 % | **23,38** | 1,46 | 1,06 |
+| derribo | 72,5 % | 25,63 | **1,34** | 1,05 |
+| reja | 71,5 % | 25,86 | 1,48 | **0,96** |
+
+Cada una mejora lo suyo y empeora lo demás; las victorias quedan dentro del ruido (±2,3 pp).
+Separando por estilo del rival, la mejor contra golpeadores (320 peleas) es cabeza (76,3 % contra
+74,4 % sin defensa) y contra luchadores (80 peleas, ruido ±5,5 pp) es derribo (62,5 % contra
+58,8 %): la dirección es la esperada, con muestra chica del lado luchador.
+
+**2. El HUD distingue la pelea de pie del resto.** El motor sigue usando la distancia en el clinch
+y en el suelo (`CL.effMod`: tu terreno), pero ahí casi ninguna acción la mueve: queda la de antes.
+Esconderla sería esconder un factor real; mostrarla con una barra y «necesitás alejarte» era
+engañoso. Ahora, fuera de la pelea de pie: el encabezado dice la posición
+(`POSICIÓN · Suelo — arriba`), una línea dice «distancia en suspenso (media) hasta que vuelvan a
+estar de pie: vos querés media · él corta», el terreno sigue, y el consejo ya no pide alejarse ni
+entrar. De pie, igual que antes. La tarjeta del plan en la pelea muestra también la defensa.
+
+**Evidencia.** `dev/tests/22-fase10.js` (21 pruebas): la defensa se prueba contra una
+especificación escrita aparte, sobre 3 defensas × 11 acciones del rival × 3 tuyas × 2 posiciones y
+4 grupos de claves (+3 / −1,5 / 0, y el rival sin cambios); el HUD, en clinch, arriba y abajo, con
+distancia corta y larga. Mutantes de la fase **44/44** (se agregaron «sin costo», «costo al revés»,
+«barra en el suelo», «alejate en el suelo», «sin posición»). Golden idéntico (traza, final y
+huella), suite 304/304, navegador 77/77, 3/3 carreras completas: en una, el ciclo de rivalidad pasó
+por tensión y en los medios en juego real.
+
+## RPG-07 · Fase 10: lo que se escribía y nadie leía, ahora llega a algún lado
+**Tipo** conexión de datos sin consumidor + 1 corrección de diseño + consolidación · **Cambio
+observable:** sí, en la pelea (sólo si usás la toma de espalda, La Última Puerta o armás plan), en
+el campamento de una revancha, en las ofertas cuando hay ruido y en la ficha/diario de una
+rivalidad. **Nulo en la decisión del rival** y en las 5 carreras del golden (traza y final
+idénticos; sólo cambia la huella del estado). Archivo de partida: `7d694d0`.
+
+**Qué estaba mal** (hallazgos de la fase 9 y del inventario):
+- la **toma de espalda** (`g_back`, `g_rev`) escribía `st.back=1` y nadie lo leía;
+- **La Última Puerta** a PERFECTA con habilidad alta empataba con su L4 (las dos en el techo 0,80);
+- `TQ.fightPanel` estaba **definido dos veces**;
+- el HUD de distancia mostraba en **%** la distancia preferida de cada uno;
+- el **sello** de la Ultimate ignoraba la filosofía de combate asumida;
+- la **«Defensa principal»** del plan sólo sumaba al puntaje del plan: en la pelea no hacía nada
+  (A/B: las cuatro defensas daban resultados idénticos, 400 peleas cada una);
+- la **memoria del rival** no llegaba al campamento de la revancha;
+- `G.flags.heat` (seis escritores) y `CL.ufc().heat` no tenían ninguna decisión que los leyera;
+- el **ciclo de rivalidad** se derivaba en cada consulta: sin «en los medios», sin resolución y sin
+  historia.
+
+**Qué se hizo** (siempre por las vías que el motor ya tenía):
+
+| pieza | ahora | vía existente |
+|---|---|---|
+| toma de espalda | `TQ.back()`: vigente mientras sigas arriba ese round; suelo +6, sumisión del árbol ×1,15, +1 de control por intercambio; se pierde (y se dice) si cambia la posición o el round; el HUD la muestra | `combat:eff/TQ`, `TQ.apply`, `exchange:post/tqPasivas` |
+| La Última Puerta | techo propio de sumisión 0,88 (`fx.subCap`, acotado a 0,90); ninguna otra técnica cambia | `TQ.apply` |
+| `TQ.fightPanel` | una sola definición (la paginada); 49 paneles idénticos a la fase 9 | — |
+| HUD de distancia | «vos querés media · él larga» | `CL.zone` |
+| sello de la Ultimate | primero la filosofía de combate asumida (finalizar/espectáculo → Espectáculo; castigar/minimizar → Precisión; controlar/adelante → Desgaste), si no, la identidad; se guarda el origen y el árbol lo explica | `CMB.ultVariant`, `CMB.ULT_V` (los mismos 4 sellos) |
+| Defensa principal | +3 a esa defensa sólo en el intercambio en que él hace eso: cabeza ↔ él golpea de pie; derribo ↔ va al derribo (de pie o desde el clinch); reja ↔ te quiere llevar al clinch. Se ve en la tarjeta del plan y se explica al armarlo | `combat:eff` + `exchange:pre/post` |
+| memoria → campamento | el sparring de la revancha compara lo que muestra con lo que le viste («lo mismo» / «algo cambió» / «se la castigaste y se acuerda»); si el hábito pide otra defensa, ofrece ajustar el plan, y ese plan llega a la pelea | `CAMPO.tell`, `camp_spar`, `CMB.supOf` (la misma regla que usa la pelea) |
+| heat | las peleas de rivalidad/revancha pagan +4 % por punto (tope +30 %) y lo dicen; con 4+ y sin una, se arma la del rival con más rivalidad (sin azar); firmarla gasta el ruido (queda 40 %); se enfría 3 %/semana; Vanguard escribe en el mismo | `offers:made`, `fight:accepted`, `week` |
+| ciclo de rivalidad | cruce → tensión → en los medios → pelea firmada → ya se pelearon → revancha → resuelta; la resolución es `canOfferRematch`; el avance queda en `bond.rc` y la relación, los hitos en la memoria del mundo y el diario; la ficha del rival lo muestra desde antes de la primera pelea | `RPG.rivalFacts` (lector puro) + `RPG.rivalTick` |
+
+**Evidencia.**
+- Golden: con los siete cambios apagados las 5 trazas son idénticas (huella, final y traza); con
+  cada uno prendido por separado sólo el **heat** (enfriamiento) y el **ciclo** (registro) mueven
+  la huella; traza y final, idénticos siempre. Trazas regeneradas con `--solo-trazas`: el diff es
+  sólo `fingerprint`.
+- A/B de la defensa (400 peleas por variante, mismos rivales y dados, política básica): sin
+  defensa 71,3 % de victorias, 24,99 de daño recibido, 1,45 derribos de él, 1,00 entradas al
+  clinch. Cabeza: daño 22,98 (−8 %); derribo: derribos 1,34 (−8 %); reja: clinch 0,96 (−4 %).
+  Victorias +1 a +3 pp (ruido ±2,3 pp). En la versión anterior las cuatro daban exactamente lo
+  mismo. Es un empuje pequeño a favor del jugador, en su propio terreno, y queda declarado
+  (en RPG-08 pasó a ser de suma cero).
+- Memoria del mundo (tope 100): en las 5 carreras del golden quedan 1–6 hitos de rivalidad; los
+  resultados de pelea y los recuerdos de ayuda que sobreviven al final no cambian.
+- Legalidad del rival: 0 de 181.440 sorteos y 0 de 2.715 elecciones reales.
+- `dev/tests/22-fase10.js` (21 pruebas; efectos medidos contra `eff`/el dado, no contra la función
+  que los aplica; «sin azar» comprobado sobre `G.rs`); mutantes de la fase **39/39**. Cinco
+  sobrevivieron durante el desarrollo y obligaron a endurecer pruebas: la defensa fuera del
+  intercambio, la defensa aplicada al rival, el heat con azar (la prueba miraba `Math.random`, no
+  `G.rs`), el diario sin rivalidades y «una pelea suelta es rivalidad» (tras dejar sólo los hitos
+  en la memoria del mundo, la prueba tenía que mirar la relación). El conjunto de la fase 9 sigue
+  en 17/17 sobre este archivo.
+- Suite **304/304**, navegador **77/77**, **3/3** carreras completas (invariantes cada semana).
+  `dev/rpg-carrera-completa.js` cuenta lo nuevo por la vía del jugador y su política asume la
+  filosofía cuando las peleas la muestran: por carrera, 111–171 intercambios cubiertos por la
+  defensa del plan, 0–2 con la espalda tomada, 19–26 avances de rivalidad, ruido máximo 2,3–2,9
+  (1 pelea cobrada con ruido y firmada), y un sello Precisión que salió de «Minimizar el daño».
+  El sparring de revancha no aparece ahí porque la política no entrena sparring: lo cubren las
+  pruebas.
+- Costo: el barrido semanal del ciclo mira 16 candidatos de 381 peleadores en 0,28 ms (una semana
+  completa, ~200 ms) y no mueve el dado.
+
+**Hallazgos sin corregir.** El HUD de distancia se sigue mostrando en el suelo (previo; resuelto
+en RPG-08). El
+autopiloto del golden no arma plan, no usa técnicas ni hace sparring: esas vías se prueban con
+`22-fase10.js` y con las carreras completas, no con el golden. `CL.ufc().heat` queda en partidas
+viejas, sin uso.
+
+## RPG-06 · Fase 9: capa de información del Fight IQ, inventario del árbol, Ultimates auditadas
+**Tipo** capa de información + refactor neutral + 1 fix · **Cambio observable:** sí en la interfaz
+de la lectura; **nulo en la decisión del rival** (ver evidencia). Archivo de partida: `b099e0d`
+(sha256 `dd576a9d…b4ed5`), confirmado por el usuario como fuente de verdad.
+
+**Qué estaba mal.** La lectura mostraba los pesos internos del rival casi en crudo: 8 exposiciones
+en 5 superficies (porcentaje exacto y redondeado en el panel, ancho de barra = probabilidad, la
+probabilidad de la regla de adaptación, el texto de «Anticipar», el scouting con sala de video, la
+pregunta de sparring y su línea de scouting).
+
+**Qué se hizo.**
+- `pesos reales → modelo → jugador`: `CMB.distFor(o, x)` compone lo mismo que decide
+  (`CL.oppWeightsFor` + `CL.oppRulesFor` + memoria) para cualquier situación; `CMB.read(fuente)`
+  devuelve un objeto **sin números** (salvo nivel de confianza y conteos de lo que el jugador vio);
+  `CMB.sayHead/sayContrast/sayAlso/sayMem/sayOften` son el único lenguaje. Las 8 exposiciones
+  pasan por ahí.
+- **Prominencia contextual**, no «0,63 → alta»: depende de cuántas acciones tiene el rival en esa
+  posición (7/4/5/4) y de cuánto le saca la primera a la segunda (marcada / clara / leve / ninguna).
+- **Confianza por fuente**: en vivo, la lectura que ya existía; analista = media, sala de video =
+  alta; sparring anotado = media, trabajado = alta; memoria según cuántas veces lo viste; fight IQ
+  ≥ 80 suma un nivel al interpretar lo visto. Con confianza baja sólo se percibe lo marcado; con
+  alta, también lo leve. Si no se percibe, se dice que no se percibe.
+- **Contrastes verificables** («cuando se queda sin aire, aumenta su tendencia a moverse…»): cada
+  uno compara la distribución real de dos situaciones (aire, daño, distancia, vos herido/sin aire,
+  final ganando, primer round, tercer round) y sólo se dice si la diferencia es ≥ 7 puntos y ≥ 40 %
+  relativo. En 3.609 lecturas de peleas reales aparecieron: sin aire → moverse (el +0,55 del
+  motor), vos herido → combinación (+0,35), primer round → patada baja (arquetipo Misil), llegando
+  ganando al último round → moverse/controlar.
+- Refactor neutral: la regla de identidad del rival se consulta para una situación cualquiera
+  (`CL.oppRulesFor`, `CL.oppRuleSit`); `CL.oppRules()` en vivo devuelve lo mismo (probado).
+- **Fix**: `CMB.ultUse` devolvía `true` aunque `TQ.use` se negara (en la esquina).
+- `dev/tq-inventario.js` genera `dev/TQ-INVENTARIO.md` del árbol cargado (36 técnicas, cada campo,
+  funciones y consumidores verificados en el fuente) y una prueba exige que esté al día.
+  `dev/ULTIMATES-AUDITORIA.md`: las 4 Ultimates contra el inventario.
+
+**Evidencia.** `node dev/rpg-neutralidad.js --ref b099e0d`: las 5 trazas **idénticas** al golden y
+el estado final **idéntico** a `b099e0d` en las 5 semillas; no se regeneró nada. Legalidad: 0 de
+181.440 sorteos y 0 de 2.715 elecciones reales; y una prueba nueva lo verifica **con todas las
+piezas de la lectura desenganchadas**. `dev/tests/21-fightiq-capa.js`: 20 pruebas; 3 pruebas viejas
+(18, 19) pasaron del contrato de porcentajes al nuevo, con cálculo independiente de los pesos.
+Mutantes de la fase 18/18 (uno, «el sparring elige la situación menos perceptible», sobrevivía y
+obligó a agregar una prueba sobre 40 rivales); los conjuntos de las fases 4, 5, 6-7 y 8 se
+re-ejecutaron sobre este archivo con sus blancos actualizados y siguen detectando (salvo los dos
+equivalentes ya documentados). Suite 283/283, navegador 77/77, 3/3 carreras completas.
+
+**Hallazgos sin corregir** (fuera de alcance o de diseño): la «toma de espalda» (`g_back`,
+`g_rev`) escribe una marca que nadie lee; La Última Puerta no mejora la sumisión a PERFECTA con
+habilidad alta (techo 0,80); `TQ.fightPanel` está definido dos veces (previo); el HUD de distancia
+de CL muestra en % la distancia preferida del rival según su estilo (no es parte de las 5
+superficies).
+
+## RPG-05 · Fase 8: lo prometido pasa, y una carrera entera lo prueba
+**Tipo** conexión de promesas + instrumento + ajuste · **Cambio observable:** sí.
+
+**Seis promesas que los eventos hacían y no cumplían** (auditoría RPG, 2.3: sólo escribían una
+bandera sin lector). Cada una se cumple por el camino que el juego ya tenía:
+
+| el evento decía | ahora | camino existente |
+|---|---|---|
+| «Va a llegar algo mejor» (`betterDeal`) | la próxima oferta de contrato llega +20 % | `offers:made` |
+| «Todo el mundo sabe que estás disponible» (`freeAgent`) | con el contrato por vencer, otra organización se adelanta | `betterOrgForPlayer()` + `offers:made` |
+| «Tu equipo empieza a evaluar subir» / «La derrota abre una puerta» (`divTalk`, `considerDivisionChange`) | si tu cuerpo es de otra categoría, se arma el cambio; si no, el equipo lo descarta y lo dice | `planDivUp` → evento `body_divup` (ya existía); respeta «Sin cambiar de peso» |
+| «Empezás a buscar alternativas» (`wantMgr`) | dos representantes llaman; firmar cambia de mánager | `changeMgr()` |
+| «Dos periodistas empiezan a investigarte» (`dirtyMoney`) | doce semanas después sale la nota, y responderla cuesta o no | evento serializable |
+| «Vas a tener que perder a propósito en el segundo asalto» (`fixed`) | en el round 2 de la pelea siguiente aparece «Ir a la lona»; cumplirlo es perder (y deja eco); ganarla trae al empresario a cobrar | `fight:options`/`act:*`, `fight:applied` |
+| «Campamentos allá sin romper con tu equipo» (`dualGym`) | en campamento, el gimnasio de afuera pesa en la calidad del trabajo, con el peso que `trainQuality` le da al gimnasio | `train:adjust` |
+
+`x14_fix` ahora guarda el monto en la bandera (`G.flags.fixed = G.tmpAmt`), que era `true`.
+
+**Ajuste de las Ultimates.** Tres carreras completas mostraron que casi nunca despertaban: se
+pedían 3 notas PERFECTAS *después* de la resistencia del rival, y una ejecución perfecta del
+minijuego se degrada por azar. El requisito pasa a **3 ejecuciones perfectas del minijuego**
+(`q ≥ 0,86`, lo que depende del jugador), además de 8 usos y una pelea ganada con ella. Notas,
+niveles y puntos del árbol no cambian.
+
+**Instrumento de rendimiento.** `dev/perf/inicio.js` escribía `G.nextFight` directo; la guarda del
+juego rechazaba la pelea de título en silencio y el «peor caso» se medía **sin pelea**. Ahora
+escribe detrás de la guarda y falla si el estado no quedó puesto. Resultado real: «Avanzar» sigue
+sin scroll en los tres viewports, también con la pelea de título.
+
+**Carrera completa real** (`dev/rpg-carrera-completa.js`): `e5-largas.js` avanza semanas sin
+pelear; este script corre carreras del debut (21) al retiro (37), con una política que usa lo que
+agregó la etapa por la vía del jugador (técnicas con su minijuego, «Anticipar», gameplan,
+lecciones, puntos del árbol) y comprueba las invariantes **cada semana**. 3/3 carreras de ~762
+semanas sin fallos; al retiro, final con perfil, diario con sus 6 secciones y `G.rpg` idéntico
+tras guardar y cargar (24-29 KB).
+
+**Golden.** Las 5 trazas cambian; bisección: 404 y 505, el autopiloto había elegido «Cambiar de
+mánager» (semanas 4 y 12) y ahora llaman los representantes. Trazas regeneradas.
+**Pruebas:** `dev/tests/20-rpg-promesas.js`, 8 pruebas; mutantes 9/9 significativos (uno
+equivalente documentado: quitar `hp=0` antes de `finishFight('ko','o')`).
+
+## RPG-04 · Fases 6 y 7: el campamento pregunta, el mundo recuerda
+**Tipo** decisiones + mundo (capa sobre lo existente) + fix · **Cambio observable:** sí.
+
+**Lo que ya había y se respetó.** El campamento tenía trabajo semanal, minijuegos, gameplan con
+consejo de esquina, filosofía y paciencia del entrenador (`CL.PHILO`, `CL.coachPatience`,
+`COACH_PHIL`). Faltaban decisiones con costo que salieran de su propio estado. Entran como eventos
+serializables (`CL.ask`/`CL.handler`), no como un menú nuevo: a lo sumo uno por semana (la cola
+del juego admite uno a la vez) y cada uno una vez por campamento.
+
+| momento | cuándo aparece (estado real) | qué cuesta / qué llega a la pelea |
+|---|---|---|
+| **El sparring mostró algo** | una semana de sparring en campamento | la tendencia más marcada del rival, calculada con `CL.oppWeightsFor` (la misma que decide en la jaula). Trabajarla: +4 afilado, +6 desgaste, +10 de lectura en esa situación; anotarla: +5 |
+| **El cuerpo avisa** | desgaste del camp ≥ 62 con 2+ semanas por delante | descargar (−15 desgaste, −3 afilado) · apretar (+5 afilado, +8 desgaste, +6 fatiga del peleador: la que lee el riesgo de lesión de `applyTrain`) · «lo que diga el coach»: hace lo que pide **su** filosofía (volumen/trabajo/finalizar aprietan; técnica/lectura/control descargan) y sube su paciencia |
+| **Tu plan contra el suyo** | desde la mitad del camp, si la prioridad de tu gameplan no es la de tu entrenador | hacerle caso cambia el plan que entra a la jaula (+6 paciencia) · mantenerlo (−6 paciencia, eco `plan_own`) · con camp de equipo: plan unificado (su prioridad, tu distancia) |
+
+**Mundo:**
+- **Eras** (`ERA`, en `G.rpg.era`): no existían. Se derivan comparando `G.champs` semana a semana:
+  un reinado de 3+ defensas (o 2 años con inicio conocido) es una era. Mundo muestra la era vigente
+  y las terminadas de tu división; terminar la era de otro o empezar la tuya es noticia, memoria
+  narrativa, hilo de legado y momento del diario.
+- **Decisiones que vuelven:** el gimnasio que dejaste (eco `left_gym`, que ya existía) vuelve entre
+  20 y 60 semanas después: alguien de ahí te cruza, y lo que hagas queda en su relación por
+  `addMemF` (el escritor canónico). El entrenador que dejaste, si está en la esquina del rival, le
+  suma +12 de adaptación (te lee antes: es la regla de adaptación de su identidad) y el scouting
+  lo advierte.
+- **Ciclo de rivalidad a la vista:** la ficha de un rival con historia muestra la etapa (la que ya
+  derivaba `RPG.rivalStage`), el récord entre ustedes y el paso siguiente (revancha, trilogía…).
+
+**Fix encontrado por las pruebas:** un reinado observado desde el inicio de la carrera (inicio
+desconocido) contaba como «más de 2 años» y quedaba como era. Sin inicio, sólo cuentan las
+defensas. **Fix de robustez:** un momento (y la pregunta de temperamento de RPG-02) sólo se da por
+usado si la cola lo admitió; antes, un rechazo lo consumía sin preguntarse.
+
+**Evidencia.** `dev/tests/19-rpg-campo-mundo.js`, 14 pruebas (la del sparring calcula la tendencia
+con los pesos del motor sin pasar por el módulo). Mutantes 10/10 (uno equivalente documentado:
+quitar el `return` tras la primera pregunta no cambia nada porque la cola admite un evento).
+Chromium: el momento se ve y se resuelve desde el inicio; la tarjeta de eras se dibuja en Mundo.
+Golden: las 5 trazas cambian; primera diferencia por bisección: 505 y 101, la decisión de carga
+del primer campamento («lo que diga el coach»); 202, el eco del gimnasio que dejó (semana 40).
+Trazas regeneradas (`--solo-trazas`). Suite 254/254, navegador 77/77.
+Balance: con 60 carreras los campeones parecían bajar (53,3 → 46,7 %), dentro del error estándar
+(~6,5 pp). Repetido con 150 carreras por versión (`sim.js --n 150`): campeones **48,0 → 51,3 %**,
+win rate 78,2 → 78,7 %, 0 fallos de invariante en ambas. No hay una caída: era ruido.
+
+## RPG-03 · Fase 5: la pelea se lee, se recuerda y enseña
+**Tipo** combate (capa sobre el motor existente) + 2 fixes · **Cambio observable:** sí.
+
+**Antes de diseñar se midió.** La idea obvia —contar qué hace el rival en cada situación y
+declarar un «patrón» tras 3-4 repeticiones— se probó contra 169 peleas del autopiloto
+(8 estilos, 250 semanas): la predicción acertaba **22-28 %**. Mostrar eso sería inventar
+patrones. Por eso la lectura muestra otra cosa: **la distribución real con la que la IA del
+rival va a elegir**, compuesta con las mismas piezas que usa `oppAction()`.
+
+**Refactors neutrales para poder leer al rival sin tocar el azar** (verificado: estado final
+idéntico en las 5 semillas contra la versión sin refactor):
+- `CL.oppPick` = `wpick(CL.oppWeights())`; los pesos viven en `CL.oppWeightsFor(o, situación)`,
+  función pura (la usan la pelea, la lectura y el scouting: los mismos números).
+- la capa «identidad del rival» pasa a reglas-dato (`CL.oppRules()`): mismas condiciones, mismo
+  orden, mismas llamadas a `chance`/`pick`.
+- puntos de extensión en el árbol de técnicas: `tq:node` (forma de una técnica), `tq:resist`,
+  `tq:resolved`, `tq:ownInfo`; y `scout:report` en `scoutReport()`.
+
+**Fix 1 · el rival elegía acciones imposibles.** Los arquetipos «Misil», «Pared» y «Showman» y la
+contra-lectura de la identidad del rival reemplazaban su elección sin mirar la posición:
+«combinación» estando arriba en el suelo, «controlar» dentro del clinch. El motor no resuelve
+esas acciones y el rival perdía el turno. Medido en las 169 peleas: aparecían `combo`, `td`,
+`lowkick` en el suelo y `hold` en el clinch. Ahora cada reemplazo pasa por `oppCanDo(pos, a)`
+(tabla `OPP_ACTS`, la que lee `resolveExchangeCore`). Balance (`sim.js --n 60`): win rate
+80,4 → 79,1 %, campeones 55 → 56,7 %.
+
+**Fix 2 · guardar y cargar cambiaba el mundo (latente).** Un peleador nacido a mitad de carrera
+no tenía `f.cl`; la carga (`CL.boot`) se lo agregaba. Sólo se veía si nacía alguien justo antes
+de guardar, y el fix 1 lo destapó en la prueba *guardar → cargar → continuar*. Ahora nace con
+él (`fighter:made`, el evento que ya existía). Trazas idénticas con y sin este fix.
+
+| pieza | qué hace | de dónde salen los datos |
+|---|---|---|
+| **Lectura** (panel en la pelea) | 4 niveles: nada → intuición (lo más probable) → lectura (~%) → leído (% exactos) | `CMB.dist()` = pesos de `CL.oppWeights` + reglas de identidad + memoria; el nivel sale de `c.read` (ya existía: jab/contra/moverse leen, pelear a lo loco no), `fightiq`, lo visto esta noche y antes, video, «Cerebro frío» |
+| **Anticipar** | opción en la pelea desde el nivel «lectura»: responde a lo más probable con la acción que el motor premia contra eso | +8 de eficacia al intercambio **sólo si el rival hace lo predicho** (se compara con su elección real); −3 si no |
+| **Te está leyendo** | aviso cuando repetiste algo 2 veces: a la tercera te espera con su contra, y con qué probabilidad | la regla de adaptación exacta de su identidad |
+| **Memoria de revancha** (`G.rpg.fm`) | vos lo leés antes (+10); él viene esperando lo que más usaste y hace la mitad lo que le castigaste anticipando | lo observado, lo que él te vio (`playerPatterns`) y tus aciertos, por rival |
+| **Scouting** | con analista / sala de video, la tendencia real en 2 / 4 situaciones; lo que ya sabés de él en su ficha | `CL.oppWeightsFor`, memoria |
+| **Lecciones** | una derrota se explica con sus números (daño por acción del rival, derribos, aire, veces que te esperó) y se puede anotar | 6 sesiones del entrenamiento que corresponde rinden +0,12; aprendida, 3 peleas leyendo antes esa parte. **Ninguna estadística gratis** |
+| **Maestría** | Dominada (6 usos, 4 buenas) y Firma (14 usos, 4 perfectas) | ventana del minijuego más ancha; la Firma disimula la mitad de «la tiene fichada». Notas PERFECTA/BUENA/FALLA, niveles y puntos del árbol intactos |
+| **Ultimates** (4) | las L4 del árbol evolucionadas (8 ejecuciones, 3 perfectas, metida en una pelea ganada): Talón del Verdugo, Suplex de la Tierra, La Última Puerta, Último Aliento | se ejecutan con `TQ.use` del **mismo nodo**: gastan su uso, mismas condiciones, clutch dificultad 4, una por pelea; sello (Espectáculo/Precisión/Desgaste/Pura) según la identidad al despertar; un rival que ya te la vio la resiste más |
+
+**Evidencia.** `dev/tests/18-rpg-combate.js`, 17 pruebas; la central sortea al rival 3.000-6.000
+veces con la cadena real de filtros y compara con lo que muestra la lectura (±2,5 %), en pie,
+con la regla de adaptación armada, en el suelo con arquetipos y con memoria. Mutantes 11/11
+(el de «el panel escribe» obligó a endurecer la prueba de pureza: ahora compara desde antes del
+primer dibujado). En Chromium real: panel visible, anticipar resuelto contra la elección real,
+la Ultimate abre el clutch del motor FX y se resuelve con `TQ.apply`; sin errores de JS.
+Golden: sobre el fix 1, sólo cambia la semilla 101, en la **tercera** pelea contra el mismo rival
+(la memoria: viene esperando el jab del autopiloto). Trazas regeneradas (`--solo-trazas`).
+Balance con todo el módulo, contra el fix 1 solo (`sim.js --n 60 --weeks 250`): win rate 79,1 → 78,9 %,
+campeones 56,7 → 53,3 %, 0 fallos de invariante (el autopiloto no anticipa ni anota lecciones: lo
+que le llega es la memoria de revancha). `e5-largas.js --n 20 --weeks 300`: 20/20 sin fallos con
+invariantes cada semana. Suite 241/241, navegador 77/77.
+
+## RPG-02 · Fase 4: la carrera deja huella
+**Tipo** sistema de identidad (capa sobre lo existente) + fix · **Cambio observable:** sí,
+también en la carrera del autopiloto (ver evidencia).
+
+**Principio.** Nada de clases fijas ni de "+5 %". Todo sale de decisiones que el juego ya
+pedía; lo nuevo es que se **registran**, se **nombran** y **vuelven**. Estado propio:
+`G.rpg` (un objeto; save compatible: `RPG.S()` lo completa en partidas viejas).
+
+| pieza | de dónde sale | qué cambia en el juego |
+|---|---|---|
+| **ecos** (62 tipos, 32 dejan memoria) | eventos del banco (`event:pre`, tabla `RPG.EV_ECHO`, 23 eventos), `media:done` (prensa/podcast), reacciones y charlas sociales, gastos de estilo de vida, `fight:scheduled` (título, poco aviso, rival arriesgado), decisiones del mánager, foco semanal, cambios de gimnasio/entrenador | mueven 8 ejes de temperamento (bipolares: riesgo, disciplina, lealtad, ego, confrontación, estrategia, espectáculo, ambición) y la tendencia de carrera; los importantes van a `G.story.memories` por `CL.remember` |
+| **temperamento** | los ejes | si describe un rasgo de `PERS` distinto del declarado, el juego **lo pregunta** (como mucho una vez por año): asumirlo cambia `pers2` por la vía existente (`persFix`); negarlo también queda |
+| **filosofía de combate** | las acciones que elegís en cada pelea (`RPG.ACT_FP`, 33 acciones → 6 filosofías) | se puede asumir en público; ordena las recomendaciones de tu esquina (`coach:recs`) |
+| **filosofía de carrera** | ecos de carrera (dinero, gloria, competencia, libertad, lealtad, legado, fama) | asumida, cambia a qué le da valor el mánager (`mgr:score`) |
+| **rasgos** (10) | hechos contados en `G.rpg.cnt` (remontadas, guerras, revanchas ganadas, pesajes seguidos, planes cumplidos…) | cada uno abre algo concreto: «Cambio de marcha» en el último round yendo abajo; replantear una vez entre rounds; reemplazos +30 %; bono asegurado en finalizaciones; revanchas de hasta 12 peleas atrás; cruces públicos; «Cortar el ring» sin depender del estilo; clases a los jóvenes del gimnasio. `cerebro_frio` queda definido para la fase 5 (lo alimenta el Fight IQ) |
+| **identidad** (10 nombres) | los mismos hechos | la prensa la anuncia; cambia sólo si la nueva supera a la vigente por 10 puntos (sin eso cambiaba de apodo por un punto); se ve en Carrera |
+| **diario** | memoria, rivales, rasgos, identidad | pantalla `diario` (desde Carrera y Menú): Carrera · Identidad · Personas · Rivalidades · Momentos · Legado |
+| **perfil de legado** | la carrera entera | la pantalla final dice qué perfil fue (con umbrales: sin 2 títulos y 4 defensas no hay "Leyenda") |
+
+**Puntos de extensión nuevos** (emisiones en funciones existentes, sin cambiar su lógica):
+`social:react`, `social:chat`, `social:spend`, `fight:scheduled`.
+
+**Bug encontrado por la suite y corregido en esta misma fase.** `saveReplacer` compacta
+TODA clave llamada `st`/`pot`/`lr` como si fueran atributos de peleador. Los contadores
+del RPG se llamaban `st`: al cargar volvían como un array de 26 cincuentas y los rasgos
+se recalculaban desde cero. Lo mostró *guardar → cargar → continuar equivale a continuar*.
+Se renombran a `cnt` (comentado en `RPG.DEF`) y la prueba de guardado ahora compara
+`G.rpg` entero con contadores distintos de cero; un mutante que vuelve a compactar
+`cnt` la pone roja.
+
+**Evidencia (autopiloto).** `node dev/rpg-neutralidad.js --ref <RPG-3>`: las 5 trazas
+difieren, y la primera diferencia de cada una se buscó por bisección:
+
+| semilla | primera semana distinta | causa |
+|---|---|---|
+| 101 | 2017 s29 | «Profesional impecable»: un reemplazo pagó 6.287 en vez de 4.836 (+30 %) |
+| 202 | 2017 s27 | la pregunta de temperamento ocupa la semana y el evento al azar no sale |
+| 303 | 2017 s32 | ídem (la pregunta sustituye a un evento `short_notice`) |
+| 404 | 2017 s24 | «Profesional»: una oferta con `rpgPro` |
+| 505 | 2018 s13 | la pregunta de temperamento |
+
+Antes de esas semanas el RNG del mundo es idéntico aunque los ganchos de registro corren
+desde el debut: registrar no consume azar. Dibujar tampoco (la prueba de pureza de RPG-3
+recorre `CL.SCREENS`, que ya incluye `diario`).
+Balance, `dev/sim.js --n 60 --weeks 250` antes/después: win rate 78,4 → 80,4 %,
+campeones 53,3 → 55 %, popularidad media 79,8 → 83,8, dinero medio 745.849 → 702.375,
+finalizaciones 44,1 → 41,9 %, 0 fallos de invariante en ambas. Las diferencias por estilo
+son grandes en las dos direcciones (las carreras divergen desde la semana ~80); la de
+popularidad es consistente con «Veterano de guerras» y los cruces del «Provocador».
+Carreras largas con invariantes **cada semana** (`dev/e5-largas.js --n 20 --weeks 300`):
+20/20 sin fallos. Por todo esto se regeneraron las trazas del golden (`--solo-trazas`);
+las fixtures no se tocan.
+
+**Pruebas:** `dev/tests/17-rpg-identidad.js`, 17 pruebas. Mutantes: quitar la emisión de
+`fight:scheduled`, que asumir el temperamento cambie `pers2`, el +30 % de «Profesional»,
+«Alta presión» en `cutring`, la condición de rasgo de «Cambio de marcha», el límite de un
+replanteo y la histéresis de 10 puntos → 7/7 detectados (la de la histéresis **no** se
+detectaba con puntajes de carreras reales: la prueba se reescribió con puntajes fijos).
+
+## RPG-01 · Fase 3: lo que existía y no se podía alcanzar
+**Tipo** accesibilidad + fix · **Cambio observable:** grande en interfaz, **nulo en la
+carrera del autopiloto** (ver evidencia).
+
+**Qué se conectó (todo existía; se le dio entrada, se completó o se hizo cumplir):**
+
+| pieza | antes | ahora |
+|---|---|---|
+| `podcastStart` | 0 llamadores; y el minijuego `pod` **no tenía pantalla** (caía en la base y dibujaba "undefined") | `scrPod` con la misma infraestructura que la prensa; entradas desde VIDA y desde la ficha de un rival (`podcastStart('rival', id)`); emite `media:done` (prensa y podcast) |
+| `allyForm`, `travelWith`, `watchFight` | 0 llamadores | botones en la ficha social, según la etapa de la relación |
+| relación | 0-100 y etiquetas sueltas | progresión derivada `relStage`: Conocido → Compañero → Amigo/Rival → Aliado/Némesis, + "historia compartida"; muestra qué hace falta para el paso siguiente |
+| chef (9.500 + 650/sem) | sólo cobraba | −2 desgaste y −0,35 lb por semana de camp |
+| camp de élite (28.000) | bandera inerte (y guardaba sólo `G.week`) | 6 semanas: +12 % de aprendizaje, +3 fatiga; en camp +3 afilado y +4 desgaste |
+| camp de equipo (42.000) | bandera inerte | con ≥2 entrenadores, el gameplan confirmado suma +2 y lo explica |
+| modificadores "Un solo gimnasio", "Sin cambiar de peso", "Carrera corta" | multiplicaban el puntaje y **no se aplicaban** | `metaLock()` en las 6 vías voluntarias; retiro obligatorio a los 32 por `retire()` |
+| eliminatorias | regla y contador sin productor | el mánager las produce (`MGR.push`); ganarla deja `titleShot` y la pelea por el título aparece |
+| `wantTitleRematch`, `calloutTitle` | se escribían y nadie leía | producen la revancha por el título / la defensa contra el retador nombrado |
+| `trilogyOpp`, `polemicalOpp` | se leían y nadie escribía | productores al terminar una pelea (1-1 / dividida o empate) |
+| mánager | negociador | `MGR.read/card`: recomienda, advierte, detecta oportunidades; el jugador sigue, presiona, pide revancha o ignora; todo queda en su memoria |
+| navegación | Inicio · Entrenar · Ranking · Gente · Menú | **Carrera · Combate · Equipo · Vida · Mundo · Menú** (pantallas nuevas `vida` y `mundo` son índices; no hay lógica en ellas) |
+
+**Bug de pureza encontrado y corregido (B-001, otra vez).** `CL.offerAnalysis` usaba
+`pick()`: mirar la pantalla de ofertas movía el RNG del mundo. Medido en el commit
+anterior: la pantalla `offers` cambiaba `G.rs`; ahora ninguna. Y `CL.styleAt`/`styleName`
+creaban `f.cl` al leerlo: dibujar el inicio creaba estado. Las dos pasan a sólo lectura.
+
+**Evidencia de neutralidad** (`node dev/rpg-neutralidad.js --ref <commit anterior>`): las
+5 trazas del golden son **idénticas**; el estado final sólo difiere en las banderas que
+ahora sí se producen (`polemicalOpp`, `trilogyOpp`). Por eso se regeneraron las huellas
+(`--solo-trazas`: una línea por traza) y no las trazas.
+
+**Pruebas:** `dev/tests/16-rpg-accesos.js`, 14 pruebas. Verificadas con mutantes: quitar la
+ruta del podcast, el candado de gimnasio, la elegibilidad de la eliminatoria o el efecto
+del chef, y revertir `pickStable`, pone roja la prueba correspondiente (5/5).
+
+## RPG-00 · La base subida por el usuario, reparada
+**Commits** `7058abb` (el archivo tal cual) · `[base-fix]` (este).
+**Tipo** fix · **Severidad** CRÍTICA (B-1) · **Cambio observable:** las partidas con una
+pelea firmada vuelven a abrir; el show amateur vuelve a poder aceptarse.
+
+**De dónde se parte.** El archivo subido añade la capa de integridad de carrera
+(`scheduleFight`, `validateScheduledFight`, título a 5 peleas, temporada del campeón,
+reemplazos) y el save v5. Medido: **131 verdes / 62 rojas** en la suite del repo, que en
+`00be0a4` daba 193/193.
+
+**Qué se arregló (causa raíz → cambio):**
+
+1. **B-1 · no se podía abrir ninguna partida con pelea firmada.** La migración v4→v5 y
+   `saveValidate` trabajan sobre `g` antes de que sea `G`, pero `offerKeyFor()` y
+   `validateScheduledFight()` leían el `G` global (null desde la portada). Reproducido con
+   la fixture 02 y con el save congelado: `TypeError` en `offerKeyFor` → `loadGame=false`.
+   `offerKeyFor(offer, g)` recibe el estado; la validación deportiva sale de
+   `saveValidate` y queda en `normalizeRuntime → reconcileScheduledFight`, que ya corría
+   con la partida cargada y además intenta un reemplazo antes de cancelar.
+2. **B-2 · guardar y cargar alteraba ~430 peleadores.** `titleEligibility` era una copia
+   de `proFightCount(f)` que nadie leía, nacía en 0 y la carga la recalculaba. Se retira
+   el campo: la elegibilidad es `titleEligible(f)`.
+3. **B-3 · el agente libre no podía pelear nunca.** La regla exigía organización a toda
+   pelea y el show regional de "acepto lo que sea" (módulo 27) aparecía y fallaba al
+   aceptarlo. La regla vive ahora en `fightSpecProblem()` —pura, sin escribir el
+   `engineLog`— y admite la pelea amateur: sin organización, sin título, sin eliminatoria,
+   rival activo, sano y de la división.
+4. **B-7 · ofertas que no se podían aceptar.** Lo que agregan los suscriptores de
+   `offers:made` no pasaba por la regla. Nueva última puerta (`puertaFinal`, orden 99).
+5. **`remember()` era local** al módulo narrativo: el reemplazo de un rival nunca quedaba
+   en la memoria. Se expone `CL.remember` como escritor único de `G.story.memories`.
+
+**Pruebas adaptadas (no el juego):** 25 fixtures firmaban peleas de un agente libre contra
+"el primer peleador de la división"; ahora eligen un rival con `fightSpecProblem()`, la
+misma regla del juego. A-001 "otra organización" prueba el caso que sigue existiendo (un
+contrato de otra organización). F-002 usa `SAVE_VERSION` en vez de un 4 escrito a mano.
+
+**Golden master regenerado** (`make-baseline.js --solo-trazas`, flag nuevo: regenerar
+TODA la línea base habría reescrito las fixtures antiguas, que son la prueba de
+compatibilidad). **Evidencia de que la regeneración sólo recoge el cambio del archivo
+subido:** con el archivo subido tal cual y con esta base, la traza observable (160
+semanas, semana a semana y pelea a pelea) es **idéntica en las 5 semillas**; sólo cambia
+la huella interna. Contra la traza vieja de `00be0a4`, el archivo subido diverge entre la
+semana 3 y la 22 según la semilla, y el récord final pasa de 7-4, 8-4, 12-3, 10-1, 9-3 a
+12-1, 12-3, 9-2, 14-0, 7-5 (**16 → 11 derrotas en 5 carreras**). Queda anotado como
+riesgo de balance: el jugador gana más con la base subida.
+
+**Resultado:** 193/193 en `node dev/run-tests.js`.
+
+---
+
 ## Antes de F0 — corrección del salto al inicio (invariante I1)
 **Commit** `b9480fe` · **Tipo** fix · **Estado** cerrado antes de este encargo.
 **Qué cambia.** El despachador de pantallas (`clDraw`) llamaba a
