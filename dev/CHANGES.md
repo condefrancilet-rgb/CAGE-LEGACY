@@ -11,7 +11,7 @@ evidencia (sim antes/después o test que lo reproduce).
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
 ## RPG-12 · Fase 14: el mundo existe sin el jugador
-**Tipo** auditoría del mundo dinámico + nueve bugs del mundo corregidos + dos bugs viejos que la
+**Tipo** auditoría del mundo dinámico + nueve bugs del mundo corregidos + tres bugs viejos que la
 regresión sacó a la luz · **Cambio observable:** sí — el mundo pelea desde la primera semana, no se
 vacía, Vanguard no desaparece, los títulos no quedan vacantes años, el rival firmado no pelea otra
 cartelera durante el campamento, el agente libre puede pelear, nadie existe dos veces (ni el
@@ -63,9 +63,12 @@ a quien lleva 16–30: la inactividad inicial se escalona en el último medio a�
 reputación y hype a sus valores por defecto (40 → 8). Un tono sin fila no suma, que es lo que la
 pantalla ya decía («Respuesta sin ruido»). Cuánto debería rendir es decisión de diseño pendiente.
 
+**10. El ex entrenador enfrente lee +12, no +12,5** (existía antes): el bono se sumaba sobre la
+adaptación redondeada (`safeInt`); ahora sobre el número (`safeNum`). Ninguna traza golden cambia.
+
 **Lo que NO se tocó:** los contratos no vencen al llegar a 0 (132 de 145 peleas se hicieron con un
 contrato vencido; cerrarlo exige decidir la renovación: fase de economía); `G.retiredList` y
-`G.story.memories[].person` quedan declaradas huérfanas; el tamaño del guardado a 20 años (1.284 KB,
+`G.story.memories[].person` y `G.nextFight.replacementReason` quedan declaradas huérfanas; el tamaño del guardado a 20 años (1.284 KB,
 porque el mundo ya no se muere: fase de rendimiento); ningún balance.
 
 **Golden:** trazas regeneradas (`--solo-trazas`). Todas divergen desde la creación del mundo por

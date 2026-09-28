@@ -141,6 +141,7 @@ const HUERFANAS = [
   { ruta: 'G.lastPayout.debtPaid',     clase: 'D', decision: 'documentar', por: 'resumen del descuento de deuda; la línea que se muestra ya está en lastPayout.lines' },
   /* fase 14: el mundo nuevo cambió la carrera de muestra y por primera vez salió
      «story_rival_escalation» con rival en G.tmpOpp. La escritura existía antes. */
+  { ruta: 'G.nextFight.replacementReason', clase: 'D', decision: 'documentar', por: 'fase 14 (la carrera de muestra tuvo su primer reemplazo): copia del motivo; el que se lee está en replacementHistory[].reason y en la noticia' },
   { ruta: 'G.story.memories[].person', clase: 'D', decision: 'investigar (fase 15)', por: 'rollEvent guarda a quién apuntó la escalada de rivalidad (memoria event_target) y nada la lee: o la consecuencia del evento la usa o se deja de escribir' },
 ];
 /* Fuera del recorrido del mapa (no aparecen en una carrera corta o son marcas

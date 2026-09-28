@@ -262,4 +262,20 @@ suite('MUNDO-14 · hallazgos de la regresión', () => {
     eq([p.pop, p.rep, p.hype], [40, 30, 20], 'una respuesta sin fila en las tablas movió (o borró) popularidad, reputación o hype');
     ok(!/NaN/.test(c.G.mg.result), 'el resumen dice NaN: ' + c.G.mg.result);
   });
+
+  test('ex entrenador enfrente: el bono de lectura es +12 exacto, también con medio punto de adaptación', () => {
+    /* RPG-7 falló cuando el mundo nuevo puso enfrente a un rival con adaptación 51,5:
+       safeInt la redondeaba antes de sumar y el bono daba +12,5 */
+    const c = firmado(13), o = c.F(c.G.nextFight.oppId);
+    const ex = c.G.coaches.find(x => x.id !== c.G.player.coach);
+    o.coach = ex.id; c.G.rpg.prevCoaches = [{ id: ex.id, at: 1 }];
+    c.goFight();
+    ok(c.G.fight && c.G.fight.exCoach === ex.id, 'la pelea no registra al ex entrenador');
+    const bono = (c.HOOKS['fight:start'] || []).find(x => x.id === 'exEntrenador');
+    ok(bono, 'no está el gancho del ex entrenador');
+    for(const base of [51.5, 60, 82.5]){
+      c.G.fight.identity.adaptation = base; bono.fn({});
+      eq(c.G.fight.identity.adaptation, Math.min(95, base + 12), 'con adaptación ' + base + ' el bono no es +12');
+    }
+  });
 });

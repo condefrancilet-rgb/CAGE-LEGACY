@@ -118,6 +118,10 @@ viejas y los hizo visibles). Se corrigen porque rompían estado; se fijan con el
    «Me da energía»; TIENDA-11 · estilista falló por esto). Un tono sin fila ahora no suma nada, que es lo
    que la pantalla ya decía («Respuesta sin ruido»). **Cuánto debería rendir el tono carismático es una
    decisión de diseño que no se inventa aquí** (queda para la fase de decisiones).
+12. **Ex entrenador en la esquina rival:** el bono de lectura (+12 de adaptación) se sumaba sobre
+   `safeInt(adaptación)`, que redondea; `aiProfile` deja medios puntos, así que el bono era +12 o
+   +12,5 según el rival (RPG-7 falló cuando el mundo nuevo puso enfrente a uno con 51,5). Se suma
+   sobre el número tal cual. No cambia ninguna traza golden.
 
 **Prueba frágil (no era un bug del juego):** el auditor de TIENDA-11 para el documental dependía de
 que la coestelar AL AZAR de `CL.extraOffers` (28 %) no saliera primero; cuando sale, el documental
@@ -128,7 +132,9 @@ apaga ese azar ajeno para medir sólo la compra; la regla del documental no camb
 de juego ni pantalla lo lee (declarado en `HUERFANAS_FUERA_DEL_MAPA`). `G.story.memories[].person`
 (memoria `event_target` de la escalada de rivalidad): se escribe y nadie la lee; la carrera de muestra
 del mapa de estado la alcanzó por primera vez con el mundo nuevo (declarada en `HUERFANAS`, a
-investigar en la fase de decisiones).
+investigar en la fase de decisiones). `G.nextFight.replacementReason`: copia del motivo del reemplazo
+(el que se lee está en `replacementHistory[].reason` y en la noticia); apareció cuando la carrera de
+muestra tuvo su primer reemplazo (declarada).
 
 **Inconsistencias (documentadas, sin cambiar):**
 - Contratos que no vencen (§3).

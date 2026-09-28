@@ -1132,8 +1132,8 @@ function newWorld(startYear, seed){
 }
 function randNat(){ var k=Object.keys(NAMEPOOL); return pick(k); }
 /* FASE 14 — UN NOMBRE, UNA PERSONA. El generador arma el nombre de dos listas
-   (400 combinaciones en las divisiones femeninas) sin mirar quién existe: a las
-   600 semanas había 37 nombres repetidos entre 541 peleadores, y con la
+   (400 combinaciones en las divisiones femeninas) sin mirar quién existe: el
+   mundo nacía con ~9 nombres repetidos, a las 600 semanas había 25-31, y con la
    reposición de divisiones también en Vanguard (medido: dos «Mei Ferrer»
    activas, del mismo año, en la misma organización). Para el jugador son la
    misma persona en el ranking, en las ofertas y en los eventos. Se vuelve a
@@ -31921,7 +31921,10 @@ CAMPO.exCoach = function(o){
 };
 hookOn('fight:start','exEntrenador', function(){
   var f=G&&G.fight, o=f&&F(f.opp), ec=CAMPO.exCoach(o); if(!ec || !f.identity) return;
-  f.identity.adaptation=clamp(safeInt(f.identity.adaptation,50)+12,0,95);
+  /* FASE 14 (hallado en la regresión): safeInt redondeaba la adaptación del
+     rival antes de sumar, y el bono era +12 o +12,5 según el rival (aiProfile
+     la deja con medios puntos). Se suma sobre el número tal cual. */
+  f.identity.adaptation=clamp(safeNum(f.identity.adaptation,50)+12,0,95);
   f.exCoach=ec.id;
   flog('En la esquina de '+fname(o)+' está '+ec.name+'. Te entrenó: sabe lo que repetís.');
 }, 55);
