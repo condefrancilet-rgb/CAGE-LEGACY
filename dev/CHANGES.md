@@ -10,6 +10,71 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-12 · Fase 14: el mundo existe sin el jugador
+**Tipo** auditoría del mundo dinámico + nueve bugs del mundo corregidos + dos bugs viejos que la
+regresión sacó a la luz · **Cambio observable:** sí — el mundo pelea desde la primera semana, no se
+vacía, Vanguard no desaparece, los títulos no quedan vacantes años, el rival firmado no pelea otra
+cartelera durante el campamento, el agente libre puede pelear, nadie existe dos veces (ni el
+plantel real ni los nombres generados), el empate consume el contrato y una respuesta «carismática»
+en la conferencia ya no borra la popularidad. Archivo de partida: `a16dc16` (sha256 `04c9983a…72fa4`).
+Auditoría completa en `dev/MUNDO-AUDITORIA.md`; simulador en `dev/mundo-sim.js`.
+
+**Medido antes** (el mundo con un jugador que no hace nada, 600 semanas, invariantes cada semana):
+2–10 peleas entre organizaciones distintas por corrida; rankings y rosters con gente de otra
+organización hasta 208 semanas; campeones que pertenecían a otra organización; 1–4 títulos contados
+dos veces; en 36 de 100 firmas el rival peleaba otra antes; a los 20 años 353 → 138 activos,
+Vanguard 112 → 1 y títulos vacantes 937 semanas; con inicio 2016, 9 clones del plantel real (5
+activos en dos divisiones); 25–31 nombres repetidos; las primeras 17 semanas sin una sola pelea; la
+oferta amateur del agente libre no llegaba nunca.
+
+**1. Cambios de organización coherentes.** `CL.npcYear` (y el regreso o retiro de un NPC seguido)
+cambiaba la organización sin rehacer rosters ni rankings; los ascensos de `yearTick` se hacían
+después del recálculo. Ahora los dos rehacen rosters y rankings en el acto.
+
+**2. El título vacante suma un título.** El bloque de vacantes lo sumaba y `applyResultCore`
+también.
+
+**3. El rival firmado está comprometido.** `worldTick` (carteleras y título vacante) ya no programa
+al rival de `G.nextFight`: 36/100 → 0/106.
+
+**4. El mundo se repone.** `worldReplenish()` (al final del cambio de año, después de `CL.npcYear`)
+repone con `spawnLocals` —la regla que ya existía para la división del jugador— cada división que
+cae por debajo del tamaño con que nació (5 en RFL/AXN, 6 en TFC/WMA, 6 en Vanguard). A 600 semanas:
+320–332 activos, 0 títulos vacantes en ligas nacionales o mayores, 0 fallos.
+
+**5. Una persona, un peleador.** El plantel real respeta la división de la época sin crear otro
+igual en la división de 2026; los que llegan después tampoco. Y el generador de nombres vuelve a
+sortear si el nombre ya existe (`freshName`): 0 repetidos (antes 25–31; el invariante nuevo
+`mundo.identidad` encontró dos «Mei Ferrer» del mismo año activas en Vanguard).
+
+**6. El agente libre pelea.** La pelea amateur de «acepto lo que sea» vivía en el evento `offers`,
+que la rama del agente libre de `makeOffers` nunca alcanzaba. `CL.takeAny` es la misma función
+para las dos.
+
+**7. El mundo arranca andando.** Todos nacían con 0 semanas de inactividad y el mundo sólo programa
+a quien lleva 16–30: la inactividad inicial se escalona en el último medio año.
+
+**8. El empate consume el contrato** (existía antes; la regresión lo sacó a la luz):
+`applyDrawResult` no pasaba por el único escritor de `contract.left`. Ahora las dos salidas llaman a
+`consumeContractFight`.
+
+**9. La conferencia no borra la popularidad** (existía antes): seis respuestas tienen tono
+`charisma`, que las tablas de `pressPick` no tienen → `NaN` → el saneador devolvía popularidad,
+reputación y hype a sus valores por defecto (40 → 8). Un tono sin fila no suma, que es lo que la
+pantalla ya decía («Respuesta sin ruido»). Cuánto debería rendir es decisión de diseño pendiente.
+
+**Lo que NO se tocó:** los contratos no vencen al llegar a 0 (132 de 145 peleas se hicieron con un
+contrato vencido; cerrarlo exige decidir la renovación: fase de economía); `G.retiredList` y
+`G.story.memories[].person` quedan declaradas huérfanas; el tamaño del guardado a 20 años (1.284 KB,
+porque el mundo ya no se muere: fase de rendimiento); ningún balance.
+
+**Golden:** trazas regeneradas (`--solo-trazas`). Todas divergen desde la creación del mundo por
+construcción (§4, §5 y §7 cambian quién existe, sus nombres y su inactividad). Atribución contra
+`a16dc16`: GOLDEN_ATRIB
+
+**Evidencia.** `dev/tests/26-fase14-mundo.js` (EVID_26). Invariantes nuevos del sistema `mundo`
+(campeones, rankings, rosters, peleadores, identidad, agenda) en toda carrera del arnés. EVID_RESTO
+
 ## RPG-11 · Fase 13: cada estado sabe por qué existe, y lo que está en pantalla sobrevive a recargar
 **Tipo** auditoría global de estado + persistencia corregida + duplicado unificado + dos promesas
 que el sistema no cumplía · **Cambio observable:** sí — al recargar con un evento o una pelea en

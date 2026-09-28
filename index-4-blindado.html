@@ -1131,15 +1131,33 @@ function newWorld(startYear, seed){
   return G;
 }
 function randNat(){ var k=Object.keys(NAMEPOOL); return pick(k); }
+/* FASE 14 — UN NOMBRE, UNA PERSONA. El generador arma el nombre de dos listas
+   (400 combinaciones en las divisiones femeninas) sin mirar quién existe: a las
+   600 semanas había 37 nombres repetidos entre 541 peleadores, y con la
+   reposición de divisiones también en Vanguard (medido: dos «Mei Ferrer»
+   activas, del mismo año, en la misma organización). Para el jugador son la
+   misma persona en el ranking, en las ofertas y en los eventos. Se vuelve a
+   sortear mientras el nombre ya lo lleve alguien del mundo (activo o en la
+   historia); si la lista se agota, se acepta el repetido. */
+function nameTaken(n){
+  if(!G || !G.fighters) return false;
+  for(var id in G.fighters){ if(G.fighters[id] && G.fighters[id].name===n) return true; }
+  return false;
+}
+function freshName(roll){
+  var n = roll();
+  for(var i=0; i<12 && nameTaken(n); i++) n = roll();
+  return n;
+}
 function randName(fem){
-  if(fem) return pick(FEMNAMES[0])+' '+pick(FEMNAMES[1]);
+  if(fem) return freshName(function(){ return pick(FEMNAMES[0])+' '+pick(FEMNAMES[1]); });
   var nat = randNat(), p = NAMEPOOL[nat];
-  return pick(p[0])+' '+pick(p[1]);
+  return freshName(function(){ return pick(p[0])+' '+pick(p[1]); });
 }
 function randNamedFighter(div, year, potMin, potMax){
   var fem = DIVS[div].f===1;
   var nat = randNat();
-  var name = fem ? (pick(FEMNAMES[0])+' '+pick(FEMNAMES[1])) : (pick(NAMEPOOL[nat][0])+' '+pick(NAMEPOOL[nat][1]));
+  var name = freshName(function(){ return fem ? (pick(FEMNAMES[0])+' '+pick(FEMNAMES[1])) : (pick(NAMEPOOL[nat][0])+' '+pick(NAMEPOOL[nat][1])); });
   var pot = ri(potMin||64, potMax||92);
   var f = makeFighter({name:name, nat:nat, div:div, pot:pot, born: year - ri(21,26),
     org: null, tierBias:(pot-80)*.2, pop: ri(1,6), retireAge: ri(33,41)});
@@ -1442,6 +1460,20 @@ function yearTick(news){
       }
     }
   });
+  /* FASE 14 — REPOSICIÓN DE DIVISIONES. El mundo nace con todas las divisiones
+     en todas las organizaciones (5 por división en RFL/AXN, 6 en TFC/WMA,
+     Vanguard con su plantel real, que no baja de 6), y la única entrada de
+     peleadores eran 8-14 prospectos al año repartidos en las cuatro ligas
+     menores más ascensos raros: Vanguard sólo recibía ascensos (5 en 11 años).
+     Medido sin jugador en 20 años: de 353 activos a 138, Vanguard de 112 a 1,
+     títulos vacantes durante 937 semanas porque la pelea por el vacante exige
+     6 rankeados. Con jugador, en 16 años Vanguard pasa de 134 a 9 y quedan 24
+     de 33 títulos vacantes. La regla de reposición ya existía (spawnLocals, la
+     misma que usa makeOffers cuando al jugador le faltan rivales), pero sólo
+     protegía la división del jugador. Ahora la organización ficha talento
+     local cuando una división cae por debajo del tamaño con que nació: ver
+     worldReplenish(), que corre al final del cambio de año (después de los
+     retiros y cambios de organización de CL.npcYear, que llegan por 'year'). */
   // nuevos prospectos cada año
   var n = ri(8,14);
   for(var i=0;i<n;i++){
@@ -1467,9 +1499,28 @@ function yearTick(news){
     }
   });
   rebuildRosters();
+  /* FASE 14: el ranking se rehace DESPUÉS de los ascensos. Antes se rehacía
+     antes: el que ascendía seguía en el ranking (o con el cinturón) de la
+     organización que dejaba hasta que un recalcRank al azar lo limpiara. */
+  DIVKEYS.forEach(function(d){ Object.keys(G.orgs).forEach(function(o){ recalcRank(o,d); }); });
   pruneWorld();
   normalizeFull();                 /* FASE 7: barrido completo garantizado una vez al año */
   hookEmit('year', {news:news});
+  worldReplenish();
+}
+/* FASE 14: tamaño con que nace cada división (newWorld: 5 por división en las
+   ligas regionales, 6 en las nacionales; Vanguard nace con su plantel real y
+   ninguna división por debajo de 6). */
+var WORLD_DIV_FLOOR = {1:5, 2:6, 3:6};
+function worldReplenish(){
+  Object.keys(G.orgs).forEach(function(o){
+    var piso = WORLD_DIV_FLOOR[G.orgs[o].tier] || 5, cuenta = {};
+    Object.keys(G.fighters).forEach(function(id){
+      var f=G.fighters[id];
+      if(f.org===o && f.active && !f.retired && !f.isPlayer) cuenta[f.div]=(cuenta[f.div]||0)+1;
+    });
+    DIVKEYS.forEach(function(d){ var c=cuenta[d]||0; if(c<piso) spawnLocals(o, d, piso-c); });
+  });
 }
 
 function spawnLocals(orgId, div, n){
@@ -1540,8 +1591,13 @@ function worldTick(news){
     var org = G.orgs[oid];
     var cards = org.tier===3? 1 : (org.tier===2? 1 : 1);
     if(!chance(org.tier===3?.85:.6)) return;
+    /* FASE 14: el rival que ya firmó con el jugador está comprometido: no se lo
+       programa en otra cartelera mientras dura el campamento. Medido: en 36 de
+       100 peleas firmadas el rival peleaba otra antes (a veces por el título, a
+       tres semanas), cambiaba de ranking o se lesionaba y había que reemplazarlo. */
+    var comprometido = G.nextFight && G.nextFight.oppId;
     var pool = org.roster.filter(function(id){
-      var f=G.fighters[id]; return !f.isPlayer && !f.inj && f.weeksIdle>ri(16,30) && !f.retired && f.active;
+      var f=G.fighters[id]; return !f.isPlayer && !f.inj && f.weeksIdle>ri(16,30) && !f.retired && f.active && id!==comprometido;
     });
     shuffle(pool);
     var used = {};
@@ -1582,16 +1638,18 @@ function worldTick(news){
     if(G.orgs[oid].tier<2) return;
     DIVKEYS.forEach(function(d){
       if(G.champs[oid][d] || !chance(.06)) return;
+      var comp = G.nextFight && G.nextFight.oppId;
       var r = (G.rank[oid][d]||[]).filter(function(id){
-        var f=F(id); return f && !f.isPlayer && !f.inj && !f.retired && f.active;
+        var f=F(id); return f && !f.isPlayer && !f.inj && !f.retired && f.active && id!==comp;
       });
       if(r.length<6) return;
       var a=F(r[0]), b=F(r[1]);
       var res = simFight(a,b,5,true);
       applyResult(a,b,res,oid,true);
-      var wid = res.winner==='a'? a.id : b.id;
-      G.champs[oid][d] = wid; F(wid).titles++;
-      news.push('¡'+fname(F(wid))+' gana el título vacante de '+DIVS[d].n+' en '+G.orgs[oid].ab+'!');
+      /* FASE 14: applyResult ya corona al ganador y le suma el título; acá se
+         volvía a sumar (medido: 1 a 4 títulos de más cada 600 semanas). */
+      var wid = G.champs[oid][d];
+      if(wid) news.push('¡'+fname(F(wid))+' gana el título vacante de '+DIVS[d].n+' en '+G.orgs[oid].ab+'!');
     });
   });
   // lesiones aleatorias / actividad
@@ -2928,9 +2986,17 @@ function pressPick(i){
   if(!op){ mg.done=true; mg.result='La conferencia se suspendió.'; render(); return; }
   var pp = PERS[p.pers];
   var fit = (tone===p.pers)? 1.35 : 1.0;
-  var popGain = ({humble:1.2,arrogant:3.2,quiet:.5,funny:2.8,aggro:2.6,pro:1.0})[tone]*fit*(pp.pop);
-  var heat = ({humble:0,arrogant:3,quiet:0,funny:1,aggro:4,pro:0})[tone];
-  var resp = ({humble:2.5,arrogant:-2,quiet:.5,funny:0,aggro:-2.5,pro:2})[tone];
+  /* FASE 14 (hallado en la regresión): seis respuestas del banco ampliado de
+     preguntas tienen tono 'charisma', que estas tablas no tienen. popGain,
+     heat y resp daban NaN, el NaN llegaba a pressEnd y el saneador devolvía la
+     popularidad, la reputación y el hype a sus valores por defecto (medido:
+     popularidad 40 → 8 por elegir «Me da energía»). Un tono sin fila no suma
+     nada, que es lo que la pantalla ya le decía al jugador («Respuesta sin
+     ruido»). Cuánto rinde el tono carismático es una decisión de diseño que
+     no se inventa acá. */
+  var popGain = (({humble:1.2,arrogant:3.2,quiet:.5,funny:2.8,aggro:2.6,pro:1.0})[tone]||0)*fit*(pp.pop);
+  var heat = ({humble:0,arrogant:3,quiet:0,funny:1,aggro:4,pro:0})[tone]||0;
+  var resp = ({humble:2.5,arrogant:-2,quiet:.5,funny:0,aggro:-2.5,pro:2})[tone]||0;
   mg.pop+=popGain; mg.heat+=heat; mg.resp+=resp;
   (mg.tones=mg.tones||[]).push(tone);
   mg.log.unshift('“'+o[0].replace(/"/g,'')+'” — '+
@@ -3727,6 +3793,12 @@ function makeOffers(){
       G.offers.push({type:'contract', org:o, purse:G.orgs[o].pay[0], bonus:0, fights:4,
         txt:G.orgs[o].n+' te ofrece un contrato de 4 peleas.'});
     });
+    /* FASE 14 — B-3 otra vez. «Acepto lo que sea» (G.flags.clTakeAny) trae la
+       pelea amateur del agente libre desde el evento 'offers' de la capa CL,
+       que sólo se emite en 'offers:made'; esta rama sale antes, así que la
+       oferta no aparecía nunca y el flag quedaba prendido: el agente libre no
+       podía pelear (la regla ya la admitía desde B-3, la oferta no llegaba). */
+    if(typeof CL!=='undefined' && CL.takeAny) CL.takeAny();
     return;
   }
   var org = G.orgs[orgId];
@@ -3896,6 +3968,13 @@ function applyPlayerFight(){
     return r;
   });
 }
+/* ESCRITOR UNICO de contract.left (ver applyWinLossResult). FASE 14: el empate
+   (applyDrawResult) no pasaba por aquí y una pelea empatada bajo contrato no
+   lo consumía: medido con la semilla 55 de F2 · A-001, 4 peleas firmadas,
+   un empate, el contrato seguía en 4. Las dos salidas llaman a la misma. */
+function consumeContractFight(orgId){
+  if(G.contract && G.contract.org===orgId && safeInt(G.contract.left,0)>0){ G.contract.left--; }
+}
 function applyWinLossResult(){
   var f = G.fight, res = f.result, p = G.player, o = F(f.opp);
   var won = res.winner==='p';
@@ -3979,7 +4058,7 @@ function applyWinLossResult(){
      tiempo. Aquel duplicado ademas no comprobaba la organizacion: una pelea
      fuera del contrato tambien lo consumia. La cuenta vive aqui, donde se
      sabe bajo que organizacion se peleo. */
-  if(G.contract && G.contract.org===orgId && safeInt(G.contract.left,0)>0){ G.contract.left--; }
+  consumeContractFight(orgId);
   recalcRank(orgId, p.div);
   var news = (won?fname(p)+' venció a '+fname(o):fname(o)+' venció a '+fname(p))+' por '+res.methodEs+
     (f.title?' [TÍTULO]':'');
@@ -18992,6 +19071,12 @@ CL.year = function(){
   if(!CL.onceYear('clYear')) return;
   safeRun('CL/year/npc', function(){
     CL.tracked().forEach(function(f){ CL.npcYear(f); });
+    /* FASE 14: npcYear cambia de organización, retira y devuelve del retiro a
+       los NPC seguidos, y nadie reconstruía los rosters: la organización vieja
+       lo seguía programando todo el año (medido: 2 a 10 peleas cruzadas y
+       rankings con gente de otra organización hasta 208 semanas por corrida). */
+    rebuildRosters();
+    DIVKEYS.forEach(function(d){ Object.keys(G.orgs).forEach(function(o){ recalcRank(o,d); }); });
   },null,true);
   safeRun('CL/year/stage', function(){
     var p=G.player, s=CL.S(), st=CL.stage(p);
@@ -21405,7 +21490,10 @@ CL.on('offers','publico', function(){
 CL.mod('flags','clTakeAny y wonder dejan de ser decorativos');
 
 /* clTakeAny: decir "acepto lo que sea" tiene que traer lo que sea. */
-CL.on('offers','takeAny', function(){
+/* FASE 14: con nombre, porque el agente libre no llega al evento 'offers'
+   (makeOffers sale antes de 'offers:made' cuando no hay organización) y lo
+   llama directamente. Es la misma función para los dos. */
+CL.takeAny = function(){
   if(!G.flags.clTakeAny) return;
   var p=G.player, org=G.orgs&&G.orgs[p.org], pool=[];
   if(org){
@@ -21439,7 +21527,8 @@ CL.on('offers','takeAny', function(){
     txt:'SIN ELEGIR: '+fname(o)+' ('+recStr(o)+') en '+wk+' semanas. '+
         (org? 'Paga poco y llega tarde.' : 'Paga monedas. Nadie te va a preguntar si estabas listo.'),
     clTag:'urgencia'});
-}, 30);
+};
+CL.on('offers','takeAny', function(){ CL.takeAny(); }, 30);
 
 /* wonder: la promesa pública es una deuda con la prensa. */
 CL.on('week','wonder', function(){
@@ -23845,6 +23934,7 @@ CL.evSanitize = function(){
       try{ fightXP(o,false,{method:'dec',draw:true}); }catch(e){ errLog('L20899', e); }
       addMemF(o,'empataron en '+G.year,6);
       var c=coachById(p.coach); if(c) addMem(c,'empataron contra '+fname(o),2);
+      consumeContractFight(f.org||p.org);   /* FASE 14: el empate también es una pelea del contrato */
       recalcRank(f.org||p.org,p.div);
       G.fightPayout={net:net,bonus:0,cut:Math.round(pay*cut)};
       pushNews(fname(p)+' empató con '+fname(o)+'.');
@@ -27916,6 +28006,13 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
       /* En el snapshot 2026 consolidamos identidades aun cuando la fuente
          histórica previa las tuviera en otra categoría (p.ej. Whittaker). */
       var existing=(startYear===2026?findFighterAnyDiv(r[0]):findFighterByName(r[0],r[2]));
+      /* FASE 14: antes de 2026 la búsqueda era sólo en la división de 2026, así
+         que quien en esos años peleaba en otra (Holloway en pluma, Makhachev en
+         ligero, Whittaker en medio…) ya existía y se creaba OTRO igual: la
+         misma persona activa en dos divisiones a la vez (medido con inicio
+         2016: 9 clones, 5 activos al mismo tiempo). Es la consolidación de
+         identidad que este bloque declara; se respeta la división de la época. */
+      if(!existing && startYear!==2026 && findFighterAnyDiv(r[0])) return;
       if(existing){
         if(startYear===2026) existing.div=r[2];
         existing.org='VAN'; existing.orgEntry=r[5]; existing.debutYear=r[5]; existing.potGlobal=Math.max(safeNum(existing.potGlobal,0),r[6]);
@@ -27930,7 +28027,7 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
       G.fighters[f.id]=f; backfill(f,startYear);
     });
     FUTURE.forEach(function(r){
-      var existing=findFighterByName(r.name,r.div); if(existing) return;
+      var existing=findFighterAnyDiv(r.name); if(existing) return;   /* FASE 14: una persona, un peleador */
       var f=makeFighter(r); f.active=r.orgEntry<=startYear; f.pending=!f.active; f.org='VAN';
       f.gym=pick(G.gyms).id; f.coach=pick(G.coaches).id; G.fighters[f.id]=f; backfill(f,startYear);
     });
@@ -29727,6 +29824,18 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
   window.CAGE_AUDIT={normalize:normalize,normalizeLight:normalizeLight,normalizeStory:normalizeStory,version:2};
 
   hookOn('world:created','audit_final', function(){ normalize(true); }, 90);
+  /* FASE 14: backfill simula años de peleas pero deja a todos como si hubieran
+     peleado esta misma semana (weeksIdle 0), y el mundo sólo programa a quien
+     lleva 16-30 semanas parado: medido en todas las semillas, las primeras 17
+     semanas del mundo no tenían NI UNA pelea, y después las carteleras llegaban
+     en oleadas sincronizadas. Se escalona la última pelea en el último medio
+     año; quién existe y con qué récord no cambia. */
+  hookOn('world:created','inactividadInicial', function(){
+    Object.keys(G.fighters).forEach(function(id){
+      var f=G.fighters[id];
+      if(f && !f.isPlayer && f.active && !f.retired) f.weeksIdle=ri(0,26);
+    });
+  }, 95);
   hookOn('careerCreated','audit_final',function(){normalize(true);}, 90);
   hookOn('load','audit_final',function(){normalize(true);}, 90);
   CL.on('week','audit_final_week',function(){normalizeLight();});      /* FASE 7 */

@@ -139,6 +139,9 @@ const HUERFANAS = [
   { ruta: 'G.stKeys',                  clase: 'S', decision: 'documentar', por: 'ver ESTADO' },
   { ruta: 'G._autoTag',                clase: 'O', decision: 'documentar', por: 'ver ESTADO' },
   { ruta: 'G.lastPayout.debtPaid',     clase: 'D', decision: 'documentar', por: 'resumen del descuento de deuda; la línea que se muestra ya está en lastPayout.lines' },
+  /* fase 14: el mundo nuevo cambió la carrera de muestra y por primera vez salió
+     «story_rival_escalation» con rival en G.tmpOpp. La escritura existía antes. */
+  { ruta: 'G.story.memories[].person', clase: 'D', decision: 'investigar (fase 15)', por: 'rollEvent guarda a quién apuntó la escalada de rivalidad (memoria event_target) y nada la lee: o la consecuencia del evento la usa o se deja de escribir' },
 ];
 /* Fuera del recorrido del mapa (no aparecen en una carrera corta o son marcas
    de G.flags, que es un registro dinámico): verificadas a mano en la fase 13. */
@@ -151,6 +154,7 @@ const HUERFANAS_FUERA_DEL_MAPA = [
   { ruta: 'G.legacy.streakBest',       clase: 'E', decision: 'documentar', por: 'lee p.bestStreak, que nadie escribe (siempre 0); y streakBest no lo lee nadie' },
   { ruta: 'G.nextFightPaid',           clase: 'E', decision: 'documentar', por: 'el hook de economía lo prefiere a f.meta, pero nadie lo escribe: alternativa muerta' },
   { ruta: 'G.fight._clLastPlayerAction', clase: 'E', decision: 'documentar', por: 'oppRuleSit lo prefiere a _lastPlayerAction, pero nadie lo escribe: alternativa muerta' },
+  { ruta: 'G.retiredList',            clase: 'C', decision: 'documentar', por: 'fase 14: se escribe al retirarse y sólo lo leen la poda, el recorte a 60 y la normalización; ninguna pantalla ni regla lo consulta (el retiro vive en f.retired)' },
   { ruta: 'G.fighters.*.rel.fear',     clase: 'C', decision: 'documentar', por: 'se escribe al ganar; sólo lo leen relSummary/relTags (interfaz): lectura sin consecuencia jugable' },
   /* combate (G.fight: temporal; la carrera de muestra termina sin pelea abierta). Medido en una
      pelea real: 107 claves, 8 sin lector de juego. No se tocan en esta fase (combate). */

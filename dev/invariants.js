@@ -128,6 +128,99 @@ reg('arrays.acotados', 'estado', 'caro', (G) => {
   return null;
 });
 
+/* ---------- el mundo (fase 14) ----------
+   Se comprueban al cierre de cada semana: lo que el motor deja cuando termina
+   una semana tiene que ser coherente sin esperar a que otra función lo arregle
+   por casualidad (recalcRank corre en cada organización/división sólo la mitad
+   de las semanas). */
+const vivo = (f) => f && f.active && !f.retired;
+reg('mundo.campeones', 'mundo', 'caro', (G) => {
+  const visto = {};
+  for(const org in (G.champs || {})) for(const div in G.champs[org]){
+    const id = G.champs[org][div]; if(!id) continue;
+    const f = G.fighters[id];
+    if(!f) return 'campeón inexistente en ' + org + '/' + div;
+    if(!vivo(f)) return 'campeón retirado o inactivo en ' + org + '/' + div + ': ' + id;
+    if(f.org !== org) return 'campeón de ' + org + '/' + div + ' pertenece a ' + f.org + ': ' + id;
+    if(f.div !== div) return 'campeón de ' + org + '/' + div + ' pelea en ' + f.div + ': ' + id;
+    if(visto[id]) return id + ' es campeón de ' + visto[id] + ' y de ' + org + '/' + div;
+    visto[id] = org + '/' + div;
+  }
+  return null;
+});
+reg('mundo.rankings', 'mundo', 'caro', (G) => {
+  const en = {};
+  for(const org in (G.rank || {})) for(const div in G.rank[org]){
+    const r = G.rank[org][div] || [];
+    if(r.length > 15) return 'ranking ' + org + '/' + div + ' con ' + r.length + ' puestos';
+    for(const id of r){
+      const f = G.fighters[id];
+      if(!f) return 'ranking ' + org + '/' + div + ' con un peleador inexistente: ' + id;
+      if(!vivo(f)) return 'ranking ' + org + '/' + div + ' con un retirado/inactivo: ' + id;
+      if(f.org !== org) return 'ranking ' + org + '/' + div + ' con alguien de ' + f.org + ': ' + id;
+      if(f.div !== div) return 'ranking ' + org + '/' + div + ' con alguien de ' + f.div + ': ' + id;
+      if(G.champs[org] && G.champs[org][div] === id) return 'el campeón de ' + org + '/' + div + ' figura además en el ranking';
+      if(en[id]) return id + ' rankeado en ' + en[id] + ' y en ' + org + '/' + div;
+      en[id] = org + '/' + div;
+    }
+  }
+  return null;
+});
+reg('mundo.rosters', 'mundo', 'caro', (G) => {
+  for(const org in (G.orgs || {})){
+    for(const id of (G.orgs[org].roster || [])){
+      const f = G.fighters[id];
+      if(!f) return 'roster de ' + org + ' con un peleador inexistente: ' + id;
+      if(f.org !== org) return 'roster de ' + org + ' con alguien de ' + f.org + ': ' + id;
+    }
+  }
+  for(const id in G.fighters){
+    const f = G.fighters[id];
+    if(!f.isPlayer && vivo(f) && f.org && G.orgs[f.org] && (G.orgs[f.org].roster || []).indexOf(id) < 0) return id + ' pertenece a ' + f.org + ' y no está en su roster';
+  }
+  return null;
+});
+reg('mundo.peleadores', 'mundo', 'caro', (G) => {
+  for(const id in G.fighters){
+    const f = G.fighters[id];
+    if(f.id !== id) return 'id incoherente ' + id;
+    if(f.retired && f.active) return id + ' retirado y activo a la vez';
+    const r = f.rec || {};
+    for(const k of ['w','l','d']) if(!Number.isInteger(r[k]) || r[k] < 0) return id + ' record.' + k + ' inválido: ' + r[k];
+    if(f.isPlayer) continue;
+    if(!Number.isInteger(f.injWeeks) || f.injWeeks < 0) return id + ' injWeeks inválido: ' + f.injWeeks;
+    if(f.inj && !f.injWeeks) return id + ' lesionado sin semanas de lesión';
+    if(!f.inj && f.injWeeks > 0) return id + ' con semanas de lesión y sin lesión';
+    if(!Number.isInteger(f.weeksIdle) || f.weeksIdle < 0) return id + ' weeksIdle inválido: ' + f.weeksIdle;
+  }
+  return null;
+});
+reg('mundo.identidad', 'mundo', 'caro', (G) => {
+  /* la misma persona no puede estar activa dos veces: mismo nombre y mismo año
+     de nacimiento, en cualquier organización. Cubre los clones del plantel real
+     y, desde que el generador sortea nombres libres (freshName), también los
+     homónimos ficticios, que el jugador no puede distinguir. (El año queda en la
+     clave porque el plantel real puede tener dos personas con el mismo nombre.) */
+  const visto = {};
+  for(const id in G.fighters){
+    const f = G.fighters[id]; if(f.isPlayer || !vivo(f)) continue;
+    const k = String(f.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() + '|' + f.born;
+    if(visto[k]) return f.name + ' activo dos veces (' + visto[k] + ' y ' + id + ')';
+    visto[k] = id;
+  }
+  return null;
+});
+reg('mundo.agenda', 'mundo', 'barato', (G) => {
+  const nf = G.nextFight, p = G.player; if(!nf || !p) return null;
+  const o = G.fighters[nf.oppId];
+  if(!o) return 'pelea firmada contra un rival inexistente';
+  if(!vivo(o)) return 'pelea firmada contra un retirado/inactivo: ' + o.id;
+  if(o.inj || o.injWeeks > 0) return 'pelea firmada contra un lesionado: ' + o.id;
+  if(o.div !== p.div) return 'pelea firmada fuera de división: ' + o.id + ' ' + o.div + '/' + p.div;
+  if(nf.org && p.org && o.org !== nf.org) return 'pelea firmada contra alguien de otra organización: ' + o.id;
+  return null;
+});
+
 /**
  * checkInvariants(G, UI, opts)
  * opts.nivel: 'barato' (subconjunto de produccion) | 'todo' (por defecto)

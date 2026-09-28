@@ -292,9 +292,14 @@ const CONTRATO = {
                    efecto: (c, compra) => { const s = c.CL.contentState(); const h = () => { s.hype = 10; c.CL.contentProduce([]); return s.hype - 10; };
                      const a = h(); compra(); const b = h(); return s.level >= 2 && b > a ? null : 'el estudio no hace rendir más cada producción: ' + a + ' → ' + b; } },
   documentary:   { tipo: 'consumidor', lee: ['flags.docAt', 'flags.docUsed', 'flags.content'], prep: c => { c.G.flags.shop.camera = 1; c.G.player.rec.w = 8; },
-                   efecto: (c, compra) => { const st = estrella(c); const a = ofertas(c).length; compra(); const b = ofertas(c);
+                   /* fase 14: la coestelar AL AZAR de CL.extraOffers (chance .28) hace esperar al
+                      documental, como está escrito; con el mundo nuevo la semilla de esta fila la
+                      sacaba (con la vieja pasaba lo mismo en la semilla 5). El documental no tira
+                      el dado: se apaga el azar ajeno para medir sólo lo que promete la compra. */
+                   efecto: (c, compra) => { const sinAzar = (fn) => { const ch = c.chance; c.chance = () => false; try{ return fn(); } finally { c.chance = ch; } };
+                     const st = estrella(c); const a = sinAzar(() => ofertas(c)).length; compra(); const b = sinAzar(() => ofertas(c));
                      if(!(a === 0 && b.length === 1 && b[0].oppId === st.id)) return 'el documental no abre la coestelar: ' + a + ' / ' + b.length;
-                     return c.G.flags.docUsed && ofertas(c).length === 0 ? null : 'un documental abre más de una pelea'; } },
+                     return c.G.flags.docUsed && sinAzar(() => ofertas(c)).length === 0 ? null : 'un documental abre más de una pelea'; } },
   coachcamp:     { tipo: 'consumidor', lee: ['flags.teamCamp'], ref: '16-rpg-accesos.js',
                    efecto: (c, compra) => { compra(); return typeof c.teamCampActive === 'function' ? null : 'no existe el lector'; } },
   videoWall:     { tipo: 'consumidor', lee: ['flags.videoWall'], prep: c => { c.G.player.st.fightiq = 50; },
