@@ -3952,7 +3952,11 @@ function applyWinLossResult(){
   if(f.title){
     if(won){
       if(G.champs[orgId][p.div]===p.id){ p.defenses++; p.championIdleWeeks=0; p.lastTitleDefenseWeek=G.week; p.pop=clamp(p.pop+4,1,100); p.rep=clamp(p.rep+2,1,100); championStats(orgId,p.div).lastDefenseWeek=G.week; }
-      else { G.champs[orgId][p.div]=p.id; p.titles++; p.pop=clamp(p.pop+10,1,100); p.championIdleWeeks=0; p.lastTitleDefenseWeek=G.week; championStats(orgId,p.div).lastDefenseWeek=G.week; }
+      else { G.champs[orgId][p.div]=p.id; p.titles++; p.pop=clamp(p.pop+10,1,100); p.championIdleWeeks=0; p.lastTitleDefenseWeek=G.week; championStats(orgId,p.div).lastDefenseWeek=G.week;
+             /* FASE 13: la división de cada cinturón ganado. El final «CAMPEÓN EN DOS
+                DIVISIONES» la necesita y nada la guardaba (ver careerEnding). */
+             if(!Array.isArray(p.beltDivs)) p.beltDivs=[];
+             if(p.beltDivs.indexOf(p.div)<0) p.beltDivs.push(p.div); }
     } else {
       if(G.champs[orgId][p.div]===p.id){ G.champs[orgId][p.div]=o.id; o.titles++; o.championIdleWeeks=0; o.lastTitleDefenseWeek=G.week; }
       else if(G.champs[orgId][p.div]===o.id){ o.defenses++; o.championIdleWeeks=0; o.lastTitleDefenseWeek=G.week; }
@@ -4003,7 +4007,15 @@ function careerEnding(){
   else if(a<30) e={t:'RETIRO TEMPRANO',d:'Te fuiste antes de que el deporte decidiera por vos. Pocos entienden esa decisión.'};
   else e={t:'CARRERA MODESTA',d:'Peleaste, ganaste algunas, perdiste otras. La mayoría de las carreras terminan así.'};
   if(G.flags.mentor>=2) e.d += ' Después del retiro, varios peleadores del gimnasio te piden que los entrenes.';
-  if(p.titles>=1 && p.div!==p.styleHist[0] && G.flags.twoDiv) e.t='CAMPEÓN EN DOS DIVISIONES';
+  /* FASE 13: la condición comparaba una división con un ESTILO (p.styleHist[0]
+     es 'boxer', 'wrest'... y p.div es 'LW', 'WW'...: siempre distintos) y leía
+     una marca que sólo ponía el evento del pesaje al subir de peso, con o sin
+     cinturón en la división nueva. Resultado medido: el campeón que cambiaba de
+     categoría por la vía propia (changeWeightClass) y volvía a ganar el título
+     nunca lo recibía; el que ganó un solo título y después no dio el peso, sí.
+     Ahora se lee lo que el título promete: cinturones ganados en dos o más
+     divisiones distintas. */
+  if(p.titles>=1 && Array.isArray(p.beltDivs) && p.beltDivs.length>=2) e.t='CAMPEÓN EN DOS DIVISIONES';
   return e;
 }
 /* El retiro tiene UNA implementación, la del módulo de endgame (más abajo).
@@ -4375,7 +4387,13 @@ var STATE = {
     '_migrationSteps',
     '_saveState',
     '_saveDamage',
-    'tmpOpp',        /* referencia temporal que un evento deja a medio camino */
+    /* FASE 13: 'tmpOpp' salió de esta lista. Es el rival que nombra el evento
+       que está EN PANTALLA (x() lo elige, la opción lo lee), igual que
+       tmpAmt / tmpSpon / tmpGym / tmpCamp, que sí persistían. Medido: con el
+       evento pendiente, guardar y recargar cambiaba 12 de 170 opciones —la
+       pelea de reemplazo «se caía», la revancha pedida no llegaba y el rival
+       no recordaba nada—. CL.evSanitize ya lo validaba al cargar como si se
+       guardara; ahora es verdad. */
     'casG',          /* mano en curso del casino: lo declara el propio módulo
                         como "estado transitorio", y al cargar se materializa
                         de null a {} — contarlo hacía que guardar y cargar
@@ -6400,7 +6418,14 @@ ev({id:'x9_weight',w:8,c:function(){
   {t:'Cancelar la pelea y subir de división',f:function(){var idx=DIVS[G.player.div].o;
     var up=DIVKEYS.filter(function(d){return DIVS[d].f===DIVS[G.player.div].f&&DIVS[d].o===idx+1;})[0];
     if(metaLock('div')){ G.nextFight=null;G.camp=null; return 'Te bajás de la pelea. '+META_LOCK_TXT.div; }
-    if(up){G.player.div=up;G.flags.twoDiv=true;}G.nextFight=null;G.camp=null;
+    /* FASE 13: antes sólo reescribía G.player.div. El campeón seguía figurando
+       como dueño del cinturón de la división que dejaba, no entraba en el
+       ranking de la nueva hasta la semana siguiente y subía sin la adaptación
+       que cobran las otras dos subidas. Ahora es la MISMA subida que la
+       planificada (divMoveUp). La marca G.flags.twoDiv no se escribe más: su
+       único lector era el final «dos divisiones», que ahora lee p.beltDivs. */
+    G.nextFight=null;G.camp=null;
+    if(up) divMoveUp(up);
     return up? 'Te bajás de la pelea y subís a '+DIVS[up].n+'. Empezás casi de cero en el ranking.' : 'Te bajás de la pelea.';}}]});
 
 ev({id:'x10_short',w:7,c:function(){return !seen('x10_short')&&!G.nextFight&&!G.player.inj&&G.player.org&&rankOf(G.player)!==0;},
@@ -7503,6 +7528,26 @@ function requestPromoterChange(){
 var askManagerRaise = null;   /* lo asigna su modulo, mas abajo */
 
 /* ---------- cambio de peso real para campeones ---------- */
+/* FASE 13 — SUBIR DE CATEGORÍA POR EL PESO: UNA SOLA IMPLEMENTACIÓN.
+   Había tres copias: la subida planificada (el evento que abre
+   G.flags.planDivUp), la forzada por el cuerpo (forceDivUp) y la de emergencia
+   del pesaje (x9_weight), y la tercera sólo reescribía p.div. Las tres hacen
+   ahora lo mismo: dejan el cinturón de la división que se abandona, entran en
+   el ranking de la nueva en el acto, cobran la adaptación al peso nuevo y
+   descartan las ofertas de la división vieja. Si además se rehacen las ofertas
+   en el acto lo sigue decidiendo cada llamador, como antes (makeOffers tira el
+   dado). changeWeightClass (el cambio voluntario del campeón) sigue aparte:
+   tiene su propio costo. */
+function divMoveUp(target){
+  var p=G.player, old=p&&p.div;
+  if(!p || !target || !DIVS[target] || target===old) return false;
+  if(p.org && G.champs[p.org] && G.champs[p.org][old]===p.id) G.champs[p.org][old]=null;
+  p.div=target; p.divAdapt=-8;
+  p.weightNow=Math.round(walkLb(p)*10)/10;
+  if(p.org){ safeRun('rosters', function(){ rebuildRosters(); recalcRank(p.org,target); recalcRank(p.org,old); }, null, true); }
+  G.offers=[];
+  return true;
+}
 function changeWeightClass(dir){
   var p=G.player;
   if(metaLock('div')){ toast(META_LOCK_TXT.div); return; }
@@ -14213,7 +14258,18 @@ function loadGame(id){
     if(FX && FX.running) fxClose(true);
     if(g._migratedFrom) toast('Partida v'+g._migratedFrom+' actualizada a v'+SAVE_VERSION+' ('+(g._migrationSteps||[]).length+' pasos)');
     else toast('Partida cargada');
-    go('hub');
+    /* FASE 13: la pelea se retoma donde quedó. El autoguardado de
+       fxResolveMini corre DENTRO de la pelea: un «Buscar KO/Sumisión» que no
+       termina la pelea la deja guardada viva, y uno que la termina la deja
+       guardada sin cobrar. Ir siempre al inicio tenía dos salidas, las dos
+       malas: con la pelea viva no había botón para volver a ella y la carrera
+       quedaba congelada (la barra de navegación no existe en la pelea, y el
+       inicio no ofrece «Pelear» mientras G.fight esté abierta); con la pelea
+       ya decidida, go('hub') la descartaba sin cobrarla —récord y bolsa
+       perdidos, y la misma pelea otra vez—. La pelea guardada está entera
+       (medido: continuarla da el mismo resultado que sin recargar), así que
+       se vuelve a su pantalla. */
+    go(G.fight && !G.fight.over ? 'fight' : (G.fight && G.fight.over && !G.paid ? 'fightresult' : 'hub'));
     /* E4. Este saveGame existe para PERSISTIR LA MIGRACION: si el save ya
        estaba al dia, reescribe byte a byte lo que se acaba de leer.
        Medido: era el 22 % de loadGame (una serializacion completa de ~950 KB
@@ -16792,15 +16848,10 @@ ev({id:'body_divup', w:14, drama:1,
  o:[
   {t:'Subir de categoría',f:function(){
      return safeRun('doDivUp', function(){
-       var p=G.player, target=G.tmpDivUp;
+       var target=G.tmpDivUp;
        if(!target||!DIVS[target]) return 'No se pudo concretar.';
-       var old=p.div;
-       if(p.org && G.champs[p.org] && G.champs[p.org][old]===p.id) G.champs[p.org][old]=null;
-       p.div=target; p.divAdapt=-8;
-       p.weightNow=Math.round(walkLb(p)*10)/10;
        G.flags.planDivUp=0; G.flags.cutWarned=0;
-       if(p.org){ rebuildRosters(); recalcRank(p.org,target); recalcRank(p.org,old); }
-       G.offers=[]; makeOffers();
+       divMoveUp(target); makeOffers();
        return 'Ahora peleás en '+DIVS[target].n+'. Comés normal por primera vez en años.';
      }, function(){ return 'No se pudo concretar.'; }, true);}},
   {t:'Quedarme donde estoy',f:function(){
@@ -17062,13 +17113,8 @@ function forceDivUp(){
     var nat=naturalDiv(p);
     if(DIVS[nat] && DIVS[nat].lb>DIVS[target].lb) target=nat;
     if(target===p.div){ toast('Ya estás en la categoría más alta.'); return; }
-    var old=p.div;
-    if(p.org && G.champs[p.org] && G.champs[p.org][old]===p.id) G.champs[p.org][old]=null;
-    p.div=target; p.divAdapt=-8;
-    p.weightNow=Math.round(walkLb(p)*10)/10;
+    divMoveUp(target);                 /* FASE 13: la misma subida que las otras dos */
     G.flags.missW=0; G.flags.cutWarned=0; G.flags.planDivUp=0;
-    if(p.org){ safeRun('rosters', function(){ rebuildRosters(); recalcRank(p.org,target); recalcRank(p.org,old); }, null, true); }
-    G.offers=[];
     toast('Ahora peleás en '+DIVS[target].n);
     G.socOut={t:'⬆️ Te subieron a '+DIVS[target].n+'. Vas a comer normal, pero adentro hay cuerpos más grandes.'};
     saveGame(true); render();
@@ -28679,7 +28725,13 @@ if(CL && CL.tests) CL.tests.push({n:'Aviso financiero: helpers numéricos', fn:f
               importance:importance||0,schema:POST_SCHEMA};
     if(extra){for(var k in extra){if(extra.hasOwnProperty(k))post[k]=extra[k];}}
     s.feed.unshift(post);
-    if(s.feed.length>80)s.feed.pop();
+    /* FASE 13: el tope es el de normalizeStory (60). Había dos: éste dejaba
+       crecer el feed hasta 80 y el saneo semanal y el de la carga lo cortaban a
+       60, así que la semana cerraba con 61-62 publicaciones y cargar la
+       partida borraba las últimas (y con ellas los cierres de sus hilos en
+       socCD): guardar y cargar cambiaba el estado. Medido en 3 carreras de 150
+       semanas: las tres. */
+    while(s.feed.length>60)s.feed.pop();
     return post;
   }
   /* ------------------------------------------------------------------------
@@ -29615,7 +29667,12 @@ hookOn('load','gateVerify', function(){ if(typeof GATE!=='undefined') GATE.verif
     s.memories=s.memories.filter(Boolean).slice(0,180);
     s.eventHistory=s.eventHistory.filter(Boolean).slice(0,120);
     s.recentCats=s.recentCats.filter(function(x){return typeof x==='string';}).slice(0,8);
-    s.chains=s.chains.filter(function(x){return x&&x.id;}).slice(0,24);
+    /* FASE 13: la única cadena que existe (la respuesta del rival después de
+       contestarle en público, {type:'rival_reply', oppId, at, expires}) no lleva
+       id, y este filtro exigía uno: el saneo semanal la borraba antes de que
+       storyTick la viera, así que story_rival_reply no salía nunca —ni
+       recargando ni sin recargar—. Una cadena vale si tiene tipo. */
+    s.chains=s.chains.filter(function(x){return x&&(x.id||x.type);}).slice(0,24);
     s.feed=s.feed.filter(Boolean).slice(0,60);
     s.fightHistory=s.fightHistory.filter(Boolean).slice(0,40);
     s.matchupHistory=s.matchupHistory.filter(Boolean).slice(0,80);

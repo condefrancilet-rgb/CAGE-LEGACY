@@ -433,6 +433,36 @@ async function main(){
         'mudanza ' + (m0 ? m0.precio + ' → cobró ' + (m0.cash - m1.cash) + (m1.gym === m0.id ? ' (se mudó)' : ' (NO se mudó)') : 'sin botón') + ' · plan ' + plan + ' · semana ' + semana + ' · experiencia ' + exp);
     }
 
+    /* --- fase 13: cerrar la página con una pelea a medias y volver: se retoma la pelea --- */
+    {
+      const prep = await page.evaluate(() => {
+        G.mg = null; G.pending = []; G.camp = null; G.nextFight = null; G.fight = null;
+        if(!G.player.org){ const co = (G.offers || []).find(o => o.type === 'contract') || { type:'contract', org:'RFL', purse:G.orgs.RFL.pay[0], bonus:0, fights:4 }; negoStart(co); negoClose(); G.mg = null; }
+        G.player.inj = null; G.player.injWeeks = 0; G.offers = []; makeOffers();
+        const i = G.offers.findIndex(o => o.type === 'fight'); if(i < 0 || !acceptFight(i)) return { ok:false, why:'sin pelea firmada' };
+        G.camp.i = G.camp.weeks; goFight();
+        for(let k = 0; k < 6 && G.fight && !G.fight.over; k++) fightAct(fightOptions()[0].k);
+        finishMiniStart('ko', 'fight', 0.6);
+        if(FX.S){ fxEnd(FX.S, 0.3); fxFinish(); }
+        const disco = JSON.parse(localStorage.getItem('cagelegacy_slot_' + G.saveId) || '{}');
+        return { ok:true, viva: !!(G.fight && !G.fight.over), guardadaViva: !!(disco.fight && !disco.fight.over) };
+      });
+      let r = { pantalla: '—' };
+      if(prep.ok && prep.viva && prep.guardadaViva){
+        await page.reload(); await page.waitForTimeout(400);
+        const cargar = await page.$('button:has-text("Cargar partida")');
+        if(cargar){ await cargar.click(); await page.waitForTimeout(250); }
+        const slot = await page.$('button[onclick^="loadGame("]');
+        if(slot){ await slot.click(); await page.waitForTimeout(400); }
+        r = await page.evaluate(() => ({ pantalla: UI.screen, viva: !!(G && G.fight && !G.fight.over),
+          acciones: document.querySelectorAll('#app [onclick^="fightAct("]').length,
+          barra: getComputedStyle(document.getElementById('nav')).display }));
+      }
+      anota(vp.n + ' · cerrar la página con la pelea a medias y cargar la partida vuelve a la pelea, con sus botones (fase 13)',
+        prep.ok && prep.viva && prep.guardadaViva && r.pantalla === 'fight' && r.viva && r.acciones > 0 && r.barra === 'none',
+        JSON.stringify(prep) + ' → ' + JSON.stringify(r));
+    }
+
     anota(vp.n + ' · sin errores de JavaScript', errores.length === 0, errores.slice(0, 2).join(' | '));
     await ctx.close();
   }

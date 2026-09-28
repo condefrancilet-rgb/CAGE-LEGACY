@@ -10,6 +10,66 @@ evidencia (sim antes/después o test que lo reproduce).
 > Las entradas de esta etapa van arriba, la más nueva primero. El inventario que
 > las motivó está en `dev/RPG-AUDITORIA.md`.
 
+## RPG-11 · Fase 13: cada estado sabe por qué existe, y lo que está en pantalla sobrevive a recargar
+**Tipo** auditoría global de estado + persistencia corregida + duplicado unificado + dos promesas
+que el sistema no cumplía · **Cambio observable:** sí — al recargar con un evento o una pelea en
+pantalla, al subir de categoría por el pesaje, al contestarle en público a un rival y en el final
+«CAMPEÓN EN DOS DIVISIONES». Archivo de partida: `c6f1e23` (sha256 `286328b5…0b74`). Inventario
+completo en `dev/ESTADO-AUDITORIA.md`; por qué existe cada clave, en `dev/estado-inventario.js`.
+
+**1. Recargar con un evento en pantalla ya no cambia la decisión.** `G.tmpOpp` —el rival que nombra
+el evento que está en pantalla— era la única de las once `tmp*` que no se guardaba, y
+`CL.evSanitize` la validaba al cargar como si se guardara. Barrido de los 66 eventos y sus 170
+opciones, resolviendo con y sin recargar la página en el medio: 12 daban otro resultado (la pelea
+de aviso corto y la de cinco días «se caían», «Pedirle la pelea a la organización» no pedía nada,
+el rival no recordaba lo que le dijiste). Ahora persiste: 0 de 170.
+
+**2. Cerrar la app en medio de una pelea congelaba la carrera.** El autoguardado de
+`fxResolveMini` corre dentro de la pelea, así que un «Buscar KO/Sumisión» que no la termina deja
+guardada una pelea viva. Al cargar se iba al inicio, que no tiene cómo volver a una pelea abierta:
+20 semanas después seguía abierta, sin peleas nuevas. Y un intento que sí la terminaba la dejaba
+guardada sin cobrar, y el inicio la descartaba (récord y bolsa perdidos, la misma pelea otra vez).
+Ahora `loadGame` vuelve a la pelea o al resultado; continuarla da el mismo final que sin recargar.
+
+**3. Subir de categoría por el peso es una sola cosa.** Había tres copias (planificada, forzada y
+la de emergencia del pesaje); la del pesaje sólo reescribía la división: el campeón seguía dueño
+del cinturón que dejaba, no entraba al ranking nuevo hasta la semana siguiente y no pagaba la
+adaptación. Ahora las tres son `divMoveUp`.
+
+**4. «CAMPEÓN EN DOS DIVISIONES» dice la verdad.** Comparaba una división con un estilo (siempre
+distintos) y leía una marca que ponía sólo el pesaje: lo recibía quien ganó un título y después no
+dio el peso, y no el campeón que cambió de categoría por la vía propia y volvió a ganar. Ahora cada
+cinturón anota su división (`p.beltDivs`) y el final exige dos.
+
+**5. La respuesta del rival llega.** «Responder públicamente» deja en camino la respuesta del rival
+(`story_rival_reply`) como una cadena sin `id`; el saneo semanal filtraba las cadenas por `id` y la
+borraba antes de que se leyera. No salía nunca. Ahora una cadena vale si tiene tipo.
+
+**6. Cargar ya no borra publicaciones.** El feed tenía dos topes (80 al publicar, 60 en el saneo y
+en la carga): la semana cerraba con 61–62 y cargar borraba las últimas. Un tope, 60.
+
+**Lo que NO se tocó:** ninguna huérfana se borró (37 clasificadas, con su decisión: se eliminan en
+una limpieza con migración propia); el combate (8 claves sin lector de juego, documentadas); el
+texto «Empezás casi de cero en el ranking» (es texto, no sistema); y el pedido de pelea que la
+regla anti-repetición descarta en silencio (decisión de diseño: queda en «investigar»).
+
+**Golden:** trazas regeneradas (`--solo-trazas`), con cada divergencia atribuida contra
+`c6f1e23`: 101 y 404 con traza idéntica (sólo aparece `tmpOpp: null` y el feed se corta en 60);
+202 cambia en 2017 s6 porque el autopiloto elige en 2017 s5 «Cancelar la pelea y subir de
+división» (ahora entra al ranking nuevo en el acto); 303 (2018 s29) y 505 (2016 s35) porque el
+autopiloto elige «Responder públicamente» y ahora la respuesta del rival entra al sorteo de eventos.
+
+**Evidencia.** `dev/tests/25-fase13-estado.js` (22 pruebas: inventario contra el análisis en las
+dos direcciones, recargas, subidas, dos divisiones, carrera nueva sin herencia y nueve cadenas con
+una recarga en el medio). `dev/estado-carreras.js`: 3/3 carreras enteras (751–825 semanas) con
+cambios de mánager y de división, 15 recargas en arranque nuevo (10 con un evento en pantalla),
+dos terminan «CAMPEÓN EN DOS DIVISIONES» con cinturones reales y la carrera siguiente sale limpia
+en las tres. Las tres encontraron, en su primera recarga, el tope doble del feed (§6). Mutantes de
+la fase 19/19 (el de la condición invertida de la subida sobrevivió la primera vez: la prueba sólo
+subía campeones; se agregó el que no lo es). Suite 360/360, navegador 89/89 (nueva: cerrar la
+página con la pelea a medias y cargar vuelve a la pelea), `rpg-carrera-completa` 3/3,
+`recorridos-economia` y `tq-inventario --check` al día.
+
 ## RPG-10 · Fase 12: lo que se paga fuera de la tienda, cumple lo que promete
 **Tipo** auditoría económica + duplicados unificados + cobros corregidos + textos que dicen lo que
 pasa · **Cambio observable:** sí, al pagar servicios, mudarse, endeudarse y en tres eventos.

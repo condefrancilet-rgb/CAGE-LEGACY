@@ -125,6 +125,9 @@ function serviciosDeJugador(c, rnd, k12){
   c.G.socOut = null; c.UI.screen = 'hub';
 }
 
+/* fase 13: dev/estado-carreras.js reutiliza al jugador de esta carrera */
+module.exports = { semanaDeJugador, comprasDeJugador, serviciosDeJugador, DESEOS };
+if(require.main === module){
 const t0 = Date.now();
 let rotas = 0;
 for(let i = 0; i < N; i++){
@@ -203,3 +206,4 @@ for(let i = 0; i < N; i++){
 }
 console.log('\n' + (N - rotas) + '/' + N + ' carreras completas sin fallos · invariantes cada semana (' + Object.keys(INV.SISTEMAS).length + ' sistemas) · ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 process.exit(rotas ? 1 : 0);
+}
